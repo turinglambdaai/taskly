@@ -1,0 +1,31 @@
+<ContentDialog
+    x:Class="Taskly.Dialogs.ListEditDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="List"
+    PrimaryButtonText="OK"
+    CloseButtonText="Cancel">
+
+    <StackPanel Width="400" Spacing="14">
+        <TextBox x:Name="NameBox" />
+        <StackPanel Orientation="Horizontal" Spacing="24">
+            <StackPanel Spacing="6">
+                <TextBlock x:Name="IconLabel" FontSize="12" Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
+                <Button x:Name="IconButton" Click="OnPickIcon" Width="48" Height="48"
+                        CornerRadius="24" Background="{ThemeResource AccentBrush}">
+                    <TextBlock x:Name="IconText" FontSize="20" Foreground="White" />
+                </Button>
+                <Button x:Name="ClearIconButton" Click="OnClearIcon" Padding="4"
+                        Background="Transparent" BorderThickness="0" FontSize="12" />
+            </StackPanel>
+            <StackPanel Spacing="6">
+                <TextBlock x:Name="ColorLabel" FontSize="12" Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
+                <Button x:Name="ColorButton" Click="OnPickColor" Width="48" Height="48" CornerRadius="24">
+                    <Ellipse x:Name="ColorSwatch" Width="40" Height="40" />
+                </Button>
+                <Button x:Name="ClearIconButton2" Click="OnClearColor" Padding="4"
+                        Background="Transparent" BorderThickness="0" FontSize="12" />
+            </StackPanel>
+        </StackPanel>
+    </StackPanel>
+</ContentDialog>

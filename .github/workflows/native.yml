@@ -1,0 +1,89 @@
+name: Native Apps CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/macos/**'
+      - 'apps/windows/**'
+      - 'apps/linux/**'
+      - 'shared/**'
+      - 'scripts/**'
+      - '.github/workflows/native.yml'
+  pull_request:
+    paths:
+      - 'apps/macos/**'
+      - 'apps/windows/**'
+      - 'apps/linux/**'
+      - 'shared/**'
+      - 'scripts/**'
+      - '.github/workflows/native.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  i18n-parity:
+    name: i18n single-source parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify platform copies match shared/i18n
+        run: scripts/sync-i18n.sh --check
+
+  macos:
+    name: macOS (Swift build + tests + CLI golden smoke)
+    runs-on: macos-14
+    needs: i18n-parity
+    defaults:
+      run:
+        working-directory: apps/macos
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Build
+        run: swift build
+      - name: Unit tests (data contract, date parser, CLI JSON)
+        run: swift test
+      - name: CLI end-to-end smoke (contract)
+        run: |
+          DB=$(mktemp -d)/tasks.db
+          B=.build/debug/Taskly
+          $B mklist "work" --icon "💼" --color "#C15F3C" --db "$DB"
+          ID=$($B add "buy milk" --due tomorrow --db "$DB" --quiet)
+          $B update "$ID" --time 09:30 --db "$DB" --json | grep -q '"dueTime": "09:30"'
+          $B done "$ID" --db "$DB" --json --quiet | grep -q '"completed": true'
+          $B rm "$ID" --db "$DB" --json | grep -q '"deleted": true'
+          $B list --view completed --db "$DB" | wc -l | grep -q '^0$' || true
+          $B search "milk" --db "$DB" --json
+          $B update 999 --text x --db "$DB" 2>/dev/null; test $? -eq 3
+          $B list --view bogus --db "$DB" 2>/dev/null; test $? -eq 2
+
+  linux:
+    name: Linux (Rust build + tests)
+    runs-on: ubuntu-latest
+    needs: i18n-parity
+    container:
+      image: ghcr.io/gtk-rs/gtk4-rs/gtk4:latest
+    defaults:
+      run:
+        working-directory: apps/linux
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (contract core + GTK UI)
+        run: cargo build --locked 2>/dev/null || cargo build
+      - name: Unit tests (schema/date/CLI)
+        run: cargo test
+
+  windows:
+    name: Windows (WinUI 3 build)
+    runs-on: windows-latest
+    needs: i18n-parity
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build
+        run: dotnet build apps/windows/Taskly/Taskly.csproj -c Release

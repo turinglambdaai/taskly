@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>app.taskly.Taskly</id>
+  <name>Taskly</name>
+  <summary>A focused personal task management tool</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-Proprietary</project_license>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="1.0.0" date="2026-09-15">
+      <description><p>Native GTK4/libadwaita rewrite.</p></description>
+    </release>
+  </releases>
+</component>

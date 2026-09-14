@@ -7,6 +7,15 @@ obj/
 *.lock.json
 artifacts/
 
+## Swift (apps/macos)
+.build/
+.swiftpm/
+*.xcodeproj
+
+## Rust (apps/linux)
+target/
+cargo-sources.json
+
 ## NuGet
 *.nupkg
 *.snupkg

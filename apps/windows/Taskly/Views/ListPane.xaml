@@ -1,0 +1,90 @@
+<UserControl
+    x:Class="Taskly.Views.ListPane"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="{ThemeResource ThemeSidebarBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="12" Spacing="16">
+
+            <!-- Smart view tiles (2×2) -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="68" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="68" />
+                </Grid.RowDefinitions>
+
+                <Button Grid.Row="0" Grid.Column="0" x:Name="TileToday" Click="OnTileToday"
+                        Background="{StaticResource SmartListTodayBrush}" CornerRadius="12" HorizontalAlignment="Stretch">
+                    <Grid Padding="10,8">
+                        <TextBlock x:Name="TileTodayLabel" Foreground="White" FontWeight="Medium" VerticalAlignment="Bottom" />
+                        <TextBlock x:Name="TileTodayCount" Foreground="White" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                    </Grid>
+                </Button>
+
+                <Button Grid.Row="0" Grid.Column="2" x:Name="TilePlanned" Click="OnTilePlanned"
+                        Background="{StaticResource SmartListScheduledBrush}" CornerRadius="12" HorizontalAlignment="Stretch">
+                    <Grid Padding="10,8">
+                        <TextBlock x:Name="TilePlannedLabel" Foreground="White" FontWeight="Medium" VerticalAlignment="Bottom" />
+                        <TextBlock x:Name="TilePlannedCount" Foreground="White" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                    </Grid>
+                </Button>
+
+                <Button Grid.Row="2" Grid.Column="0" x:Name="TileAll" Click="OnTileAll"
+                        Background="{StaticResource SmartListAllBrush}" CornerRadius="12" HorizontalAlignment="Stretch">
+                    <Grid Padding="10,8">
+                        <TextBlock x:Name="TileAllLabel" Foreground="White" FontWeight="Medium" VerticalAlignment="Bottom" />
+                        <TextBlock x:Name="TileAllCount" Foreground="White" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                    </Grid>
+                </Button>
+
+                <Button Grid.Row="2" Grid.Column="2" x:Name="TileCompleted" Click="OnTileCompleted"
+                        Background="{StaticResource SmartListCompletedBrush}" CornerRadius="12" HorizontalAlignment="Stretch">
+                    <Grid Padding="10,8">
+                        <TextBlock x:Name="TileCompletedLabel" Foreground="White" FontWeight="Medium" VerticalAlignment="Bottom" />
+                        <TextBlock x:Name="TileCompletedCount" Foreground="White" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                    </Grid>
+                </Button>
+            </Grid>
+
+            <!-- My Lists -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="MyListsHeader" Grid.Column="0"
+                           FontSize="13" FontWeight="SemiBold"
+                           Foreground="{ThemeResource ThemeSecondaryTextBrush}"
+                           VerticalAlignment="Center" />
+                <Button x:Name="AddListButton" Grid.Column="1" Click="OnAddList"
+                        Background="Transparent" BorderThickness="0" Padding="4">
+                    <TextBlock Text="✚" Foreground="{ThemeResource AccentBrush}" FontWeight="Bold" />
+                </Button>
+            </Grid>
+
+            <ListView x:Name="ListsList" SelectionMode="None" IsItemClickEnabled="True">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="8" Padding="10,8" CornerRadius="8">
+                            <Ellipse Width="32" Height="32">
+                                <Ellipse.Fill>
+                                    <SolidColorBrush Color="{Binding RowColor}" />
+                                </Ellipse.Fill>
+                            </Ellipse>
+                            <TextBlock Text="{Binding IconText}" FontSize="14" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Name}" FontSize="13" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding PendingText}" FontSize="11" Opacity="0.7" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

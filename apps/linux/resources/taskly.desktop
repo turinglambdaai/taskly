@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Taskly
+GenericName=Task Manager
+Comment=A focused personal task management tool
+Exec=taskly
+Icon=app.taskly.Taskly
+Terminal=false
+Categories=Office;ProjectManagement;
+StartupNotify=true

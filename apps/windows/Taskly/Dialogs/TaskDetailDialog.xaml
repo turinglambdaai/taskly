@@ -1,0 +1,35 @@
+<ContentDialog
+    x:Class="Taskly.Dialogs.TaskDetailDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Task Detail"
+    PrimaryButtonText="Save"
+    CloseButtonText="Cancel">
+
+    <StackPanel Width="420" Spacing="12">
+        <TextBlock x:Name="TaskLabel" FontSize="12" Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
+        <TextBox x:Name="TaskTextBox" AcceptsReturn="True" Height="64" TextWrapping="Wrap" />
+        <TextBlock x:Name="NotesLabel" FontSize="12" Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
+        <TextBox x:Name="NotesBox" AcceptsReturn="True" Height="72" TextWrapping="Wrap" />
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Spacing="4">
+                <TextBlock x:Name="DateLabel" FontSize="12" Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <DatePicker x:Name="DatePicker" DateChanged="OnDateChanged" />
+                    <Button x:Name="ClearDateButton" Click="OnClearDate" Padding="4" Background="Transparent" BorderThickness="0" />
+                </StackPanel>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="4">
+                <TextBlock x:Name="TimeLabel" FontSize="12" Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TimePicker x:Name="TimePicker" TimeChanged="OnTimeChanged" />
+                    <Button x:Name="ClearTimeButton" Click="OnClearTime" Padding="4" Background="Transparent" BorderThickness="0" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </StackPanel>
+</ContentDialog>

@@ -1,186 +1,80 @@
 # Taskly
 
-A simple and intuitive cross-platform task manager built with Avalonia and .NET. It provides a clean graphical interface (inspired by macOS Reminders) for efficiently creating, organizing, and tracking tasks. Whether you're managing personal to-dos or team projects, Taskly helps you stay organized and focused.
-
-![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=.net&logoColor=white) ![Avalonia](https://img.shields.io/badge/Avalonia-11.0-0E5BA8?logo=avalonia&logoColor=white) [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![CI](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml)
+A focused, native task manager. One product, one SQLite file, one agent CLI —
+implemented natively per platform.
 
 **English** · [中文](README.zh-CN.md)
 
-## Features
+## Native, not cross-platform
 
-- **Task CRUD** — create, edit, and delete tasks with ease (quick add input + detail dialog + inline editing)
-- **Customizable lists** — organize tasks into lists with emoji icons and colors
-- **Due dates with smart shortcuts** — natural-language parsing (`+10m`, `@10am`, `2025-08-07`)
-- **Completion feedback** — mark tasks as complete with visual feedback (Reminders-style circular checkbox)
-- **Automatic persistence** — data stored automatically using SQLite
-- **Cross-platform** — Windows, macOS, and Linux desktops
-- **macOS Reminders UI** — clean interface with smart-list tiles (Today / Planned / All / Completed)
-- **MVVM state management** — reactive state via CommunityToolkit.Mvvm
-- **Modular architecture** — clean layered design, easy to maintain
-- **Responsive design** — adapts to different screen sizes
-- **Bilingual** — English and Chinese, switchable at runtime
-- **Light & Dark themes** — full theme support
+Taskly v1 is a full native rewrite of the Avalonia-based 0.6.x app. Each
+desktop gets its platform's first-party UI stack — no embedded web views, no
+foreign toolkits, no upstream UI regressions (the Windows IME duplication and
+macOS notification crashes of 0.6.x were the last straw).
+
+| Platform | Stack | Status | Build |
+|---|---|---|---|
+| macOS 14+ | Swift 6 + SwiftUI | ✅ build + 24 tests + CLI smoke verified | [apps/macos](apps/macos) |
+| Windows 10+ | WinUI 3 (Windows App SDK) + .NET 10 | source complete, CI build | [apps/windows](apps/windows) |
+| Linux | Rust + GTK4 / libadwaita | source complete, CI build + tests | [apps/linux](apps/linux) |
+| iOS / iPadOS (next) | reuses the macOS SwiftUI codebase | planned | — |
+| Android (next) | Kotlin + Jetpack Compose | planned | — |
+
+Architecture rationale: [ARCHITECTURE.md](ARCHITECTURE.md). The frozen
+Avalonia 0.6.x implementation lives in `src/Taskly` as a behavioral reference
+until the native 1.0 GA.
+
+## What ships in every app
+
+- **Reminders-style UI** — smart views (Today / Planned / All / Completed),
+  custom lists with emoji icons and colors, quick add with natural-language
+  dates (`@10am`, `+1d`, `tomorrow`), due-task OS notifications, bilingual
+  zh/en (live switch), warm Anthropic palette, light/dark.
+- **One data file** — your tasks live in a single SQLite file
+  (`~/.taskly/tasks.db`, WAL) you can drop into iCloud/OneDrive/Dropbox for
+  sync. The format is documented and stable: [DATA-FORMAT](shared/spec/DATA-FORMAT.md).
+- **Agent CLI in the same binary** — `taskly list|add|update|done|rm|search|…`
+  with `--json`, stable exit codes, and headless operation. Spec:
+  [CLI-SPEC](shared/spec/CLI-SPEC.md). Install via the app menu (Tools ▸
+  Install Command Line Tool) or `taskly install-cli`.
+
+## For developers
+
+```
+taskly/
+├── apps/macos|windows|linux/   native apps (each with its own build system)
+├── shared/spec/                the contract: product · data · CLI · design tokens
+├── shared/i18n/                zh/en single source (CI verifies platform copies)
+├── scripts/                    sync-i18n and CI helpers
+├── src/Taskly/                 legacy Avalonia app (frozen reference)
+└── .github/workflows/          ci.yml (legacy) · native.yml (three platforms)
+```
+
+The three apps share **no code**. They share the contract (`shared/spec/`),
+and CI enforces it: identical CLI JSON/exit codes, byte-identical i18n, one
+DB schema (user_version 4) with lockstep migrations.
+
+### Build
+
+```bash
+# macOS
+cd apps/macos && swift build && swift test
+scripts/make-app.sh            # Taskly.app
+
+# Windows
+dotnet build apps/windows/Taskly/Taskly.csproj -c Release
+
+# Linux
+cd apps/linux && cargo build --release && cargo test
+```
 
 ## Requirements
 
-| Dependency | Purpose / Version |
-|------------|-------------------|
-| .NET SDK | 10.0 or later (8.0 also compatible) |
-| Avalonia | 11.2 (resolved automatically) |
-| Git | Source control |
-| IDE | Visual Studio, Rider, or VS Code with C# Dev Kit (recommended) |
-
-## Quick Start
-
-### 1. Clone
-
-```bash
-git clone https://github.com/turinglambdaai/taskly.git
-cd taskly
-```
-
-### 2. Restore dependencies
-
-```bash
-cd src/Taskly
-dotnet restore
-```
-
-### 3. Run the application
-
-```bash
-# Run on the current platform (Windows, macOS, or Linux)
-dotnet run
-```
-
-> On first launch, use the **File** menu to create or open a `.db` database file. Your settings and last database path are persisted in `~/.taskly/config.ini`.
-
-## Project Structure
-
-Taskly follows a modular MVVM architecture with clear separation of concerns:
-
-```
-src/Taskly/
-├── Models/                  # Data models
-│   ├── TaskItem.cs          # Task data model (matches tasks table)
-│   ├── TodoList.cs          # Todo list data model (matches lists table)
-│   ├── TaskViewType.cs      # Smart-view enum
-│   └── AppError.cs          # Error types
-├── Data/                    # Data access layer
-│   ├── SQLiteDatabase.cs    # SQLite service (schema + migrations + queries)
-│   ├── ConfigService.cs     # config.ini read/write
-│   └── PathUtils.cs         # File path utilities
-├── Repositories/            # Repositories with validation
-│   ├── IListRepository.cs   # List CRUD
-│   └── ITaskRepository.cs   # Task CRUD + getTasksByView dispatch
-├── Services/                # Core services
-│   ├── I18nService.cs       # Internationalization (zh / en)
-│   ├── DateParser.cs        # Natural-language date parsing
-│   ├── ValidationHelper.cs  # Input validation
-│   ├── AppTheme.cs          # Light/Dark theme
-│   └── DialogService.cs     # Dialog host
-├── ViewModels/              # MVVM view models
-│   ├── MainViewModel.cs     # App-wide state
-│   ├── ListPaneViewModel.cs # List state
-│   └── TaskPaneViewModel.cs # Task state
-├── Views/                   # UI views (AXAML)
-│   ├── MainWindow.axaml     # Main window (menu + sidebar + content + status bar)
-│   ├── ListPane.axaml       # Sidebar (smart tiles + lists)
-│   ├── TaskPane.axaml       # Main content (title + quick add + tasks)
-│   ├── TaskItemRow.axaml    # Single task row
-│   └── Dialogs/             # Task detail, list edit, emoji/color pickers, date/time
-├── Themes/                  # Colors, styles, design constants
-└── Converters/              # Value converters
-```
-
-## Technical Architecture
-
-### Data Flow
-
-1. User interacts with UI views
-2. Views trigger commands in view models
-3. View models call repositories for data operations
-4. Repositories use the database service for SQLite access
-5. Database changes are reflected back to view models
-6. View models update the UI views reactively
-7. All data is automatically persisted to the `.db` file
-
-### Database Schema
-
-Taskly uses SQLite for data persistence with a simple schema (compatible with the previous Flutter release, `user_version = 4`):
-
-```sql
--- Lists table
-CREATE TABLE lists (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    icon TEXT,              -- emoji string
-    color INTEGER,          -- ARGB int
-    created_at TEXT NOT NULL
-);
-
--- Tasks table
-CREATE TABLE tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    list_id INTEGER,
-    text TEXT NOT NULL,     -- task content
-    due_date TEXT,          -- 'yyyy-MM-dd'
-    due_time TEXT,          -- 'HH:mm'
-    completed INTEGER DEFAULT 0,
-    created_at TEXT NOT NULL,
-    notes TEXT,
-    FOREIGN KEY (list_id) REFERENCES lists (id)
-);
-```
-
-Migration history is preserved: v2 adds indexes, v3 adds `icon`/`color`, v4 adds `due_time`/`notes`. A default list named "工作" (Work) is created on first launch.
-
-## Development
-
-### Building and testing
-
-```bash
-# Build the project
-dotnet build
-
-# Run the application
-dotnet run
-```
-
-### Debugging Tips
-
-- Use your IDE's debugger for UI applications
-- The database file is created under `~/.taskly/` — inspect it with any SQLite tool
-- Open DevTools with F12 during development to inspect the Avalonia visual tree
-- Test core logic (date parsing, repository) in isolation before UI integration
-
-## Deployment and Release
-
-### Build Process
-
-Release builds are produced automatically by GitHub Actions when a `v*` tag is pushed. To build locally:
-
-```bash
-# Windows
-dotnet publish -c Release -r win-x64 --self-contained false
-
-# macOS (Apple Silicon)
-dotnet publish -c Release -r osx-arm64 --self-contained false
-
-# macOS (Intel)
-dotnet publish -c Release -r osx-x64 --self-contained false
-
-# Linux
-dotnet publish -c Release -r linux-x64 --self-contained false
-```
-
-### Release Management
-
-- Releases are managed through GitHub Releases
-- Version numbers follow semantic versioning (MAJOR.MINOR.PATCH)
-- Release notes are generated automatically from commit messages
-- See `.github/workflows/release.yml` for the full build matrix
+- macOS: 14 Sonoma or later (Apple Silicon + Intel)
+- Windows: 10 19041+ / 11
+- Linux: any GTK4/libadwaita desktop (GNOME 44+ recommended)
 
 ## License
 
-Licensed under the [Apache License 2.0](LICENSE).
+Apache-2.0 for the current public code; the commercial licensing model is
+being decided — see [COMMERCIAL-CHECKLIST](COMMERCIAL-CHECKLIST.md).

@@ -4,127 +4,80 @@
 
 ## 这是什么
 
-Taskly 是跨平台待办应用，基于 **Avalonia 11 + .NET 10 (C#)**。单一二进制同时提供：
+Taskly 是**原生**待办应用套件（monorepo）。同一产品在三个桌面平台各用第一方 UI 技术栈实现，**不共享任何运行时代码**，靠 `shared/spec/` 下的契约保持一致：
 
-- **GUI**：桌面图形界面（无参数启动）
-- **CLI**：命令行接口，面向 AI agent / 脚本（带子命令启动）
+| 平台 | 技术栈 | 目录 | 验证状态 |
+|---|---|---|---|
+| macOS 14+ | Swift 6 + SwiftUI（零第三方依赖，SQLite3 用系统库） | `apps/macos/` | ✅ 构建+测试+CLI 冒烟已验证 |
+| Windows 10+ | WinUI 3 (Windows App SDK) + .NET 10 | `apps/windows/` | 源码完成，需 Windows/CI 构建验证 |
+| Linux | Rust + GTK4/libadwaita（rusqlite bundled SQLite） | `apps/linux/` | 源码完成，需 Linux/CI 构建验证 |
 
-数据存于本地 SQLite `.db` 文件；多设备同步由用户自行把 `.db` 放进云盘目录解决（已启用 WAL 模式，对并发读写更安全）。
+每个二进制都是双模式：**无参数启动 GUI；带任何参数走 CLI**（GUI 框架完全不初始化，可无头运行）。
+
+旧版 Avalonia 实现（0.6.x）冻结在 `src/Taskly/` 作为行为参照，原生 1.0 GA 后删除。架构决策记录：`ARCHITECTURE.md`。
 
 ## 快速命令
 
 ```bash
-# 构建
-dotnet build src/Taskly/Taskly.csproj -c Release
+# macOS（Swift Package）
+cd apps/macos && swift build && swift test     # 24 个契约测试
+.build/debug/Taskly list --json
+.build/debug/Taskly add "买牛奶" --due tomorrow --json
+scripts/make-app.sh                             # 打包 Taskly.app
 
-# 运行 GUI（无参数）
-dotnet run --project src/Taskly
+# Windows（WinUI 3，只能在 Windows 上构建）
+dotnet build apps/windows/Taskly/Taskly.csproj -c Release
 
-# 运行 CLI（子命令；-- 将后续参数传给程序）
-dotnet run --project src/Taskly -- list --json
-dotnet run --project src/Taskly -- add "买牛奶" --due tomorrow --json
+# Linux
+cd apps/linux && cargo build && cargo test
 
-# 指定数据库文件（默认读 ~/.taskly/config.ini 的 last-db-path，再默认 ~/.taskly/tasks.db）
-dotnet run --project src/Taskly -- list --db /path/to/tasks.db --json
+# i18n 单源同步与校验
+scripts/sync-i18n.sh            # shared/i18n → 各平台资源目录
+scripts/sync-i18n.sh --check    # CI 模式：仅校验
 ```
 
-## CLI 速查（agent 主要接口）
+## 契约文档（改任何行为前必读，改动必须同步契约）
 
-所有命令支持 `--json`（机器可读，agent 核心）、`--db PATH`（指定库）、`--quiet`（仅输出 id）。
+| 文档 | 内容 |
+|---|---|
+| `shared/spec/DATA-FORMAT.md` | SQLite schema v4、列↔字段映射、日期存储格式（`yyyy-MM-dd`/`HH:mm`/ISO-8601 本地时区）、WAL、`~/.taskly/config.ini`、默认「工作」列表（color = -4104388） |
+| `shared/spec/CLI-SPEC.md` | 子命令、`--json` 字段名与顺序、退出码 0/1/2/3/4、`--due` 语法全集（`+Nm/+Nh/+Nd/+Nw/+NM`、`@now/@10am/@22:30 + tomorrow/tmw/星期`、裸词 today/tomorrow/tmw/tonight、绝对日期四格式）、纯日期意图清除时间规则 |
+| `shared/spec/PRODUCT-SPEC.md` | 视图/过滤/排序、任务行与详情对话框交互、提醒调度（60s 轮询+启动检查+去重+≤3逐条/>3汇总）、验证上限（1000/100/200/年份 1900–2100） |
+| `shared/spec/DESIGN-TOKENS.md` | 暖色板（Pampas #F4F3EE + Crail #C15F3C，明暗两套）、10 色 iOS 调色板、6×8 emoji 分类 |
+| `shared/i18n/{zh,en}.json` | 全部用户可见文案（约 98 键），平台副本必须逐字节一致 |
 
-| 命令 | 作用 |
-|------|------|
-| `list [--list ID\|NAME] [--view today\|planned\|all\|completed] [--status all\|incomplete\|completed]` | 列任务，默认全部未完成 |
-| `lists` | 列出所有任务列表 |
-| `add "<text>" [--list ID\|NAME] [--due DATE] [--time HH:mm] [--notes "..."]` | 添加任务，返回含 id 的对象 |
-| `update <ID> [--text] [--due\|--clear-due] [--time\|--clear-time] [--list] [--notes\|--clear-notes]` | 改任务（取-改-存） |
-| `done <ID>` / `undone <ID>` | **幂等**设完成/未完成（不会翻转） |
-| `rm <ID>` | 删除任务 |
-| `search "<keyword>"` | 模糊搜索 |
-| `mklist "<name>" [--icon EMOJI] [--color '#RRGGBB'\|INT]` | 建列表 |
-| `rmlist <ID>` | 删列表（级联任务） |
-| `install-cli` | 安装 `taskly` 命令到系统 PATH（macOS/Linux: `~/.local/bin`；Windows: 用户 PATH） |
-| `uninstall-cli` | 卸载 `taskly` 命令 |
+## 改动契约（不要破坏）
 
-**日期语法**（`--due` 复用 GUI 的 DateParser）：`+1d` / `+2h` / `@10am` / `@10:30pm` / `today` / `tomorrow` / `2026-08-07`。
-
-**退出码**：`0` 成功 / `1` 通用错误 / `2` 校验失败 / `3` 未找到 / `4` 数据库错误。错误以 JSON 对象输出到 stderr（`{ok:false, error, exitCode}`），数据走 stdout——便于 agent 区分。
+- **DB schema**：`user_version = 4`。加列必须 bump 版本 + 三平台迁移链同步落地 + 更新 DATA-FORMAT.md，同一 release 发三平台
+- **CLI JSON 字段与退出码**：task 对象 `id, listId, listName, text, completed, dueDate, dueTime, notes, createdAt`（null 省略、2 空格缩进、非 ASCII `\uXXXX` 转义）；错误走 stderr `{"ok":false,"error":…,"exitCode":N}`
+- **默认数据**：新库种下名为 `工作`（硬编码中文）的列表，icon `📋`，color ARGB int（有符号）
+- **通知永不崩溃**：权限拒绝/传输失败 → 本会话禁用通知（0.6.1 macOS 崩溃事故是永久回归测试）
+- **`~/.taskly/` 路径约定**：GUI/CLI/云盘同步都依赖它
 
 ## 项目结构
 
 ```
-src/Taskly/
-├── Models/           # TaskItem, TodoList, TaskViewType, AppError（ObservableObject）
-├── Data/             # SQLiteDatabase（schema+迁移+查询）, ConfigService, PathUtils
-├── Repositories/     # ITaskRepository / IListRepository（在 DB 之上加校验）
-├── Services/         # I18nService, DateParser, ValidationHelper, AppTheme, DialogService
-├── ViewModels/       # MainViewModel, ListPaneViewModel, TaskPaneViewModel（MVVM Toolkit）
-├── Views/            # MainWindow, ListPane, TaskPane, TaskItemRow + Dialogs/
-├── Themes/           # Colors.axaml, AppStyles.axaml, RemindersColors.cs（配色）
-├── Cli/              # CLI 引擎：Cli.cs + Commands/ + 基础设施
-└── Program.cs        # 入口：无参→GUI，有子命令→CLI（在 Avalonia 初始化前分流）
+taskly/
+├── apps/
+│   ├── macos/          Swift 包：Sources/{Models,Data,Repositories,Services,Themes,Views,ViewModels,Cli} + Tests + scripts/make-app.sh
+│   ├── windows/        WinUI 3：Views/Dialogs/XAML + Cli/Data/Models/Services（C# 核心层移植自旧版）
+│   └── linux/          Rust crate：src/{db,date_parser,cli,reminder,ui,dialogs,…} + flatpak/
+├── shared/
+│   ├── spec/           四份契约文档（canonical）
+│   ├── i18n/           zh.json / en.json 单源
+│   └── assets/         图标源文件
+├── scripts/            sync-i18n.sh 等
+├── src/Taskly/         旧版 Avalonia（冻结）
+├── .github/workflows/  ci.yml（旧版构建）· native.yml（三平台原生 CI）
+├── ARCHITECTURE.md     架构决策记录
+├── COMMERCIAL-CHECKLIST.md   商业化工程清单（签名/许可证/收费钩子/发布）
+└── docs/               GitHub Pages 官网
 ```
-
-## 架构要点
-
-- **分层**：Views → ViewModels → Repositories → SQLiteDatabase。CLI 复用 Repository + DB，不经过 ViewModel。
-- **DI**：`Program.ConfigureServices()` 装配单例容器；GUI 在 `App.OnFrameworkInitializationCompleted` 里建容器并注入 VM 的 `Main` 引用（打破构造循环）。
-- **CLI 不启动 Avalonia**：`Program.Main` 在有参数时直接走 `Cli.Run`，在 `BuildAvaloniaApp()` 之前 return，可在无头环境运行。Models/Data 层不依赖 Avalonia（`TodoList.Color` 是 `int?` ARGB，非 `Avalonia.Media.Color`）。
-- **Windows 控制台**：WinExe 二进制无控制台，CLI 模式 `AttachConsole(-1)` 附加到父终端；macOS/Linux 无需处理。
-- **配色**：Anthropic 风格暖色调（Pampas 暖米底 `#F4F3EE` + Crail 赤陶强调 `#C15F3C`），定义在 `Themes/RemindersColors.cs`，明暗双套。
-
-## 改动契约（不要破坏）
-
-改这些会导致 GUI 或 CLI 崩 / 行为错：
-
-- **`TaskItem` / `TodoList` 字段名**：DB 列名与字段对应，AXAML 绑定依赖属性名
-- **VM 命令签名**：`ToggleCompleted/UpdateTask/MoveTask/DeleteTask` 等被 View 和 CLI 共用
-- **CLI 子命令名与 `--json` 字段**：agent 依赖稳定接口；JSON 字段名（`id, listId, text, completed, dueDate, dueTime, notes, createdAt`）不可随意改
-- **退出码语义**：agent 按码判断结果
-- **`user_version`**：DB schema 版本（当前 4）。加列必须走迁移（见 `SQLiteDatabase.CreateOrUpgradeAsync`）
-
-## 数据库
-
-SQLite，schema 版本 `user_version = 4`，两张表：
-
-- `lists(id, name, icon, color, created_at)` —— `color` 是 ARGB int
-- `tasks(id, list_id, text, due_date, due_date, due_time, completed, created_at, notes)`
-
-迁移走 `CreateOrUpgradeAsync` 的 `if (oldVersion < N)` 链。加新列：bump `DatabaseVersion` + 在链里加 `EnsureColumnAsync`（幂等）。
-
-## i18n
-
-`I18nService` 维护 zh/en 双套字典，`T(key)` 取当前语言文案。AXAML code-behind 在 `ApplyLanguage()` 里给 `x:Name` 元素赋值，订阅 `LanguageChanged` 切换。新增用户可见文案必须同时加 zh/en 两个 key。
-
-## GUI 交互设计（编辑闭环）
-
-任务编辑分两层：**任务行轻编** + **详情对话框(ⓘ)完整编辑**。
-
-### 任务行（轻量快捷操作）
-| 操作 | 触发 | 退出 |
-|------|------|------|
-| 完成/取消完成 | 点圆形复选框 | 即时，无"模式" |
-| 改任务文字 | **单击**文字 → 显示编辑框 | 回车保存 / Esc 放弃 / 失焦保存 |
-| 加/改日期 | 点"添加日期"按钮 → 弹日历 | 选完或关闭日历即退出 |
-| 加/改时间 | 点"添加时间"按钮 → 弹时间选择器（仅在有日期时显示） | 选完即退出 |
-
-### 详情对话框（完整编辑）
-| 操作 | 触发 | 退出 |
-|------|------|------|
-| 进入 | 点任务行的 **ⓘ 按钮**（圆形带边框，始终可见） | — |
-| 改文字/备注 | 对话框内 TextBox 直接编辑 | — |
-| 改日期/时间 | 点日期/时间按钮 → 弹选择器 | 选完即退出 |
-| 保存 | 点「保存」 | 关闭对话框 |
-| 取消 | 点「取消」 / Esc / 点窗口外 | 关闭（不保存） |
-| 删除 | 点「删除」→ 确认 | 关闭并删除 |
-| 移动到列表 | 任务行右键 →「移动到列表」 | 选目标即完成 |
-
-### 备注
-备注**只在详情对话框**编辑/查看，任务行不显示备注区（避免任务行过重）。
 
 ## 常见任务指引
 
-- **加 CLI 子命令**：在 `Cli/Commands/` 新建静态类，`Create(IServiceProvider)` 返回 `Command`，`SetAction` 里用 `await Cli.RunCommand(async () => { ... })` 包裹（统一异常转退出码），在 `Cli.BuildRootCommand` 注册。
-- **加 DB 列**：bump `DatabaseVersion`，`CreateAllAsync` 建表 SQL 加列，`CreateOrUpgradeAsync` 加 `EnsureColumnAsync`，更新 `TaskFromRow`/`TodoListFromRow` 和 Model。
-- **改配色**：改 `Themes/RemindersColors.cs` 的色值（字段名不变）。兜底默认值在 `App.axaml` 和 `Colors.axaml` 同步。
-- **加 UI 文案**：`I18nService.cs` 加 zh/en key，对应 View 的 `ApplyLanguage()` 里赋值。
+- **改共享行为**（视图过滤、CLI 语义、文案）：先改 `shared/spec/` 或 `shared/i18n/`，再逐平台落地，跑 `scripts/sync-i18n.sh`，最后各平台测试
+- **macOS 加功能**：`apps/macos/Sources/Taskly/`，MVVM 模式（AppState @Observable + SwiftUI 视图）；改完 `swift test` 必须绿
+- **加 CLI 子命令**：三平台各自实现（macos `Cli/CliEngine.swift`、windows `Cli/CliEngine.cs`、linux `src/cli.rs`），保持 JSON/退出码一致，并在 CLI-SPEC.md 补文档
+- **加 DB 列**：见 DATA-FORMAT.md §5 迁移规则，三平台迁移链逐字同步
+- **改配色/令牌**：先改 `shared/spec/DESIGN-TOKENS.md`，再改 macos `Themes/Palette.swift`、windows `App.xaml` 主题字典、linux `ui.rs` APP_CSS
