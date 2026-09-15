@@ -97,8 +97,8 @@ struct TaskRowView: View {
         return parser.formatDateOnlyForDisplay(
             task.dueDate,
             todayLabel: state.t("navToday"),
-            tomorrowLabel: state.t("navPlanned") == "计划" ? "明天" : "Tomorrow",
-            yesterdayLabel: state.t("navPlanned") == "计划" ? "昨天" : "Yesterday")
+            tomorrowLabel: state.t("dateTomorrow"),
+            yesterdayLabel: state.t("dateYesterday"))
     }
 
     private var checkbox: some View {

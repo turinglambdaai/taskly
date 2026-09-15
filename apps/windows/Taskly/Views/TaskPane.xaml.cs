@@ -188,11 +188,4 @@ public sealed partial class TaskPane : UserControl
 
         await Vm.SetSearchAsync(SearchBox.Text);
     }
-
-    public void SetSearchTextProgrammatic(string text)
-    {
-        _searchChangedByProgram = true;
-        SearchBox.Text = text;
-        _searchChangedByProgram = false;
-    }
 }

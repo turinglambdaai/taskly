@@ -51,7 +51,6 @@ public final class AppState {
     var currentView: SmartView = .all
     var showCompleted = false
     var isConnected = false
-    var currentDbPath: String = ""
 
     // UI state
     var searchText = ""
@@ -197,10 +196,6 @@ public final class AppState {
         refreshCounts()
         refreshStatusPersistent()
         flashStatus(i18n.t("statusDatabaseClosed"))
-    }
-
-    private func reconnectRepositories() {
-        // Repositories are computed properties over `db`; nothing to do.
     }
 
     private func onConnected() {

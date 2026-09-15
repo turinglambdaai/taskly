@@ -322,9 +322,6 @@ window.taskly-root { background-color: #F4F3EE; }
 
     private void select_view(TaskViewType view) {
         ctx.current_view = view;
-        if (view == TaskViewType.LIST) {
-            // Handled by list-button closure which sets the id first.
-        }
         refresh_all();
     }
 
@@ -664,9 +661,9 @@ window.taskly-root { background-color: #F4F3EE; }
         if (date_only == now.format("%Y-%m-%d")) {
             label = ctx.t("navToday");
         } else if (date_only == now.add_days(1).format("%Y-%m-%d")) {
-            label = ctx.i18n.language == "zh" ? "明天" : "Tomorrow";
+            label = ctx.i18n.t("dateTomorrow");
         } else if (date_only == now.add_days(-1).format("%Y-%m-%d")) {
-            label = ctx.i18n.language == "zh" ? "昨天" : "Yesterday";
+            label = ctx.i18n.t("dateYesterday");
         }
         if (task.due_time != null && task.due_time.length > 0) {
             return "%s %s".printf(label, task.due_time);

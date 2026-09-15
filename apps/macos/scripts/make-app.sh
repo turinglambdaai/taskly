@@ -10,8 +10,15 @@ CONTENT="$APP/Contents"
 MACOS="$CONTENT/MacOS"
 RES="$CONTENT/Resources"
 
+UNIVERSAL=0
+[[ "${1:-}" == "--universal" ]] && UNIVERSAL=1
+
 echo "▶ swift build -c release"
-swift build -c release
+if [[ $UNIVERSAL == 1 ]]; then
+  swift build -c release --arch arm64 --arch x86_64
+else
+  swift build -c release
+fi
 
 rm -rf "$APP"
 mkdir -p "$MACOS" "$RES"

@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Taskly.Models;
@@ -13,9 +12,6 @@ public sealed partial class MainWindow : Window
 {
     public MainViewModel Vm { get; } = new();
     private bool _databaseOpened;
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool AttachConsole(int dwProcessId);
 
     public MainWindow()
     {

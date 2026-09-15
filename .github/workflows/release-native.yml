@@ -1,0 +1,103 @@
+name: Native Release
+
+# Tag-triggered release pipeline for the native apps. Tag `vX.Y.Z` to build
+# and attach artifacts to a GitHub Release (the homepage download cards point
+# at the Releases page, so new releases surface there automatically).
+#
+# NOTE: artifacts are UNSIGNED until code-signing certificates are wired in
+# (see COMMERCIAL-CHECKLIST.md §2). macOS binaries are ad-hoc signed; end
+# users will see Gatekeeper until Developer ID + notarization is added.
+# The app version constants (AppVersion / csproj / project version) must be
+# bumped to match the tag before tagging.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    name: macOS (universal .dmg)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build + package (arm64 + x86_64)
+        working-directory: apps/macos
+        run: scripts/make-app.sh --universal /tmp/dist
+      - name: Create DMG
+        run: |
+          hdiutil create -volname Taskly -srcfolder /tmp/dist/Taskly.app \
+            -ov -format UDZO "Taskly-${{ github.ref_name }}-macos.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: Taskly-*.dmg
+
+  windows:
+    name: Windows (portable x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Publish self-contained
+        run: >
+          dotnet publish apps/windows/Taskly/Taskly.csproj -c Release
+          -r win-x64 --self-contained true
+          -p:WindowsAppSDKSelfContained=true
+          -o publish/win-x64
+      - name: Zip
+        run: Compress-Archive -Path publish/win-x64/* -DestinationPath "Taskly-${{ github.ref_name }}-windows-x64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: Taskly-*.zip
+
+  linux:
+    name: Linux (portable tarball)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y valac meson libgtk-4-dev libadwaita-1-dev \
+            libsqlite3-dev libnotify-dev pkg-config
+      - name: Build + install into staging dir
+        working-directory: apps/linux
+        run: |
+          meson setup build --buildtype=release --prefix=/usr
+          meson compile -C build
+          meson test -C build
+          DESTDIR="$(pwd)/staging" meson install -C build
+      - name: Tarball
+        working-directory: apps/linux
+        run: |
+          tar -czf "../../Taskly-${{ github.ref_name }}-linux-x64.tar.gz" -C staging .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-tarball
+          path: Taskly-*.tar.gz
+
+  release:
+    name: Attach artifacts to GitHub Release
+    runs-on: ubuntu-latest
+    needs: [macos, windows, linux]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+      - name: Create release and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PREV_TAG="$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo v0.7.0)"
+          gh release create "${{ github.ref_name }}" dist/* \
+            --title "${{ github.ref_name }}" \
+            --generate-notes --notes-start-tag "$PREV_TAG"

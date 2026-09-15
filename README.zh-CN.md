@@ -4,6 +4,8 @@
 
 **English** · [中文](README.zh-CN.md)
 
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Native CI](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml)
+
 ## 原生，而非跨平台
 
 Taskly v1 是对基于 Avalonia 的 0.6.x 版本的完全原生重写。每个桌面平台都使用该平台的第一方 UI 技术栈 —— 不嵌入 WebView、不使用外来工具包、不再有上游 UI 回归（0.6.x 的 Windows 输入法重复字符和 macOS 通知崩溃是压垮骆驼的最后一根稻草）。

@@ -44,16 +44,15 @@ public enum CliJson {
             }
             out += pad + "]"
         case let .object(pairs):
-            let visible = pairs
-            if visible.isEmpty {
+            if pairs.isEmpty {
                 out += "{}"
                 return
             }
             out += "{\n"
-            for (index, pair) in visible.enumerated() {
+            for (index, pair) in pairs.enumerated() {
                 out += padInner + escape(pair.0) + ": "
                 write(pair.1, indent: indent + 2, into: &out)
-                out += index < visible.count - 1 ? ",\n" : "\n"
+                out += index < pairs.count - 1 ? ",\n" : "\n"
             }
             out += pad + "}"
         }

@@ -3,7 +3,6 @@ import SwiftUI
 /// Task pane: header, search + quick add, task list, empty states.
 struct TaskPaneView: View {
     @Environment(AppState.self) private var state
-    @FocusState private var quickAddFocused: Bool
 
     var body: some View {
         @Bindable var state = state
@@ -103,7 +102,6 @@ struct TaskPaneView: View {
                 TextField(state.t("taskListInputHint"), text: $state.quickAddText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 14))
-                    .focused($quickAddFocused)
                     .onSubmit {
                         state.quickAdd(state.quickAddText)
                     }

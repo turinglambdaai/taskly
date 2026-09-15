@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml;
 using Taskly.Data;
 using Taskly.Models;
@@ -473,7 +472,7 @@ public partial class MainViewModel : ObservableObject
         return DateParser.FormatDateOnlyForDisplay(
             dueDate,
             () => T("navToday"),
-            () => _i18n.Current == "zh" ? "明天" : "Tomorrow",
-            () => _i18n.Current == "zh" ? "昨天" : "Yesterday");
+            () => T("dateTomorrow"),
+            () => T("dateYesterday"));
     }
 }

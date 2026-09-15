@@ -96,5 +96,7 @@
   "reminderStartupSummary": "{0} task(s) overdue",
   "listDeleteConfirm": "Confirm Delete List",
   "listDeleteConfirmContent": "Are you sure you want to delete this list? All tasks in it will be deleted. This action cannot be undone.",
-  "listDelete": "Delete List"
+  "listDelete": "Delete List",
+  "dateTomorrow": "Tomorrow",
+  "dateYesterday": "Yesterday"
 }

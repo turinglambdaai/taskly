@@ -96,5 +96,7 @@
   "reminderStartupSummary": "{0} 个任务已过期",
   "listDeleteConfirm": "确认删除列表",
   "listDeleteConfirmContent": "确定要删除这个列表吗？列表下的所有任务也会被删除，此操作无法撤销。",
-  "listDelete": "删除列表"
+  "listDelete": "删除列表",
+  "dateTomorrow": "明天",
+  "dateYesterday": "昨天"
 }
