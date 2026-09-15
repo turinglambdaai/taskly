@@ -30,7 +30,7 @@ CI and conformance tests — not from shared implementation.
 |---|---|---|---|---|---|
 | macOS | Swift 6 (+ SwiftUI, AppKit interop) | SwiftUI, min macOS 14 | libsqlite3 (system) | `.app` + notarized DMG | **iOS / iPadOS: reuse this codebase** (SwiftUI is cross-Apple; add adaptive layout targets) |
 | Windows | C# / .NET 10 | WinUI 3 (Windows App SDK), Fluent 2 | `Microsoft.Data.Sqlite` | Self-contained exe + MSIX | — |
-| Linux | Rust (edition 2021) | GTK 4 + libadwaita (GNOME HIG) | `rusqlite` (bundled SQLite) | Flatpak + tarball | — |
+| Linux | Vala (GNOME first-party; compiles to C/GObject) | GTK 4 + libadwaita (GNOME HIG) | libsqlite3 (system) | Flatpak + tarball | — |
 | Android (future) | Kotlin | Jetpack Compose (Material 3) | `androidx.sqlite` | AAB / Play | — |
 
 Why no shared core library (Rust/C with FFI)?

@@ -61,20 +61,38 @@ jobs:
           $B list --view bogus --db "$DB" 2>/dev/null; test $? -eq 2
 
   linux:
-    name: Linux (Rust build + tests)
+    name: Linux (Vala build + contract tests + CLI smoke)
     runs-on: ubuntu-latest
     needs: i18n-parity
-    container:
-      image: ghcr.io/gtk-rs/gtk4-rs/gtk4:latest
-    defaults:
-      run:
-        working-directory: apps/linux
     steps:
       - uses: actions/checkout@v4
-      - name: Build (contract core + GTK UI)
-        run: cargo build --locked 2>/dev/null || cargo build
-      - name: Unit tests (schema/date/CLI)
-        run: cargo test
+      - name: Install Vala + GTK toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y valac meson libgtk-4-dev libadwaita-1-dev \
+            libsqlite3-dev libnotify-dev pkg-config
+      - name: Build (valac → C → native binary)
+        working-directory: apps/linux
+        run: |
+          meson setup build
+          meson compile -C build
+      - name: Contract tests (schema/date parser/i18n/CLI JSON)
+        working-directory: apps/linux
+        run: meson test -C build --verbose
+      - name: CLI end-to-end smoke (contract, --db isolation)
+        working-directory: apps/linux
+        run: |
+          DB=$(mktemp -d)/tasks.db
+          B=build/taskly
+          $B mklist "work" --icon "💼" --color "#C15F3C" --db "$DB" | grep -q '"id": 2'
+          test -f "$DB"
+          ID=$($B add "buy milk" --due tomorrow --db "$DB" --quiet)
+          $B update "$ID" --time 09:30 --db "$DB" --json | grep -q '"dueTime": "09:30"'
+          $B done "$ID" --db "$DB" --json --quiet | grep -q '"completed": true'
+          $B rm "$ID" --db "$DB" --json | grep -q '"deleted": true'
+          $B search "milk" --db "$DB" --json | grep -q '"text"'
+          $B update 999 --text x --db "$DB" 2>/dev/null; test $? -eq 3
+          $B list --view bogus --db "$DB" 2>/dev/null; test $? -eq 2
 
   windows:
     name: Windows (WinUI 3 build)

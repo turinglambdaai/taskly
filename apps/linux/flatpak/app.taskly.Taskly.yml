@@ -2,8 +2,6 @@ app-id: app.taskly.Taskly
 runtime: org.gnome.Platform
 runtime-version: "48"
 sdk: org.gnome.Sdk
-sdk-extensions:
-  - org.freedesktop.Sdk.Extension.rust-stable
 command: taskly
 finish-args:
   - --share=ipc
@@ -12,21 +10,8 @@ finish-args:
   - --device=dri
 modules:
   - name: taskly
-    buildsystem: simple
-    build-options:
-      append-path: /usr/lib/sdk/rust-stable/bin
-      env:
-        CARGO_HOME: /run/build/taskly/cargo
-    build-commands:
-      - cargo --version
-      - cargo build --release --offline
-      - install -Dm755 target/release/taskly /app/bin/taskly
-      - install -Dm644 resources/taskly.desktop /app/share/applications/app.taskly.Taskly.desktop
-      - install -Dm644 ../../assets/taskly.svg /app/share/icons/hicolor/scalable/apps/app.taskly.Taskly.svg
-      - install -Dm644 app.metainfo.xml /app/share/metainfo/app.taskly.Taskly.metainfo.xml
+    buildsystem: meson
+    builddir: true
     sources:
       - type: dir
-        path: .
-    # Vendor cargo deps before building (release-time step):
-    #   python3 flatpak-cargo-generator.py Cargo.lock -o cargo-sources.json
-    # then add ` - cargo-sources.json` under sources.
+        path: ..

@@ -10,7 +10,7 @@ Taskly 是**原生**待办应用套件（monorepo）。同一产品在三个桌�
 |---|---|---|---|
 | macOS 14+ | Swift 6 + SwiftUI（零第三方依赖，SQLite3 用系统库） | `apps/macos/` | ✅ 构建+测试+CLI 冒烟已验证 |
 | Windows 10+ | WinUI 3 (Windows App SDK) + .NET 10 | `apps/windows/` | 源码完成，需 Windows/CI 构建验证 |
-| Linux | Rust + GTK4/libadwaita（rusqlite bundled SQLite） | `apps/linux/` | 源码完成，需 Linux/CI 构建验证 |
+| Linux | Vala + GTK4/libadwaita（GNOME 第一方语言，编译为 C/GObject） | `apps/linux/` | ✅ 原生构建+契约测试已验证 |
 
 每个二进制都是双模式：**无参数启动 GUI；带任何参数走 CLI**（GUI 框架完全不初始化，可无头运行）。
 
@@ -28,8 +28,8 @@ scripts/make-app.sh                             # 打包 Taskly.app
 # Windows（WinUI 3，只能在 Windows 上构建）
 dotnet build apps/windows/Taskly/Taskly.csproj -c Release
 
-# Linux
-cd apps/linux && cargo build && cargo test
+# Linux（Vala → C → 原生二进制）
+cd apps/linux && meson setup build && meson compile -C build && meson test -C build
 
 # i18n 单源同步与校验
 scripts/sync-i18n.sh            # shared/i18n → 各平台资源目录
@@ -61,7 +61,7 @@ taskly/
 ├── apps/
 │   ├── macos/          Swift 包：Sources/{Models,Data,Repositories,Services,Themes,Views,ViewModels,Cli} + Tests + scripts/make-app.sh
 │   ├── windows/        WinUI 3：Views/Dialogs/XAML + Cli/Data/Models/Services（C# 核心层移植自旧版）
-│   └── linux/          Rust crate：src/{db,date_parser,cli,reminder,ui,dialogs,…} + flatpak/
+│   └── linux/          Vala/GTK4：src/*.vala + tests/ + meson.build + flatpak/
 ├── shared/
 │   ├── spec/           四份契约文档（canonical）
 │   ├── i18n/           zh.json / en.json 单源
@@ -80,4 +80,4 @@ taskly/
 - **macOS 加功能**：`apps/macos/Sources/Taskly/`，MVVM 模式（AppState @Observable + SwiftUI 视图）；改完 `swift test` 必须绿
 - **加 CLI 子命令**：三平台各自实现（macos `Cli/CliEngine.swift`、windows `Cli/CliEngine.cs`、linux `src/cli.rs`），保持 JSON/退出码一致，并在 CLI-SPEC.md 补文档
 - **加 DB 列**：见 DATA-FORMAT.md §5 迁移规则，三平台迁移链逐字同步
-- **改配色/令牌**：先改 `shared/spec/DESIGN-TOKENS.md`，再改 macos `Themes/Palette.swift`、windows `App.xaml` 主题字典、linux `ui.rs` APP_CSS
+- **改配色/令牌**：先改 `shared/spec/DESIGN-TOKENS.md`，再改 macos `Themes/Palette.swift`、windows `App.xaml` 主题字典、linux `ui.vala` APP_CSS

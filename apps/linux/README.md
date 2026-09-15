@@ -1,52 +1,61 @@
-# Taskly for Linux (Rust + GTK4/libadwaita)
+# Taskly for Linux (Vala + GTK4/libadwaita)
 
-Native GNOME-platform app: GTK 4 + libadwaita via gtk4-rs, bundled SQLite via
-rusqlite (no system SQLite dependency). The binary is dual-mode — `taskly`
-with no arguments opens the native window; any argument routes to the agent
-CLI (contract-identical to the macOS/Windows ports).
+Native GNOME-platform app: **Vala** — the GNOME project's first-party language
+that compiles to plain C/GObject (no VM, no runtime; the binary links only C
+libraries: libgtk-4, libadwaita-1, libsqlite3, libnotify, glib). Build system
+is meson, the GNOME standard. The binary is dual-mode — `taskly` with no
+arguments opens the native window; any argument routes to the agent CLI
+(contract-identical to the macOS/Windows ports), before any GTK
+initialization.
 
 ## Build
 
-Requires Rust 1.75+ and the GTK4/libadwaita development packages:
+Requires valac, meson, and the GTK4/libadwaita development packages:
 
 ```bash
 # Debian/Ubuntu
-sudo apt install build-essential pkg-config libgtk-4-dev libadwaita-1-dev
+sudo apt install valac meson libgtk-4-dev libadwaita-1-dev \
+  libsqlite3-dev libnotify-dev pkg-config
 # Fedora
-sudo dnf install rust cargo gtk4-devel libadwaita-devel
+sudo dnf install vala meson gtk4-devel libadwaita-devel \
+  sqlite-devel libnotify-devel
 
 cd apps/linux
-cargo build --release
-cargo test          # contract tests (schema, date parser, CLI JSON)
-./target/release/taskly            # GUI
-./target/release/taskly list --json
+meson setup build
+meson compile -C build
+meson test -C build        # contract tests (schema, date parser, i18n, CLI JSON)
+
+./build/taskly list --json
+./build/taskly                             # GUI
 ```
 
 ## Package
 
-- Flatpak manifest: `flatpak/app.taskly.Taskly.yml`
-- Desktop entry: `resources/taskly.desktop`
-- Portable binary: `cargo build --release` output (bundled SQLite; only
-  GTK4/libadwaita are dynamic)
+- Flatpak manifest: `flatpak/app.taskly.Taskly.yml` (org.gnome.Sdk ships
+  valac + meson)
+- Desktop entry: `resources/taskly.desktop`; icon: `resources/taskly.svg`
+- Binary links system libsqlite3 only — no bundled SQLite
 
 ## Layout
 
 | Path | Contents |
 |---|---|
-| `src/main.rs` | Dual-mode entry (CLI before GTK init) |
-| `src/db.rs` | Schema v4 + contract queries + repositories + unit tests |
-| `src/date_parser.rs` | Date/time grammar contract + tests |
-| `src/cli.rs`, `src/cli_installer.rs` | Agent CLI + install-cli |
-| `src/reminder.rs` | Due reminders via the desktop notification daemon |
-| `src/ui.rs`, `src/dialogs.rs` | GTK4/libadwaita window + modal editors |
-| `resources/i18n/` | zh/en JSON synced from `shared/i18n` (CI-verified) |
+| `src/taskly.vala` | Entry: CLI routing before GTK init + Adw.Application |
+| `src/database.vala` | Schema v4 + contract queries + conformance-ready helpers |
+| `src/dateparser.vala` | Date/time grammar contract (`--due` syntax) |
+| `src/cli.vala`, `src/clijson.vala`, `src/cliinstaller.vala` | Agent CLI, byte-compatible JSON writer, install-cli |
+| `src/reminder.vala` | Due reminders via libnotify (freedesktop notifications) |
+| `src/ui.vala`, `src/dialogs.vala` | GTK4/libadwaita window + modal editors |
+| `src/i18n.vala` | Bilingual tables from `resources/i18n/*.json` (synced single source) |
+| `tests/core-test.vala` | Contract tests (`meson test`) |
 
 ## Status / known deltas vs 0.6.4
 
 - Feature-complete per `shared/spec/PRODUCT-SPEC.md` except: list edit and
-  task full-editing live in modal dialogs (right-click menus land with the
-  GTK popover pass); task-row inline text editing is dialog-based on Linux.
+  task full-editing live in modal dialogs (right-click menus land with a
+  later popover pass); task-row inline text editing is dialog-based.
 - Quick-add adopts the CLI date semantics (pure-date intent clears the time —
   the 0.6.x GUI quirk is fixed).
-- First build must happen on a Linux machine/CI runner (CI:
-  `.github/workflows/native.yml`, ubuntu job runs `cargo test` + build).
+- Verified: full native compile + link (GTK4/libadwaita toolchain), contract
+  tests green, CLI end-to-end smoke with `--db` isolation. Linux CI job runs
+  the same on ubuntu-latest.

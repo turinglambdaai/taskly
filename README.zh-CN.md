@@ -12,7 +12,7 @@ Taskly v1 是对基于 Avalonia 的 0.6.x 版本的完全原生重写。每个�
 |---|---|---|---|
 | macOS 14+ | Swift 6 + SwiftUI | ✅ 已验证：构建 + 24 个测试 + CLI 冒烟 | [apps/macos](apps/macos) |
 | Windows 10+ | WinUI 3 (Windows App SDK) + .NET 10 | 源码完成，CI 构建 | [apps/windows](apps/windows) |
-| Linux | Rust + GTK4 / libadwaita | 源码完成，CI 构建 + 测试 | [apps/linux](apps/linux) |
+| Linux | Vala + GTK4 / libadwaita（编译为 C/GObject） | ✅ 原生构建 + 契约测试已验证 | [apps/linux](apps/linux) |
 | iOS / iPadOS（下一步） | 复用 macOS SwiftUI 代码库 | 计划中 | — |
 | Android（下一步） | Kotlin + Jetpack Compose | 计划中 | — |
 
@@ -49,7 +49,7 @@ scripts/make-app.sh            # Taskly.app
 dotnet build apps/windows/Taskly/Taskly.csproj -c Release
 
 # Linux
-cd apps/linux && cargo build --release && cargo test
+cd apps/linux && meson setup build && meson compile -C build && meson test -C build
 ```
 
 ## 系统要求

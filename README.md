@@ -16,7 +16,7 @@ macOS notification crashes of 0.6.x were the last straw).
 |---|---|---|---|
 | macOS 14+ | Swift 6 + SwiftUI | ✅ build + 24 tests + CLI smoke verified | [apps/macos](apps/macos) |
 | Windows 10+ | WinUI 3 (Windows App SDK) + .NET 10 | source complete, CI build | [apps/windows](apps/windows) |
-| Linux | Rust + GTK4 / libadwaita | source complete, CI build + tests | [apps/linux](apps/linux) |
+| Linux | Vala + GTK4 / libadwaita (compiles to C/GObject) | ✅ native build + contract tests verified | [apps/linux](apps/linux) |
 | iOS / iPadOS (next) | reuses the macOS SwiftUI codebase | planned | — |
 | Android (next) | Kotlin + Jetpack Compose | planned | — |
 
@@ -65,7 +65,7 @@ scripts/make-app.sh            # Taskly.app
 dotnet build apps/windows/Taskly/Taskly.csproj -c Release
 
 # Linux
-cd apps/linux && cargo build --release && cargo test
+cd apps/linux && meson setup build && meson compile -C build && meson test -C build
 ```
 
 ## Requirements
