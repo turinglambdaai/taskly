@@ -7,7 +7,7 @@
 
 ## Decision
 
-Taskly will converge from three duplicated application implementations toward
+Taskly is converging from three duplicated application implementations toward
 one Racket application core connected to first-party native desktop shells
 through Rivet.
 
@@ -23,11 +23,12 @@ parts where platform fidelity is the feature.
 | Concern | Owner |
 |---|---|
 | SQLite schema/migrations, queries | Racket core |
-| config and DB path resolution | Racket core |
+| config and DB path resolution | Racket core (migration target; Windows shell still has transitional config code) |
 | validation, date parsing, filtering | Racket core |
 | task/list state transitions | Racket core |
 | CLI semantics and exit classification | Racket core (migration target) |
-| cross-host RPC/state/events | Rivet |
+| cross-host RPC/state/events, typed DTO generation | Rivet |
+| Racket CS embedding/lifecycle | Rivet |
 | WinUI / SwiftUI / GTK composition | native host |
 | IME, keyboard, accessibility | native host |
 | file dialogs, menus, notifications | native host |
@@ -39,10 +40,13 @@ parts where platform fidelity is the feature.
 Native UI event
     │
     ▼
-Generated Rivet client
+Platform application-backend port
     │
     ▼
-Racket Taskly service
+Generated typed Rivet client
+    │
+    ▼
+Embedded Racket Taskly service
     │
     ├── validation / date / commands
     ├── SQLite v4 repository
@@ -52,18 +56,49 @@ Racket Taskly service
 Rivet response/event
     │
     ▼
-Native UI state
+Native presentation model / UI
 ```
 
 Native UI code must not contain a second implementation of Taskly business
-rules after its migration milestone is complete.
+rules after its platform migration milestone is complete.
+
+## Windows reference architecture
+
+Windows is the first migration platform and now has an explicit reversible
+boundary:
+
+```text
+MainViewModel + ReminderService
+            │
+      ITasklyBackend
+       ┌────┴─────┐
+       │          │
+NativeTasklyBackend     RivetTasklyBackend
+(reference/fallback)          │
+       │                generated RivetAPI
+ C# SQLite stack               │
+                         EmbeddedRivetClient
+                               │
+                         rivet_native.dll
+                               │
+                         embedded Racket CS
+                               │
+                        Taskly Racket core
+```
+
+`UseRivetBackend=true` selects the Rivet path at compile time. A normal build
+continues to compile the native fallback. CI builds both until the Windows
+acceptance gates are complete.
+
+The release target is **not** a hidden Racket child process. `ProcessRivetClient`
+is a useful development transport; the production Windows path embeds Racket
+CS in the Taskly process through Rivet's stable C ABI.
 
 ## Repository layout
 
 ```text
 taskly/
 ├── racket/
-│   ├── info.rkt
 │   ├── taskly/
 │   │   ├── model.rkt
 │   │   ├── errors.rkt
@@ -74,14 +109,17 @@ taskly/
 │   │   ├── date-parser.rkt
 │   │   ├── db.rkt
 │   │   ├── service.rkt
-│   │   ├── wire.rkt
+│   │   ├── rivet-schema.rkt
 │   │   └── backend.rkt
 │   └── tests/
+│       ├── core-test.rkt
+│       ├── rivet-schema-test.rkt
+│       └── dotnet-rivet-smoke/
 ├── rivet.rktd
 ├── apps/
-│   ├── windows/       # native reference shell during migration
-│   ├── macos/         # native reference shell during migration
-│   └── linux/         # native reference shell during migration
+│   ├── windows/       # first migration platform + native reference
+│   ├── macos/         # native reference; next migration platform
+│   └── linux/         # native reference; host strategy still pending
 ├── shared/spec/       # product contracts remain canonical
 └── docs/RIVET-MIGRATION.md
 ```
@@ -101,22 +139,28 @@ The migration does not define a new product format.
 ## Rivet dependency rule
 
 Taskly is allowed to reveal missing Rivet capabilities. It is not allowed to
-work around every missing capability inside Taskly until Rivet becomes an
-opaque transport layer with product-specific hacks.
+work around reusable host/runtime problems inside Taskly.
 
-A capability belongs in Rivet when it is a reusable host/runtime concern. A
-capability belongs in Taskly when it is Taskly product behavior.
+Capabilities Taskly has already driven into Rivet:
 
-Current framework gaps exposed by this product:
+1. named Record/DTO schema types layered compatibly on RVT1
+2. generated Swift, C++, and C# typed clients
+3. managed `IRivetClient` runtime and development process transport
+4. Windows in-process .NET embedding through `rivet_native.dll`
+5. `raco rivet build-dotnet` for a self-contained Racket backend bundle
+6. strict protocol-channel behavior (backend declarations may not pollute stdout)
+7. generated C# support for ordinary domain names such as `Task`
 
-1. typed Record/DTO values
-2. C# client support for the existing WinUI shell
-3. Linux GTK host strategy
-4. production lifecycle/diagnostic hooks needed by a commercial app
+Remaining framework/product gaps include:
 
-The temporary positional transport in `wire.rkt` exists only because RVT1 v1
-has no Record type. It is a single replacement seam, not the long-term public
-Taskly model.
+- Linux GTK host strategy
+- richer typed remote errors/diagnostics
+- production crash/lifecycle instrumentation
+- any declarative native UI abstraction that real Taskly repetition later justifies
+
+RVT1 remains protocol version 1. Records are schema/codegen constructs encoded
+as field-ordered RVT1 lists, so typed DTO support did not require a transport
+version break.
 
 ## Migration safety
 
