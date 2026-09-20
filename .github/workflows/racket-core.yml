@@ -43,7 +43,7 @@ jobs:
         run: raco test racket/tests/core-test.rkt
 
   rivet-backend:
-    name: Rivet backend contract
+    name: Rivet managed end-to-end
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -54,14 +54,29 @@ jobs:
           distribution: full
           variant: CS
           version: '9.3'
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '8.0.x'
       - name: Install pinned Rivet
         shell: bash
         run: |
           set -euo pipefail
           git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
-          git -C "$RUNNER_TEMP/rivet" checkout 96c49e4f49f283065b50811f0aa76fccb53e689b
+          git -C "$RUNNER_TEMP/rivet" checkout 8c5dd555785ec75fef889015e49ba2844da0a295
           raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
       - name: Compile Taskly Rivet backend
         run: raco make racket/taskly/backend.rkt
       - name: Test typed Rivet schema
         run: raco test racket/tests/rivet-schema-test.rkt
+      - name: Generate managed Taskly API
+        run: raco rivet generate-dotnet
+      - name: Exercise managed Taskly vertical slice
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run \
+            --project racket/tests/dotnet-rivet-smoke/Taskly.RivetSmoke.csproj \
+            -c Release \
+            -p:RivetRoot="$RUNNER_TEMP/rivet" \
+            -- "$GITHUB_WORKSPACE"
