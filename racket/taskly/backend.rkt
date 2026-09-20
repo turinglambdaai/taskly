@@ -2,8 +2,8 @@
 
 (require rivet/backend
          "model.rkt"
-         "service.rkt"
-         "wire.rkt")
+         "rivet-schema.rkt"
+         "service.rkt")
 
 (provide start)
 
@@ -18,30 +18,30 @@
       (error 'taskly "database is not open")))
 
 (define (publish! service)
-  (changed (snapshot->wire service)))
+  (changed (snapshot->dto service)))
 
-(define-rpc (open_database [path : String] : Any)
+(define-rpc (open_database [path : String] : Snapshot)
   (define previous (unbox current-service))
   (when previous (close-taskly-service previous))
   (define service (open-taskly-service path))
   (set-box! current-service service)
-  (snapshot->wire service))
+  (snapshot->dto service))
 
 (define-rpc (load_snapshot [view : String]
                            [list-id : (Optional Int64)]
                            [show-completed : Bool]
-                           : Any)
-  (snapshot->wire (require-service)
-                  #:view view
-                  #:list-id (optional->false list-id)
-                  #:show-completed show-completed))
+                           : Snapshot)
+  (snapshot->dto (require-service)
+                 #:view view
+                 #:list-id (optional->false list-id)
+                 #:show-completed show-completed))
 
 (define-rpc (add_task [text : String]
                       [list-id : (Optional Int64)]
                       [due-date : (Optional String)]
                       [due-time : (Optional String)]
                       [notes : (Optional String)]
-                      : Any)
+                      : Task)
   (define service (require-service))
   (define task
     (service-add-task! service text
@@ -50,19 +50,19 @@
                        #:due-time (optional->false due-time)
                        #:notes (optional->false notes)))
   (publish! service)
-  (task->wire task))
+  (task->dto task))
 
-(define-rpc (update_task_text [id : Int64] [text : String] : Any)
+(define-rpc (update_task_text [id : Int64] [text : String] : Task)
   (define service (require-service))
   (define task (service-update-task-text! service id text))
   (publish! service)
-  (task->wire task))
+  (task->dto task))
 
-(define-rpc (set_completed [id : Int64] [completed : Bool] : Any)
+(define-rpc (set_completed [id : Int64] [completed : Bool] : Task)
   (define service (require-service))
   (define task (service-set-completed! service id completed))
   (publish! service)
-  (task->wire task))
+  (task->dto task))
 
 (define-rpc (delete_task [id : Int64] : Bool)
   (define service (require-service))
@@ -70,20 +70,20 @@
   (when deleted? (publish! service))
   deleted?)
 
-(define-rpc (search_tasks [keyword : String] : Any)
-  (map task->wire (service-search (require-service) keyword)))
+(define-rpc (search_tasks [keyword : String] : (List Task))
+  (map task->dto (service-search (require-service) keyword)))
 
 (define-rpc (create_list [name : String]
                          [icon : (Optional String)]
                          [color : (Optional Int64)]
-                         : Any)
+                         : TodoList)
   (define service (require-service))
   (define item
     (service-add-list! service name
                        #:icon (or (optional->false icon) default-list-icon)
                        #:color (or (optional->false color) default-list-color)))
   (publish! service)
-  (list->wire item))
+  (list->dto item))
 
 (define-rpc (delete_list [id : Int64] : Bool)
   (define service (require-service))
