@@ -1,54 +1,55 @@
 # Taskly Design Tokens (Contract)
 
-> Anthropic-warm palette: Pampas warm beige ground, Crail terracotta accent.
-> Restrained, low-saturation, generous whitespace. Every platform implements
-> these as named constants; semantic colors are theme-independent.
+> macOS Reminders neutral palette: white content ground, light-gray sidebar,
+> system-blue accent. Quiet, content-first, generous whitespace. Every
+> platform implements these as named constants; smart-tile colors are
+> theme-independent.
 
 ## Semantic colors (theme-independent)
 
 | Token | Hex | Use |
 |---|---|---|
-| `accent/today` | `#C15F3C` | Today tile, default list color, light-mode accent |
-| `accent/today-dark` | `#D47757` | Dark-mode accent |
-| `tile/planned` | `#B5543A` | Planned tile |
-| `tile/all` | `#8E887E` | All tile |
-| `tile/completed` | `#6B8E5A` | Completed tile |
-| `flag` (reserved) | `#C98642` | Flagged (unused) |
+| `accent/today` | `#007AFF` | Today tile, default list color, light-mode accent |
+| `accent/today-dark` | `#0A84FF` | Dark-mode accent |
+| `tile/planned` | `#FF3B30` | Planned tile |
+| `tile/all` | `#8E8E93` | All tile |
+| `tile/completed` | `#8E8E93` | Completed tile |
+| `flag` (reserved) | `#FF9500` | Flagged (unused) |
 | `danger` | `#FF3B30` | Destructive buttons |
 
 ## Light theme
 
 | Token | Hex |
 |---|---|
-| `background` | `#F4F3EE` (Pampas) |
-| `sidebar` | `#ECEAE3` |
-| `surface` | `#FAF9F5` |
-| `divider` | `#D9D6CE` |
-| `text/primary` | `#2B2825` |
-| `text/secondary` | `#6B6862` |
-| `text/tertiary` | `#9B9890` |
-| `selection` | `#38C15F3C` (Crail @ ~22%) |
-| `hover` | `#142B2825` (ink @ ~8%) |
-| `input-border` | `= divider` |
-| `badge/background` | `#E0DDD4` |
-| `badge/text` | `#3C3934` |
+| `background` | `#FFFFFF` |
+| `sidebar` | `#F2F2F2` |
+| `surface` | `#FFFFFF` |
+| `divider` | `#E3E3E8` |
+| `text/primary` | `#1D1D1F` |
+| `text/secondary` | `#8E8E93` |
+| `text/tertiary` | `#B0B0B5` |
+| `selection` | `#14000000` (black @ 8%) |
+| `hover` | `#0D000000` (black @ 5%) |
+| `input-border` | `#C7C7CC` |
+| `badge/background` | `#E9E9EE` |
+| `badge/text` | `#58585D` |
 
-## Dark theme (warm, never cold black)
+## Dark theme (layered grays, never pure black)
 
 | Token | Hex |
 |---|---|
-| `background` | `#1F1C19` |
-| `sidebar` | `#282421` |
-| `surface` | `#332F2B` |
-| `divider` | `#3D3935` |
-| `text/primary` | `#F4F3EE` |
-| `text/secondary` | `#A8A39B` |
-| `text/tertiary` | `#76726B` |
-| `selection` | `#4DD47757` (terracotta @ ~30%) |
-| `hover` | `#24FFFFFF` (white @ ~14%) |
-| `input-border` | `#4A4540` |
-| `badge/background` | `#4A4540` |
-| `badge/text` | `#F4F3EE` |
+| `background` | `#1E1E1E` |
+| `sidebar` | `#2A2A2C` (one step lighter than content) |
+| `surface` | `#323234` |
+| `divider` | `#3F3F44` |
+| `text/primary` | `#F5F5F7` |
+| `text/secondary` | `#98989E` |
+| `text/tertiary` | `#6B6B72` |
+| `selection` | `#1FFFFFFF` (white @ 12%) |
+| `hover` | `#12FFFFFF` (white @ 7%) |
+| `input-border` | `#4A4A50` |
+| `badge/background` | `#3F3F44` |
+| `badge/text` | `#E9E9EE` |
 
 ## List-palette presets (fixed order, iOS system colors)
 
@@ -71,10 +72,16 @@
 | window default | 1024×768 (min 760×520) |
 | sidebar width | 280 (200…420) |
 | menu bar / status bar height | 32 / 28 |
-| smart tile height / corner | 68 / 12 |
+| smart view row | transparent row, 26×26 icon badge (radius 6) with white glyph, label in `text/primary`, count in `text/secondary`; semantic color fills the badge only — never a full-width tile fill |
 | list icon size | 32 (round) |
 | checkbox size | 18–22 (round) |
 | corner radius (rows/cards) | 8 / 10 / 12 |
 | content padding | 16, 8; sidebar item 12, 10 |
 | task text | 14px; list name 13px |
 | font stack | system UI font of the platform (`-apple-system` / Segoe UI / GNOME default), CJK fallback PingFang SC / Microsoft YaHei / Noto Sans CJK SC |
+
+## App icon
+
+White rounded square (macOS-squircle radius ≈ 22.5%) with a quiet checklist
+mark: one system-blue rounded bar over two neutral (`#CECED3`) bars, staggered
+widths. Monochrome, no gradients — must read on light and dark docks alike.

@@ -22,7 +22,7 @@ Taskly v1 是对基于 Avalonia 的 0.6.x 版本的完全原生重写。每个�
 
 ## 每个应用都包含
 
-- **仿 macOS 提醒事项 UI** —— 智能视图（今天 / 计划 / 全部 / 完成）、emoji 图标 + 彩色的自定义列表、自然语言日期快速添加（`@10am`、`+1d`、`tomorrow`）、系统级到期通知、中英双语（运行时切换）、Anthropic 暖色调、明暗双主题。
+- **仿 macOS 提醒事项 UI** —— 智能视图（今天 / 计划 / 全部 / 完成）、emoji 图标 + 彩色的自定义列表、自然语言日期快速添加（`@10am`、`+1d`、`tomorrow`）、系统级到期通知、中英双语（运行时切换）、提醒事项式中性配色、明暗双主题。
 - **单一数据文件** —— 所有任务存于一个 SQLite 文件（`~/.taskly/tasks.db`，WAL 模式），放进 iCloud / OneDrive / Dropbox 即可多设备同步。格式文档化且稳定：[DATA-FORMAT](shared/spec/DATA-FORMAT.md)。
 - **同一二进制内的 agent CLI** —— `taskly list|add|update|done|rm|search|…`，支持 `--json`、稳定退出码、无头运行。规格：[CLI-SPEC](shared/spec/CLI-SPEC.md)。通过应用菜单（工具 ▸ 安装命令行工具）或 `taskly install-cli` 安装。
 

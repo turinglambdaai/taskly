@@ -1,46 +1,46 @@
 import SwiftUI
 
-/// Design tokens (shared/spec/DESIGN-TOKENS.md). Anthropic-warm palette.
+/// Design tokens (shared/spec/DESIGN-TOKENS.md). macOS Reminders neutral palette.
 public enum Palette {
     // Semantic (theme-independent)
-    public static let today = Color(hex: 0xC15F3C)
-    public static let todayDark = Color(hex: 0xD47757)
-    public static let planned = Color(hex: 0xB5543A)
-    public static let all = Color(hex: 0x8E887E)
-    public static let completed = Color(hex: 0x6B8E5A)
-    public static let flagged = Color(hex: 0xC98642)
+    public static let today = Color(hex: 0x007AFF)
+    public static let todayDark = Color(hex: 0x0A84FF)
+    public static let planned = Color(hex: 0xFF3B30)
+    public static let all = Color(hex: 0x8E8E93)
+    public static let completed = Color(hex: 0x8E8E93)
+    public static let flagged = Color(hex: 0xFF9500)
     public static let danger = Color(hex: 0xFF3B30)
 
     public static let accentLight = today
     public static let accentDark = todayDark
 
     // Light theme
-    public static let lightBackground = Color(hex: 0xF4F3EE)
-    public static let lightSidebar = Color(hex: 0xECEAE3)
-    public static let lightSurface = Color(hex: 0xFAF9F5)
-    public static let lightDivider = Color(hex: 0xD9D6CE)
-    public static let lightOnSurface = Color(hex: 0x2B2825)
-    public static let lightSecondaryText = Color(hex: 0x6B6862)
-    public static let lightTertiaryText = Color(hex: 0x9B9890)
-    public static let lightSelection = Color(hex: 0xC15F3C, alpha: 0x38 / 255.0)
-    public static let lightHover = Color(hex: 0x2B2825, alpha: 0x14 / 255.0)
-    public static let lightInputBorder = lightDivider
-    public static let lightBadgeBackground = Color(hex: 0xE0DDD4)
-    public static let lightBadgeText = Color(hex: 0x3C3934)
+    public static let lightBackground = Color(hex: 0xFFFFFF)
+    public static let lightSidebar = Color(hex: 0xF2F2F2)
+    public static let lightSurface = Color(hex: 0xFFFFFF)
+    public static let lightDivider = Color(hex: 0xE3E3E8)
+    public static let lightOnSurface = Color(hex: 0x1D1D1F)
+    public static let lightSecondaryText = Color(hex: 0x8E8E93)
+    public static let lightTertiaryText = Color(hex: 0xB0B0B5)
+    public static let lightSelection = Color(hex: 0x000000, alpha: 0x14 / 255.0)
+    public static let lightHover = Color(hex: 0x000000, alpha: 0x0D / 255.0)
+    public static let lightInputBorder = Color(hex: 0xC7C7CC)
+    public static let lightBadgeBackground = Color(hex: 0xE9E9EE)
+    public static let lightBadgeText = Color(hex: 0x58585D)
 
-    // Dark theme (warm)
-    public static let darkBackground = Color(hex: 0x1F1C19)
-    public static let darkSidebar = Color(hex: 0x282421)
-    public static let darkSurface = Color(hex: 0x332F2B)
-    public static let darkDivider = Color(hex: 0x3D3935)
-    public static let darkOnSurface = Color(hex: 0xF4F3EE)
-    public static let darkSecondaryText = Color(hex: 0xA8A39B)
-    public static let darkTertiaryText = Color(hex: 0x76726B)
-    public static let darkSelection = Color(hex: 0xD47757, alpha: 0x4D / 255.0)
-    public static let darkHover = Color(hex: 0xFFFFFF, alpha: 0x24 / 255.0)
-    public static let darkInputBorder = Color(hex: 0x4A4540)
-    public static let darkBadgeBackground = Color(hex: 0x4A4540)
-    public static let darkBadgeText = Color(hex: 0xF4F3EE)
+    // Dark theme (layered grays)
+    public static let darkBackground = Color(hex: 0x1E1E1E)
+    public static let darkSidebar = Color(hex: 0x2A2A2C)
+    public static let darkSurface = Color(hex: 0x323234)
+    public static let darkDivider = Color(hex: 0x3F3F44)
+    public static let darkOnSurface = Color(hex: 0xF5F5F7)
+    public static let darkSecondaryText = Color(hex: 0x98989E)
+    public static let darkTertiaryText = Color(hex: 0x6B6B72)
+    public static let darkSelection = Color(hex: 0xFFFFFF, alpha: 0x1F / 255.0)
+    public static let darkHover = Color(hex: 0xFFFFFF, alpha: 0x12 / 255.0)
+    public static let darkInputBorder = Color(hex: 0x4A4A50)
+    public static let darkBadgeBackground = Color(hex: 0x3F3F44)
+    public static let darkBadgeText = Color(hex: 0xE9E9EE)
 
     /// List-color presets (fixed order, iOS system colors).
     public static let listColorsHex: [UInt32] = [

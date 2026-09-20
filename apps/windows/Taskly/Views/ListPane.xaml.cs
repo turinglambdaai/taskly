@@ -48,10 +48,17 @@ namespace Taskly.Views;
                 return;
             }
 
-            TileTodayLabel.Text = $"🗓 {Vm.T("navToday")}";
-            TilePlannedLabel.Text = $"📅 {Vm.T("navPlanned")}";
-            TileAllLabel.Text = $"≡ {Vm.T("navAll")}";
-            TileCompletedLabel.Text = $"✓ {Vm.T("navCompleted")}";
+            // Monochrome Segoe Fluent glyphs (E787 calendar, E823 clock,
+            // E8FD list, E73E checkmark) — quieter than emoji, matches the
+            // Reminders-style sidebar.
+            TileTodayIcon.Text = "\uE787";
+            TileTodayLabel.Text = Vm.T("navToday");
+            TilePlannedIcon.Text = "\uE823";
+            TilePlannedLabel.Text = Vm.T("navPlanned");
+            TileAllIcon.Text = "\uE8FD";
+            TileAllLabel.Text = Vm.T("navAll");
+            TileCompletedIcon.Text = "\uE73E";
+            TileCompletedLabel.Text = Vm.T("navCompleted");
             MyListsHeader.Text = Vm.T("sectionMyLists");
             RefreshCounts();
         }

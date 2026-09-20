@@ -75,6 +75,13 @@ public sealed partial class TaskPane : UserControl
             return;
         }
 
+        // Connection completes asynchronously after ApplyLanguage ran, so the
+        // quick-add hint must follow every connection-state change, not just
+        // language changes.
+        QuickAddBox.PlaceholderText = Vm.IsConnected
+            ? Vm.T("taskListInputHint")
+            : Vm.T("taskListInputHintNoDb");
+
         if (!Vm.IsConnected)
         {
             EmptyIcon.Text = "📂";

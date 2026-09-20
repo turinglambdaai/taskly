@@ -7,48 +7,83 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Padding="12" Spacing="16">
 
-            <!-- Smart view tiles (2×2) -->
-            <Grid>
+            <!-- Smart views: single quiet column (macOS Reminders sidebar style) -->
+            <Grid ColumnSpacing="2">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="68" />
-                    <RowDefinition Height="8" />
-                    <RowDefinition Height="68" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Button Grid.Row="0" Grid.Column="0" x:Name="TileToday" Click="OnTileToday"
-                        Background="{StaticResource SmartListTodayBrush}" CornerRadius="12" HorizontalAlignment="Stretch">
-                    <Grid Padding="10,8">
-                        <TextBlock x:Name="TileTodayLabel" Foreground="White" FontWeight="Medium" VerticalAlignment="Bottom" />
-                        <TextBlock x:Name="TileTodayCount" Foreground="White" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                        Background="Transparent" BorderThickness="0" CornerRadius="8"
+                        Padding="10,7" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Width="26" Height="26" CornerRadius="6" Background="{StaticResource SmartListTodayBrush}">
+                            <TextBlock x:Name="TileTodayIcon" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Grid.Column="1" x:Name="TileTodayLabel" Foreground="{ThemeResource ThemeOnSurfaceBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" x:Name="TileTodayCount" Foreground="{ThemeResource ThemeSecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" />
                     </Grid>
                 </Button>
 
-                <Button Grid.Row="0" Grid.Column="2" x:Name="TilePlanned" Click="OnTilePlanned"
-                        Background="{StaticResource SmartListScheduledBrush}" CornerRadius="12" HorizontalAlignment="Stretch">
-                    <Grid Padding="10,8">
-                        <TextBlock x:Name="TilePlannedLabel" Foreground="White" FontWeight="Medium" VerticalAlignment="Bottom" />
-                        <TextBlock x:Name="TilePlannedCount" Foreground="White" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                <Button Grid.Row="1" x:Name="TilePlanned" Click="OnTilePlanned"
+                        Background="Transparent" BorderThickness="0" CornerRadius="8"
+                        Padding="10,7" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Width="26" Height="26" CornerRadius="6" Background="{StaticResource SmartListScheduledBrush}">
+                            <TextBlock x:Name="TilePlannedIcon" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Grid.Column="1" x:Name="TilePlannedLabel" Foreground="{ThemeResource ThemeOnSurfaceBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" x:Name="TilePlannedCount" Foreground="{ThemeResource ThemeSecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" />
                     </Grid>
                 </Button>
 
-                <Button Grid.Row="2" Grid.Column="0" x:Name="TileAll" Click="OnTileAll"
-                        Background="{StaticResource SmartListAllBrush}" CornerRadius="12" HorizontalAlignment="Stretch">
-                    <Grid Padding="10,8">
-                        <TextBlock x:Name="TileAllLabel" Foreground="White" FontWeight="Medium" VerticalAlignment="Bottom" />
-                        <TextBlock x:Name="TileAllCount" Foreground="White" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                <Button Grid.Row="2" x:Name="TileAll" Click="OnTileAll"
+                        Background="Transparent" BorderThickness="0" CornerRadius="8"
+                        Padding="10,7" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Width="26" Height="26" CornerRadius="6" Background="{StaticResource SmartListAllBrush}">
+                            <TextBlock x:Name="TileAllIcon" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Grid.Column="1" x:Name="TileAllLabel" Foreground="{ThemeResource ThemeOnSurfaceBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" x:Name="TileAllCount" Foreground="{ThemeResource ThemeSecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" />
                     </Grid>
                 </Button>
 
-                <Button Grid.Row="2" Grid.Column="2" x:Name="TileCompleted" Click="OnTileCompleted"
-                        Background="{StaticResource SmartListCompletedBrush}" CornerRadius="12" HorizontalAlignment="Stretch">
-                    <Grid Padding="10,8">
-                        <TextBlock x:Name="TileCompletedLabel" Foreground="White" FontWeight="Medium" VerticalAlignment="Bottom" />
-                        <TextBlock x:Name="TileCompletedCount" Foreground="White" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                <Button Grid.Row="3" x:Name="TileCompleted" Click="OnTileCompleted"
+                        Background="Transparent" BorderThickness="0" CornerRadius="8"
+                        Padding="10,7" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Width="26" Height="26" CornerRadius="6" Background="{StaticResource SmartListCompletedBrush}">
+                            <TextBlock x:Name="TileCompletedIcon" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Grid.Column="1" x:Name="TileCompletedLabel" Foreground="{ThemeResource ThemeOnSurfaceBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" x:Name="TileCompletedCount" Foreground="{ThemeResource ThemeSecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" />
                     </Grid>
                 </Button>
             </Grid>

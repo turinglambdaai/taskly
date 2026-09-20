@@ -31,7 +31,7 @@ until the native 1.0 GA.
 - **Reminders-style UI** — smart views (Today / Planned / All / Completed),
   custom lists with emoji icons and colors, quick add with natural-language
   dates (`@10am`, `+1d`, `tomorrow`), due-task OS notifications, bilingual
-  zh/en (live switch), warm Anthropic palette, light/dark.
+  zh/en (live switch), macOS Reminders neutral palette, light/dark.
 - **One data file** — your tasks live in a single SQLite file
   (`~/.taskly/tasks.db`, WAL) you can drop into iCloud/OneDrive/Dropbox for
   sync. The format is documented and stable: [DATA-FORMAT](shared/spec/DATA-FORMAT.md).

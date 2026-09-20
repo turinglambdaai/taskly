@@ -3,8 +3,8 @@
 namespace Taskly {
 
 public const string DEFAULT_LIST_ICON = "📋";
-// ARGB 0xFFC15F3C (Crail) as a signed 32-bit int.
-public const int32 DEFAULT_LIST_COLOR = (int32) 0xFFC15F3C;
+// ARGB 0xFF007AFF (system blue) as a signed 32-bit int.
+public const int32 DEFAULT_LIST_COLOR = (int32) 0xFF007AFF;
 
 public class TaskItem : Object {
     public int64 id { get; set; default = 0; }

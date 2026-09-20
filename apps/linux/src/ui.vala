@@ -80,20 +80,20 @@ public class TasklyUi : Object {
     }
 
     public const string APP_CSS = """
-window.taskly-root { background-color: #F4F3EE; }
-.sidebar { background-color: #ECEAE3; border-right: 1px solid #D9D6CE; }
+window.taskly-root { background-color: #FFFFFF; }
+.sidebar { background-color: #F2F2F2; border-right: 1px solid #E3E3E8; }
 .smart-tile { color: white; border-radius: 12px; padding: 8px 10px; }
-.smart-tile.today { background-color: #C15F3C; }
-.smart-tile.planned { background-color: #B5543A; }
-.smart-tile.all { background-color: #8E887E; }
-.smart-tile.completed { background-color: #6B8E5A; }
+.smart-tile.today { background-color: #007AFF; }
+.smart-tile.planned { background-color: #FF3B30; }
+.smart-tile.all { background-color: #8E8E93; }
+.smart-tile.completed { background-color: #8E8E93; }
 .smart-tile .title { font-weight: 600; }
 .smart-tile .count { opacity: 0.85; font-size: 11px; }
 .task-row { border-radius: 10px; padding: 8px 12px; }
-.task-row.completed .task-text { color: #9B9890; text-decoration: line-through; }
-.task-meta { color: #6B6862; font-size: 12px; }
-.section-header { color: #6B6862; font-weight: 600; }
-.statusbar { background-color: #ECEAE3; border-top: 1px solid #D9D6CE; }
+.task-row.completed .task-text { color: #B0B0B5; text-decoration: line-through; }
+.task-meta { color: #8E8E93; font-size: 12px; }
+.section-header { color: #8E8E93; font-weight: 600; }
+.statusbar { background-color: #F2F2F2; border-top: 1px solid #E3E3E8; }
 """;
 
     public void build(Adw.Application app) {

@@ -115,7 +115,7 @@ final class DatabaseTests: XCTestCase {
         XCTAssertEqual(lists.count, 1)
         XCTAssertEqual(lists[0].name, "工作")
         XCTAssertEqual(lists[0].icon, "📋")
-        XCTAssertEqual(lists[0].color, -4104388, "ARGB 0xFFC15F3C as signed int")
+        XCTAssertEqual(lists[0].color, -16745729, "ARGB 0xFF007AFF as signed int")
 
         let version = try schemaVersion()
         XCTAssertEqual(version, 4)

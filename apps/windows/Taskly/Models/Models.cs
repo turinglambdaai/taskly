@@ -11,16 +11,16 @@ public static class UiTheme
     public static bool IsDark;
 
     public static Windows.UI.Color Accent => IsDark
-        ? Windows.UI.Color.FromArgb(0xFF, 0xD4, 0x77, 0x57)
-        : Windows.UI.Color.FromArgb(0xFF, 0xC1, 0x5F, 0x3C);
+        ? Windows.UI.Color.FromArgb(0xFF, 0x0A, 0x84, 0xFF)
+        : Windows.UI.Color.FromArgb(0xFF, 0x00, 0x7A, 0xFF);
 
     public static Windows.UI.Color Tertiary => IsDark
-        ? Windows.UI.Color.FromArgb(0xFF, 0x76, 0x72, 0x6B)
-        : Windows.UI.Color.FromArgb(0xFF, 0x9B, 0x98, 0x90);
+        ? Windows.UI.Color.FromArgb(0xFF, 0x6B, 0x6B, 0x72)
+        : Windows.UI.Color.FromArgb(0xFF, 0xB0, 0xB0, 0xB5);
 
     public static Windows.UI.Color OnSurface => IsDark
-        ? Windows.UI.Color.FromArgb(0xFF, 0xF4, 0xF3, 0xEE)
-        : Windows.UI.Color.FromArgb(0xFF, 0x2B, 0x28, 0x25);
+        ? Windows.UI.Color.FromArgb(0xFF, 0xF5, 0xF5, 0xF7)
+        : Windows.UI.Color.FromArgb(0xFF, 0x1D, 0x1D, 0x1F);
 }
 
 /// <summary>Task model; mirrors the tasks table (DATA-FORMAT.md, schema v4).</summary>
@@ -120,8 +120,8 @@ public partial class TaskItem : ObservableObject
 public partial class TodoList : ObservableObject
 {
     public const string DefaultIcon = "📋";
-    /// <summary>ARGB 0xFFC15F3C (Crail) as a signed 32-bit int.</summary>
-    public const int DefaultColor = unchecked((int)0xFFC15F3C);
+    /// <summary>System blue, ARGB 0xFF007AFF, as a signed 32-bit int.</summary>
+    public const int DefaultColor = unchecked((int)0xFF007AFF);
 
     [ObservableProperty]
     private int _id;

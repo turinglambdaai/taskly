@@ -61,8 +61,8 @@ public struct TaskItem: Identifiable, Hashable, Codable, Sendable {
 /// column (nullable). `icon` is an emoji string.
 public struct TodoList: Identifiable, Hashable, Codable, Sendable {
     public static let defaultIcon = "📋"
-    /// Crail terracotta, ARGB 0xFFC15F3C, stored as a signed 32-bit int.
-    public static let defaultColor = ARGB.from(hex: 0xFFC1_5F3C)
+    /// System blue, ARGB 0xFF007AFF, stored as a signed 32-bit int.
+    public static let defaultColor = ARGB.from(hex: 0xFF00_7AFF)
 
     public var id: Int
     public var name: String

@@ -50,12 +50,14 @@ CREATE INDEX IF NOT EXISTS idx_tasks_list_id ON tasks(list_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed);
 CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
 INSERT INTO lists (name, icon, color, created_at)
-VALUES ('工作', '📋', -4104388, '<created_at>');
+VALUES ('工作', '📋', -16745729, '<created_at>');
 ```
 
 - Default list name is the literal `工作` (not localized).
-- `TodoList.defaultIcon = "📋"`; `TodoList.defaultColor = ARGB 0xFFC15F3C`
-  stored as signed 32-bit = `-4104388`. List colors are **signed ARGB ints**;
+- `TodoList.defaultIcon = "📋"`; `TodoList.defaultColor = ARGB 0xFF007AFF`
+  (system blue, since the 0.7.0 Reminders redesign; pre-0.7.0 DBs may hold
+  the old terracotta `0xFFC15F3C` = `-4104388` — both are valid stored
+  values). Stored as signed 32-bit; list colors are **signed ARGB ints**;
   every platform must bit-cast through Int32/uint, never through a sign-
   preserving wider integer.
 

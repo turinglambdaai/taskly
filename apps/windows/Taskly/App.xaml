@@ -10,50 +10,50 @@
 
             <!--
               Design tokens (shared/spec/DESIGN-TOKENS.md).
-              Warm Anthropic palette as native theme dictionaries: switching
-              the window's RequestedTheme flips every ThemeResource below.
+              macOS Reminders neutral palette as native theme dictionaries:
+              switching the window's RequestedTheme flips every ThemeResource below.
             -->
             <ResourceDictionary.ThemeDictionaries>
 
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="ThemeBackgroundBrush" Color="#F4F3EE" />
-                    <SolidColorBrush x:Key="ThemeSidebarBrush" Color="#ECEAE3" />
-                    <SolidColorBrush x:Key="ThemeSurfaceBrush" Color="#FAF9F5" />
-                    <SolidColorBrush x:Key="ThemeDividerBrush" Color="#D9D6CE" />
-                    <SolidColorBrush x:Key="ThemeOnSurfaceBrush" Color="#2B2825" />
-                    <SolidColorBrush x:Key="ThemeSecondaryTextBrush" Color="#6B6862" />
-                    <SolidColorBrush x:Key="ThemeTertiaryTextBrush" Color="#9B9890" />
-                    <SolidColorBrush x:Key="ThemeSelectionBackgroundBrush" Color="#38C15F3C" />
-                    <SolidColorBrush x:Key="ThemeHoverBackgroundBrush" Color="#142B2825" />
-                    <SolidColorBrush x:Key="ThemeInputBorderBrush" Color="#D9D6CE" />
-                    <SolidColorBrush x:Key="ThemeBadgeBackgroundBrush" Color="#E0DDD4" />
-                    <SolidColorBrush x:Key="ThemeBadgeTextBrush" Color="#3C3934" />
-                    <SolidColorBrush x:Key="AccentBrush" Color="#C15F3C" />
+                    <SolidColorBrush x:Key="ThemeBackgroundBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="ThemeSidebarBrush" Color="#F2F2F2" />
+                    <SolidColorBrush x:Key="ThemeSurfaceBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="ThemeDividerBrush" Color="#E3E3E8" />
+                    <SolidColorBrush x:Key="ThemeOnSurfaceBrush" Color="#1D1D1F" />
+                    <SolidColorBrush x:Key="ThemeSecondaryTextBrush" Color="#8E8E93" />
+                    <SolidColorBrush x:Key="ThemeTertiaryTextBrush" Color="#B0B0B5" />
+                    <SolidColorBrush x:Key="ThemeSelectionBackgroundBrush" Color="#14000000" />
+                    <SolidColorBrush x:Key="ThemeHoverBackgroundBrush" Color="#0D000000" />
+                    <SolidColorBrush x:Key="ThemeInputBorderBrush" Color="#C7C7CC" />
+                    <SolidColorBrush x:Key="ThemeBadgeBackgroundBrush" Color="#E9E9EE" />
+                    <SolidColorBrush x:Key="ThemeBadgeTextBrush" Color="#58585D" />
+                    <SolidColorBrush x:Key="AccentBrush" Color="#007AFF" />
                 </ResourceDictionary>
 
                 <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="ThemeBackgroundBrush" Color="#1F1C19" />
-                    <SolidColorBrush x:Key="ThemeSidebarBrush" Color="#282421" />
-                    <SolidColorBrush x:Key="ThemeSurfaceBrush" Color="#332F2B" />
-                    <SolidColorBrush x:Key="ThemeDividerBrush" Color="#3D3935" />
-                    <SolidColorBrush x:Key="ThemeOnSurfaceBrush" Color="#F4F3EE" />
-                    <SolidColorBrush x:Key="ThemeSecondaryTextBrush" Color="#A8A39B" />
-                    <SolidColorBrush x:Key="ThemeTertiaryTextBrush" Color="#76726B" />
-                    <SolidColorBrush x:Key="ThemeSelectionBackgroundBrush" Color="#4DD47757" />
-                    <SolidColorBrush x:Key="ThemeHoverBackgroundBrush" Color="#24FFFFFF" />
-                    <SolidColorBrush x:Key="ThemeInputBorderBrush" Color="#4A4540" />
-                    <SolidColorBrush x:Key="ThemeBadgeBackgroundBrush" Color="#4A4540" />
-                    <SolidColorBrush x:Key="ThemeBadgeTextBrush" Color="#F4F3EE" />
-                    <SolidColorBrush x:Key="AccentBrush" Color="#D47757" />
+                    <SolidColorBrush x:Key="ThemeBackgroundBrush" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="ThemeSidebarBrush" Color="#2A2A2C" />
+                    <SolidColorBrush x:Key="ThemeSurfaceBrush" Color="#323234" />
+                    <SolidColorBrush x:Key="ThemeDividerBrush" Color="#3F3F44" />
+                    <SolidColorBrush x:Key="ThemeOnSurfaceBrush" Color="#F5F5F7" />
+                    <SolidColorBrush x:Key="ThemeSecondaryTextBrush" Color="#98989E" />
+                    <SolidColorBrush x:Key="ThemeTertiaryTextBrush" Color="#6B6B72" />
+                    <SolidColorBrush x:Key="ThemeSelectionBackgroundBrush" Color="#1FFFFFFF" />
+                    <SolidColorBrush x:Key="ThemeHoverBackgroundBrush" Color="#12FFFFFF" />
+                    <SolidColorBrush x:Key="ThemeInputBorderBrush" Color="#4A4A50" />
+                    <SolidColorBrush x:Key="ThemeBadgeBackgroundBrush" Color="#3F3F44" />
+                    <SolidColorBrush x:Key="ThemeBadgeTextBrush" Color="#E9E9EE" />
+                    <SolidColorBrush x:Key="AccentBrush" Color="#0A84FF" />
                 </ResourceDictionary>
 
             </ResourceDictionary.ThemeDictionaries>
 
-            <!-- Fixed semantic colors (theme-independent) -->
-            <SolidColorBrush x:Key="SmartListTodayBrush" Color="#C15F3C" />
-            <SolidColorBrush x:Key="SmartListScheduledBrush" Color="#B5543A" />
-            <SolidColorBrush x:Key="SmartListAllBrush" Color="#8E887E" />
-            <SolidColorBrush x:Key="SmartListCompletedBrush" Color="#6B8E5A" />
+            <!-- Fixed semantic colors (theme-independent, Reminders semantics) -->
+            <SolidColorBrush x:Key="SmartListTodayBrush" Color="#007AFF" />
+            <SolidColorBrush x:Key="SmartListScheduledBrush" Color="#FF3B30" />
+            <SolidColorBrush x:Key="SmartListAllBrush" Color="#8E8E93" />
+            <SolidColorBrush x:Key="SmartListCompletedBrush" Color="#8E8E93" />
             <SolidColorBrush x:Key="DangerBrush" Color="#FF3B30" />
             <!-- List-palette presets live in C# (Repositories.ListPalette.Colors);
                  WinUI 3 has no x:Array markup extension. -->

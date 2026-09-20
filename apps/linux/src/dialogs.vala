@@ -259,7 +259,7 @@ public class ListEditDialog : Object {
         color_label.halign = Gtk.Align.START;
         var color_combo = new Gtk.ComboBoxText();
         var current_color = existing != null && existing.color != null
-            ? (uint32) existing.color : 0xFF000000u | 0xC15F3C;
+            ? (uint32) existing.color : 0xFF000000u | 0x007AFF;
         var color_active = "";
         foreach (var rgb in LIST_COLORS_RGB) {
             var id_str = "FF" + rgb;

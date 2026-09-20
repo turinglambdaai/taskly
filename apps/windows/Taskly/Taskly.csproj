@@ -48,6 +48,10 @@
     <None Update="Assets\icon.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- AppWindow.SetIcon reads this at runtime (unpackaged). -->
+    <Content Include="Assets\taskly.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>
