@@ -54,7 +54,11 @@ public partial class MainViewModel : ObservableObject
     public int CompletedCount { get; private set; }
 
     public MainViewModel()
+#if TASKLY_RIVET
+        : this(new RivetTasklyBackend())
+#else
         : this(new NativeTasklyBackend(I18nService.Instance))
+#endif
     {
     }
 
