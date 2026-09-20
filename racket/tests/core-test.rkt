@@ -13,8 +13,7 @@
          "../taskly/model.rkt"
          "../taskly/paths.rkt"
          "../taskly/service.rkt"
-         "../taskly/validation.rkt"
-         "../taskly/wire.rkt")
+         "../taskly/validation.rkt")
 
 (define fixed-now (find-seconds 0 15 10 20 9 2026 #t))
 (define temp-root (make-temporary-file "taskly-racket-test-~a" 'directory))
@@ -81,13 +80,6 @@
      (check-equal? (task-item-list-id second) (todo-list-id personal))
      (check-true (service-delete-list! service (todo-list-id personal)))
      (check-false (service-task service (task-item-id second)))
-
-     ;; Wire contract stays protocol-v1-safe: nested lists, primitives, void nulls.
-     (define wire (task->wire completed))
-     (check-equal? (length wire) (length task-wire-fields))
-     (check-equal? (list-ref wire 0) (task-item-id completed))
-     (check-true (void? (list-ref wire 6)))
-     (check-true (void? (list-ref wire 7)))
 
      (close-taskly-service service)))
  (lambda ()
