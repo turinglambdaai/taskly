@@ -1,5 +1,4 @@
 using System.Globalization;
-using Taskly.Data;
 using Taskly.Models;
 using Microsoft.Toolkit.Uwp.Notifications;
 
@@ -14,14 +13,14 @@ namespace Taskly.Services;
 public sealed class ReminderService : IDisposable
 {
     private readonly HashSet<int> _notifiedIds = new();
-    private readonly SQLiteDatabase _db;
+    private readonly ITasklyBackend _backend;
     private readonly I18nService _i18n;
     private System.Threading.Timer? _timer;
     private bool _notificationsDisabled;
 
-    public ReminderService(SQLiteDatabase db, I18nService i18n)
+    public ReminderService(ITasklyBackend backend, I18nService i18n)
     {
-        _db = db;
+        _backend = backend;
         _i18n = i18n;
     }
 
@@ -45,7 +44,7 @@ public sealed class ReminderService : IDisposable
         List<TaskItem> due;
         try
         {
-            var tasks = _db.GetAllIncompleteTasksWithDueDateAsync().GetAwaiter().GetResult();
+            var tasks = _backend.GetDueTasksAsync().GetAwaiter().GetResult();
             due = tasks.Where(IsDue).Where(t => _notifiedIds.Add(t.Id)).ToList();
         }
         catch
