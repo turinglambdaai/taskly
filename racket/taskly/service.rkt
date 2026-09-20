@@ -16,11 +16,13 @@
          service-tasks
          service-task
          service-add-task!
+         service-update-task!
          service-update-task-text!
          service-set-completed!
          service-delete-task!
          service-search
          service-add-list!
+         service-update-list!
          service-delete-list!
          service-counts)
 
@@ -65,6 +67,10 @@
     (raise-taskly 'not-found 3 "No lists exist yet. Create one with `taskly mklist` first."))
   (todo-list-id (car lists)))
 
+(define (require-list service id)
+  (or (db-list-by-id (taskly-service-db service) id)
+      (raise-taskly 'not-found 3 (format "List not found: ~a" id))))
+
 (define (service-add-task! service text
                            #:list-id [list-id #f]
                            #:due-date [due-date #f]
@@ -72,8 +78,7 @@
                            #:notes [notes #f])
   (define clean-text (validate-task-text! text))
   (define selected-list-id (or list-id (default-list-id service)))
-  (unless (db-list-by-id (taskly-service-db service) selected-list-id)
-    (raise-taskly 'not-found 3 (format "List not found: ~a" selected-list-id)))
+  (require-list service selected-list-id)
   (define task
     (task-item 0 selected-list-id clean-text due-date due-time #f (local-timestamp) notes #f))
   (define id (db-add-task! (taskly-service-db service) task))
@@ -83,12 +88,30 @@
   (or (service-task service id)
       (raise-taskly 'not-found 3 (format "Task not found: ~a" id))))
 
+(define (service-update-task! service replacement)
+  (unless (task-item? replacement)
+    (raise-argument-error 'service-update-task! "task-item?" replacement))
+  (define existing (require-task service (task-item-id replacement)))
+  (define list-id (task-item-list-id replacement))
+  (require-list service list-id)
+  (unless (boolean? (task-item-completed replacement))
+    (raise-taskly 'validation 2 "completed must be a boolean"))
+  (define updated
+    (struct-copy task-item existing
+                 [list-id list-id]
+                 [text (validate-task-text! (task-item-text replacement))]
+                 [due-date (task-item-due-date replacement)]
+                 [due-time (task-item-due-time replacement)]
+                 [completed (task-item-completed replacement)]
+                 [notes (task-item-notes replacement)]))
+  (db-update-task! (taskly-service-db service) updated)
+  (service-task service (task-item-id updated)))
+
 (define (service-update-task-text! service id text)
   (define existing (require-task service id))
-  (define updated
-    (struct-copy task-item existing [text (validate-task-text! text)]))
-  (db-update-task! (taskly-service-db service) updated)
-  (service-task service id))
+  (service-update-task!
+   service
+   (struct-copy task-item existing [text text])))
 
 (define (service-set-completed! service id completed?)
   (unless (boolean? completed?)
@@ -110,11 +133,21 @@
   (define id (db-add-list! (taskly-service-db service) clean-name icon color))
   (db-list-by-id (taskly-service-db service) id))
 
+(define (service-update-list! service replacement)
+  (unless (todo-list? replacement)
+    (raise-argument-error 'service-update-list! "todo-list?" replacement))
+  (define existing (require-list service (todo-list-id replacement)))
+  (define updated
+    (struct-copy todo-list existing
+                 [name (validate-list-name! (todo-list-name replacement))]
+                 [icon (todo-list-icon replacement)]
+                 [color (todo-list-color replacement)]))
+  (db-update-list! (taskly-service-db service) updated)
+  (db-list-by-id (taskly-service-db service) (todo-list-id updated)))
+
 (define (service-delete-list! service id)
   (db-delete-list! (taskly-service-db service) id))
 
-;; Stable positional order is intentional because Rivet v1 currently carries
-;; lists/primitives, not record values. wire.rkt gives the transport names.
 (define (service-counts service)
   (define db (taskly-service-db service))
   (list (db-count-today db)
