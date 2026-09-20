@@ -11,9 +11,6 @@
 (define current-service (box #f))
 (define-event changed)
 
-(define (optional->false value)
-  (if (void? value) #f value))
-
 (define (require-service)
   (or (unbox current-service)
       (error 'taskly "database is not open")))
@@ -27,6 +24,13 @@
   (define service (open-taskly-service path))
   (set-box! current-service service)
   (snapshot->dto service))
+
+(define-rpc (close_database : Void)
+  (define service (unbox current-service))
+  (when service
+    (close-taskly-service service)
+    (set-box! current-service #f))
+  (void))
 
 (define-rpc (load_snapshot [view : String]
                            [list-id : (Optional Int64)]
@@ -52,6 +56,12 @@
                        #:notes (optional->false notes)))
   (publish! service)
   (task->dto task))
+
+(define-rpc (update_task [task : Task] : Task)
+  (define service (require-service))
+  (define updated (service-update-task! service (dto->task task)))
+  (publish! service)
+  (task->dto updated))
 
 (define-rpc (update_task_text [id : Int64] [text : String] : Task)
   (define service (require-service))
@@ -85,6 +95,12 @@
                        #:color (or (optional->false color) default-list-color)))
   (publish! service)
   (list->dto item))
+
+(define-rpc (update_list [item : TodoList] : TodoList)
+  (define service (require-service))
+  (define updated (service-update-list! service (dto->list item)))
+  (publish! service)
+  (list->dto updated))
 
 (define-rpc (delete_list [id : Int64] : Bool)
   (define service (require-service))
