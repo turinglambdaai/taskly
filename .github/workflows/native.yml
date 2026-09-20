@@ -54,12 +54,15 @@ jobs:
           $B mklist "work" --icon "💼" --color "#C15F3C" --db "$DB"
           ID=$($B add "buy milk" --due tomorrow --db "$DB" --quiet)
           $B update "$ID" --time 09:30 --db "$DB" --json | grep -q '"dueTime": "09:30"'
+          $B search "milk" --db "$DB" --json | grep -q '"text"'
           $B done "$ID" --db "$DB" --json --quiet | grep -q '"completed": true'
           $B rm "$ID" --db "$DB" --json | grep -q '"deleted": true'
           $B list --view completed --db "$DB" | wc -l | grep -q '^0$' || true
-          $B search "milk" --db "$DB" --json
+          # Negative contract tests: expected-failure commands, so suspend errexit.
+          set +e
           $B update 999 --text x --db "$DB" 2>/dev/null; test $? -eq 3
           $B list --view bogus --db "$DB" 2>/dev/null; test $? -eq 2
+          set -e
 
   linux:
     name: Linux (Vala build + contract tests + CLI smoke)
@@ -89,11 +92,14 @@ jobs:
           test -f "$DB"
           ID=$($B add "buy milk" --due tomorrow --db "$DB" --quiet)
           $B update "$ID" --time 09:30 --db "$DB" --json | grep -q '"dueTime": "09:30"'
+          $B search "milk" --db "$DB" --json | grep -q '"text"'
           $B done "$ID" --db "$DB" --json --quiet | grep -q '"completed": true'
           $B rm "$ID" --db "$DB" --json | grep -q '"deleted": true'
-          $B search "milk" --db "$DB" --json | grep -q '"text"'
+          # Negative contract tests: expected-failure commands, so suspend errexit.
+          set +e
           $B update 999 --text x --db "$DB" 2>/dev/null; test $? -eq 3
           $B list --view bogus --db "$DB" 2>/dev/null; test $? -eq 2
+          set -e
 
   windows:
     name: Windows (WinUI 3 build)
@@ -115,8 +121,11 @@ jobs:
           "$B" mklist "work" --icon "💼" --color "#C15F3C" --db "$DB" --json | grep -q '"id": 2'
           ID=$("$B" add "buy milk" --due tomorrow --db "$DB" --quiet)
           "$B" update "$ID" --time 09:30 --db "$DB" --json | grep -q '"dueTime": "09:30"'
+          "$B" search "milk" --db "$DB" --json | grep -q '"text"'
           "$B" done "$ID" --db "$DB" --json --quiet | grep -q '"completed": true'
           "$B" rm "$ID" --db "$DB" --json | grep -q '"deleted": true'
-          "$B" search "milk" --db "$DB" --json | grep -q '"text"'
+          # Negative contract tests: expected-failure commands, so suspend errexit.
+          set +e
           "$B" update 999 --text x --db "$DB" 2>/dev/null; test $? -eq 3
           "$B" list --view bogus --db "$DB" 2>/dev/null; test $? -eq 2
+          set -e
