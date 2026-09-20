@@ -1,0 +1,5 @@
+#hasheq((name . "Taskly")
+        (backend . "racket/taskly/backend.rkt")
+        (module . "backend")
+        (entry . "start")
+        (protocol . 1))

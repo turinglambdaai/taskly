@@ -1,0 +1,65 @@
+name: Racket Core
+
+on:
+  push:
+    branches: [main, experiment/taskly-rivet]
+    paths:
+      - 'racket/**'
+      - 'rivet.rktd'
+      - '.github/workflows/racket-core.yml'
+  pull_request:
+    paths:
+      - 'racket/**'
+      - 'rivet.rktd'
+      - '.github/workflows/racket-core.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: racket-core-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: Racket core (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Racket CS
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          distribution: full
+          variant: CS
+          version: '9.3'
+      - name: Compile core
+        run: raco make racket/taskly/service.rkt racket/taskly/date-parser.rkt
+      - name: Test core contracts
+        run: raco test racket/tests/core-test.rkt
+
+  rivet-backend:
+    name: Rivet backend contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Racket CS
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          distribution: full
+          variant: CS
+          version: '9.3'
+      - name: Install pinned Rivet
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
+          git -C "$RUNNER_TEMP/rivet" checkout 72abf7214eda54da7cbea00b1c4725063402a7da
+          raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
+      - name: Compile Taskly Rivet backend
+        run: raco make racket/taskly/backend.rkt
