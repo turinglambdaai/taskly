@@ -16,6 +16,7 @@
          db-list-by-id
          db-list-by-name
          db-add-list!
+         db-update-list!
          db-delete-list!
          db-tasks
          db-task-by-id
@@ -140,6 +141,18 @@
               "INSERT INTO lists (name, created_at, icon, color) VALUES (?, ?, ?, ?)"
               name (local-timestamp) (maybe-sql icon) (maybe-sql color))
   (query-value conn "SELECT last_insert_rowid()"))
+
+(define (db-update-list! db item)
+  (define conn (taskly-db-connection db))
+  (define existed? (and (db-list-by-id db (todo-list-id item)) #t))
+  (when existed?
+    (query-exec conn
+                "UPDATE lists SET name = ?, icon = ?, color = ? WHERE id = ?"
+                (todo-list-name item)
+                (maybe-sql (todo-list-icon item))
+                (maybe-sql (todo-list-color item))
+                (todo-list-id item)))
+  existed?)
 
 (define (db-delete-list! db id)
   (define conn (taskly-db-connection db))
