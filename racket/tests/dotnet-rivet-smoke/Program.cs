@@ -45,20 +45,48 @@ internal static class Program
                 throw new InvalidOperationException("Fresh database snapshot is not empty.");
             }
 
-            var created = await api.AddTaskAsync("managed smoke", null, null, null, "rivet");
-            if (created.Text != "managed smoke" || created.Completed)
+            var personal = await api.CreateListAsync("Personal", "🏠", null);
+            var created = await api.AddTaskAsync("managed smoke", personal.Id, null, null, "rivet");
+            if (created.Text != "managed smoke" || created.Completed || created.ListId != personal.Id)
             {
                 throw new InvalidOperationException("Created task did not round-trip through Rivet.");
+            }
+
+            var edited = await api.UpdateTaskAsync(
+                new Taskly.RivetGenerated.Task(
+                    created.Id,
+                    initial.Lists[0].Id,
+                    initial.Lists[0].Name,
+                    "managed edited",
+                    false,
+                    "2026-09-21",
+                    "09:30",
+                    "updated through Rivet",
+                    created.CreatedAt));
+            if (edited.Text != "managed edited" ||
+                edited.ListId != initial.Lists[0].Id ||
+                edited.DueDate != "2026-09-21" ||
+                edited.DueTime != "09:30" ||
+                edited.Notes != "updated through Rivet")
+            {
+                throw new InvalidOperationException("Full Task update did not round-trip.");
+            }
+
+            var renamed = await api.UpdateListAsync(
+                new TodoList(personal.Id, "Home", null, null, personal.PendingCount));
+            if (renamed.Name != "Home" || renamed.Icon is not null || renamed.Color is not null)
+            {
+                throw new InvalidOperationException("List update did not round-trip nullable fields.");
             }
 
             var snapshot = await api.LoadSnapshotAsync("all", null, false);
             if (snapshot.Tasks.Count != 1 || snapshot.Counts.All != 1)
             {
-                throw new InvalidOperationException("Snapshot did not include the created task.");
+                throw new InvalidOperationException("Snapshot did not include the edited task.");
             }
-            if (!snapshot.Tasks.Any(item => item.Id == created.Id && item.Notes == "rivet"))
+            if (!snapshot.Tasks.Any(item => item.Id == created.Id && item.Notes == "updated through Rivet"))
             {
-                throw new InvalidOperationException("Typed Task DTO did not preserve fields.");
+                throw new InvalidOperationException("Typed Task DTO did not preserve updated fields.");
             }
 
             var completed = await api.SetCompletedAsync(created.Id, true);
@@ -67,6 +95,7 @@ internal static class Program
                 throw new InvalidOperationException("Completion update did not round-trip.");
             }
 
+            await api.CloseDatabaseAsync();
             Console.WriteLine("Taskly managed Rivet smoke passed.");
             return 0;
         }
