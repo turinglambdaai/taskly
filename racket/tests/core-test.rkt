@@ -53,15 +53,16 @@
      (check-equal? (resolve-database-path #f loaded-config)
                    (path->complete-path (build-path temp-root "custom.db")))
 
-     ;; SQLite v4 and the first vertical slice: list -> add -> edit -> complete.
+     ;; SQLite v4 and the product editing slice.
      (define db-path (build-path temp-root "slice.db"))
      (define service (open-taskly-service db-path))
      (define db (taskly-service-db service))
      (check-equal? (query-value (taskly-db-connection db) "PRAGMA user_version") 4)
      (define initial-lists (service-lists service))
      (check-equal? (length initial-lists) 1)
-     (check-equal? (todo-list-name (car initial-lists)) default-list-name)
-     (check-equal? (todo-list-color (car initial-lists)) default-list-color)
+     (define default-list (car initial-lists))
+     (check-equal? (todo-list-name default-list) default-list-name)
+     (check-equal? (todo-list-color default-list) default-list-color)
 
      (define created (service-add-task! service "  first task  " #:due-date "2026-09-20"))
      (check-equal? (task-item-text created) "first task")
@@ -76,10 +77,38 @@
      (check-equal? (length (service-tasks service #:view 'today #:show-completed #t)) 1)
 
      (define personal (service-add-list! service "Personal" #:icon "🏠"))
-     (define second (service-add-task! service "home" #:list-id (todo-list-id personal)))
-     (check-equal? (task-item-list-id second) (todo-list-id personal))
-     (check-true (service-delete-list! service (todo-list-id personal)))
-     (check-false (service-task service (task-item-id second)))
+     (define renamed-list
+       (service-update-list!
+        service
+        (struct-copy todo-list personal [name "Home"] [icon #f] [color #f])))
+     (check-equal? (todo-list-name renamed-list) "Home")
+     (check-false (todo-list-icon renamed-list))
+     (check-false (todo-list-color renamed-list))
+
+     (define second (service-add-task! service "home" #:list-id (todo-list-id renamed-list)))
+     (define moved
+       (service-update-task!
+        service
+        (struct-copy task-item second
+                     [list-id (todo-list-id default-list)]
+                     [text "moved home"]
+                     [due-date "2026-09-21"]
+                     [due-time "09:30"]
+                     [completed #t]
+                     [notes "note"])))
+     (check-equal? (task-item-list-id moved) (todo-list-id default-list))
+     (check-equal? (task-item-text moved) "moved home")
+     (check-equal? (task-item-due-date moved) "2026-09-21")
+     (check-equal? (task-item-due-time moved) "09:30")
+     (check-equal? (task-item-notes moved) "note")
+     (check-true (task-item-completed moved))
+     (check-equal? (task-item-created-at moved) (task-item-created-at second))
+
+     ;; Deleting a list still cascades tasks that remain in it.
+     (define doomed (service-add-task! service "delete me" #:list-id (todo-list-id renamed-list)))
+     (check-true (service-delete-list! service (todo-list-id renamed-list)))
+     (check-false (service-task service (task-item-id doomed)))
+     (check-true (service-task service (task-item-id moved)))
 
      (close-taskly-service service)))
  (lambda ()
