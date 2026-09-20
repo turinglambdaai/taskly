@@ -1,0 +1,31 @@
+name: Rivet Windows Experiment
+
+on:
+  push:
+    branches: [experiment/taskly-rivet]
+    paths:
+      - 'apps/windows/**'
+      - '.github/workflows/rivet-windows.yml'
+  pull_request:
+    paths:
+      - 'apps/windows/**'
+      - '.github/workflows/rivet-windows.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rivet-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: WinUI backend-boundary build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build WinUI app
+        run: dotnet build apps/windows/Taskly/Taskly.csproj -c Release -p:Platform=x64
