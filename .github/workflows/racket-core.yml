@@ -59,7 +59,9 @@ jobs:
         run: |
           set -euo pipefail
           git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
-          git -C "$RUNNER_TEMP/rivet" checkout 72abf7214eda54da7cbea00b1c4725063402a7da
+          git -C "$RUNNER_TEMP/rivet" checkout 96c49e4f49f283065b50811f0aa76fccb53e689b
           raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
       - name: Compile Taskly Rivet backend
         run: raco make racket/taskly/backend.rkt
+      - name: Test typed Rivet schema
+        run: raco test racket/tests/rivet-schema-test.rkt
