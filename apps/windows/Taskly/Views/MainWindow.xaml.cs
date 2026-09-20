@@ -13,6 +13,8 @@ public sealed partial class MainWindow : Window
 {
     public MainViewModel Vm { get; } = new();
     private bool _databaseOpened;
+    private bool _shutdownStarted;
+    private bool _shutdownComplete;
 
     public MainWindow()
     {
@@ -30,7 +32,10 @@ public sealed partial class MainWindow : Window
         ApplyLanguage();
         Vm.LanguageChanged += ApplyLanguage;
 
-        Closed += (_, _) => Vm.Reminder.Dispose();
+        // Window.Close() is synchronous, but embedded Racket shutdown is not.
+        // Cancel the first close request, drain Taskly/Rivet, then close again.
+        // The second Closing event sees _shutdownComplete and is allowed through.
+        AppWindow.Closing += OnAppWindowClosing;
         Activated += async (_, args) =>
         {
             // Open the default DB once, after the window is live (XamlRoot ready).
@@ -41,6 +46,31 @@ public sealed partial class MainWindow : Window
                 await Vm.OpenDefaultDatabaseAsync();
             }
         };
+    }
+
+    private async void OnAppWindowClosing(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        if (_shutdownComplete)
+        {
+            return;
+        }
+
+        args.Cancel = true;
+        if (_shutdownStarted)
+        {
+            return;
+        }
+
+        _shutdownStarted = true;
+        try
+        {
+            await Vm.ShutdownAsync();
+        }
+        finally
+        {
+            _shutdownComplete = true;
+            Close();
+        }
     }
 
     private void OnSidebarToggleRequested()
