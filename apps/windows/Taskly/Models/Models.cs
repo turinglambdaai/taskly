@@ -77,7 +77,7 @@ public partial class TaskItem : ObservableObject
     // UI projections for the task-row data template (classic {Binding}).
 
     public Windows.UI.Color RingColor => Completed ? UiTheme.Accent : UiTheme.Tertiary;
-    public Windows.UI.Color RingFill => Completed ? UiTheme.Accent : Windows.UI.Colors.Transparent;
+    public Windows.UI.Color RingFill => Completed ? UiTheme.Accent : Microsoft.UI.Colors.Transparent;
 
     public Microsoft.UI.Xaml.Media.Brush TextBrush =>
         new Microsoft.UI.Xaml.Media.SolidColorBrush(

@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
+    <!-- WinAppSDK 1.7 supports net8.0 only; net10.0 breaks its net472 XamlCompiler (silent exit 1). -->
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <RootNamespace>Taskly</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -16,6 +17,8 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <!-- Custom Main: CLI subcommands run before any WinUI initialization. -->
     <DisableXamlGeneratedMain>true</DisableXamlGeneratedMain>
+    <!-- WinAppSDK's XAML compiler honors the constant, not the MSBuild property. -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>

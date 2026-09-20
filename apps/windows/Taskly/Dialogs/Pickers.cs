@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Shapes;
 using Taskly.Repositories;
 
 namespace Taskly.Dialogs;
@@ -14,7 +15,6 @@ public sealed class EmojiPickerDialog : ContentDialog
 
     public EmojiPickerDialog(string? current)
     {
-        InitializeComponent();
         _current = current;
         Title = Taskly.Services.I18nService.Instance.T("dialogSelectIcon");
         CloseButtonText = Taskly.Services.I18nService.Instance.T("dialogCancel");

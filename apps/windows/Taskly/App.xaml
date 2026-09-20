@@ -55,20 +55,8 @@
             <SolidColorBrush x:Key="SmartListAllBrush" Color="#8E887E" />
             <SolidColorBrush x:Key="SmartListCompletedBrush" Color="#6B8E5A" />
             <SolidColorBrush x:Key="DangerBrush" Color="#FF3B30" />
-
-            <!-- List-palette presets (fixed order, iOS system colors) -->
-            <x:Array x:Key="ListPalette" Type="x:String">
-                <x:String>#007AFF</x:String>
-                <x:String>#FF3B30</x:String>
-                <x:String>#FF9500</x:String>
-                <x:String>#FFCC00</x:String>
-                <x:String>#4CD964</x:String>
-                <x:String>#5AC8FA</x:String>
-                <x:String>#5856D6</x:String>
-                <x:String>#FF2D55</x:String>
-                <x:String>#8E8E93</x:String>
-                <x:String>#C7C7CC</x:String>
-            </x:Array>
+            <!-- List-palette presets live in C# (Repositories.ListPalette.Colors);
+                 WinUI 3 has no x:Array markup extension. -->
         </ResourceDictionary>
     </Application.Resources>
 </Application>

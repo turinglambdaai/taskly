@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Taskly.Models;
 using Taskly.ViewModels;
@@ -105,7 +106,8 @@ namespace Taskly.Views;
         }
 
         var dialog = new Dialogs.ListEditDialog(Vm, list);
-        await dialog.ShowAsync(XamlRoot);
+        dialog.XamlRoot = XamlRoot;
+        await dialog.ShowAsync();
     }
 
     private static FrameworkElement? FrameworkElementAncestor(object? source)
@@ -132,6 +134,7 @@ namespace Taskly.Views;
         }
 
         var dialog = new Dialogs.ListEditDialog(Vm, existing: null);
-        await dialog.ShowAsync(XamlRoot);
+        dialog.XamlRoot = XamlRoot;
+        await dialog.ShowAsync();
     }
 }

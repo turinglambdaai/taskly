@@ -134,7 +134,8 @@ public sealed partial class TaskPane : UserControl
         }
 
         var dialog = new Dialogs.TaskDetailDialog(Vm, task);
-        await dialog.ShowAsync(XamlRoot);
+        dialog.XamlRoot = XamlRoot;
+        await dialog.ShowAsync();
     }
 
     private async void OnTaskDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -145,7 +146,8 @@ public sealed partial class TaskPane : UserControl
         }
 
         var dialog = new Dialogs.TaskDetailDialog(Vm, task);
-        await dialog.ShowAsync(XamlRoot);
+        dialog.XamlRoot = XamlRoot;
+        await dialog.ShowAsync();
     }
 
     private async void OnToggleShowCompleted(object sender, RoutedEventArgs e)

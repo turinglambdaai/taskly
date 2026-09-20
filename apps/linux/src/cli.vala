@@ -338,9 +338,14 @@ public class CliEngine : Object {
         var db = open_db(db_path);
         if (list_arg != null && list_arg.length > 0) {
             var list_id = resolve_list_id(db, list_arg);
-            var tasks = status_shows_completed(status_arg)
-                ? db.get_tasks_by_list_including_completed(list_id, limit)
-                : db.get_tasks_by_list(list_id, limit);
+            // valac: a ternary would duplicate the GLib.List; branch instead
+            // so the returned list transfers ownership directly.
+            GLib.List<TaskItem> tasks;
+            if (status_shows_completed(status_arg)) {
+                tasks = db.get_tasks_by_list_including_completed(list_id, limit);
+            } else {
+                tasks = db.get_tasks_by_list(list_id, limit);
+            }
             print_tasks(json, quiet, tasks);
             return 0;
         }
@@ -363,16 +368,28 @@ public class CliEngine : Object {
         GLib.List<TaskItem> result;
         switch (view) {
             case TaskViewType.TODAY:
-                result = show_completed ? db.get_today_tasks_including_completed(limit) : db.get_today_tasks(limit);
+                if (show_completed) {
+                    result = db.get_today_tasks_including_completed(limit);
+                } else {
+                    result = db.get_today_tasks(limit);
+                }
                 break;
             case TaskViewType.PLANNED:
-                result = show_completed ? db.get_planned_tasks_including_completed(limit) : db.get_planned_tasks(limit);
+                if (show_completed) {
+                    result = db.get_planned_tasks_including_completed(limit);
+                } else {
+                    result = db.get_planned_tasks(limit);
+                }
                 break;
             case TaskViewType.COMPLETED:
                 result = db.get_completed_tasks(limit);
                 break;
             default:
-                result = show_completed ? db.get_all_tasks_including_completed(limit) : db.get_incomplete_tasks(limit);
+                if (show_completed) {
+                    result = db.get_all_tasks_including_completed(limit);
+                } else {
+                    result = db.get_incomplete_tasks(limit);
+                }
                 break;
         }
         print_tasks(json, quiet, result);

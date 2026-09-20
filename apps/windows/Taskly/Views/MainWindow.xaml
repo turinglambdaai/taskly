@@ -45,7 +45,11 @@
 
             <local:ListPane x:Name="Sidebar" Grid.Column="0" />
 
-            <GridSplitter Grid.Column="1" Width="6" Background="{ThemeResource ThemeDividerBrush}" />
+            <!-- WinUI 3 ships no GridSplitter; static divider matches the other
+                 platforms (sidebar resizes via the collapse toggle only). -->
+            <Border Grid.Column="1" Width="1"
+                    HorizontalAlignment="Center"
+                    Background="{ThemeResource ThemeDividerBrush}" />
 
             <local:TaskPane x:Name="Pane" Grid.Column="2" />
         </Grid>

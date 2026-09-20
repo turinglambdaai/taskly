@@ -1,5 +1,6 @@
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Taskly.Models;
 using Taskly.Services;
 using Taskly.ViewModels;
@@ -101,7 +102,8 @@ public sealed partial class MainWindow : Window
     {
         var dialog = new Dialogs.ConfirmDialog(
             Vm.T("dialogConfirmCloseDb"), Vm.T("dialogConfirmCloseDbContent"), Vm.T("dialogConfirm"), Vm.T("dialogCancel"));
-        if (await dialog.ShowAsync(XamlRoot) == ContentDialogResult.Primary)
+        dialog.XamlRoot = RootGrid.XamlRoot;
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
         {
             await Vm.CloseDatabaseAsync();
         }
@@ -150,7 +152,8 @@ public sealed partial class MainWindow : Window
         var version = AppVersion.Current;
         var dialog = new Dialogs.AboutDialog(
             $"Taskly v{version}\n© 2026 Taskly Team\n\n{Vm.T("aboutContent")}", Vm.T("dialogConfirm"));
-        await dialog.ShowAsync(XamlRoot);
+        dialog.XamlRoot = RootGrid.XamlRoot;
+        await dialog.ShowAsync();
     }
 }
 

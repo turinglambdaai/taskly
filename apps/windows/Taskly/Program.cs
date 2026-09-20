@@ -33,7 +33,7 @@ public static class Program
         }
 
         WinRT.ComWrappersSupport.InitializeComWrappers();
-        Application.Start(_ =>
+        Application.Start(p =>
         {
             var context = new DispatcherQueueSynchronizationContext(
                 DispatcherQueue.GetForCurrentThread());
