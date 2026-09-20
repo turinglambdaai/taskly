@@ -5,10 +5,14 @@ on:
     branches: [experiment/taskly-rivet]
     paths:
       - 'apps/windows/**'
+      - 'racket/**'
+      - 'rivet.rktd'
       - '.github/workflows/rivet-windows.yml'
   pull_request:
     paths:
       - 'apps/windows/**'
+      - 'racket/**'
+      - 'rivet.rktd'
       - '.github/workflows/rivet-windows.yml'
 
 permissions:
@@ -18,14 +22,73 @@ concurrency:
   group: rivet-windows-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  RIVET_COMMIT: fe01374f1219277e88a33801e8f3cef914e3e79f
+
 jobs:
   windows:
-    name: WinUI backend-boundary build
+    name: WinUI Native + embedded Rivet
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
-      - name: Build WinUI app
+
+      - name: Build native fallback mode
+        shell: pwsh
         run: dotnet build apps/windows/Taskly/Taskly.csproj -c Release -p:Platform=x64
+
+      - name: Set up Racket CS
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          distribution: full
+          variant: CS
+          version: '9.3'
+
+      - name: Install pinned Rivet
+        shell: pwsh
+        run: |
+          $rivet = Join-Path $env:RUNNER_TEMP 'rivet'
+          git clone https://github.com/turinglambdaai/rivet.git $rivet
+          git -C $rivet checkout $env:RIVET_COMMIT
+          raco pkg install --auto --no-docs --name rivet --link $rivet
+          "RIVET_ROOT=$rivet" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build Taskly embedded Racket bundle
+        shell: pwsh
+        run: raco rivet build-dotnet
+
+      - name: Build WinUI Rivet mode
+        shell: pwsh
+        run: |
+          dotnet clean apps/windows/Taskly/Taskly.csproj -c Release -p:Platform=x64
+          dotnet build apps/windows/Taskly/Taskly.csproj `
+            -c Release `
+            -p:Platform=x64 `
+            -p:UseRivetBackend=true `
+            -p:RivetRoot="$env:RIVET_ROOT"
+
+      - name: Verify embedded runtime layout
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem 'apps/windows/Taskly/bin/Release' -Recurse -Filter 'Taskly.exe' |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if ($null -eq $exe) { throw 'Taskly.exe was not produced' }
+          $out = $exe.Directory.FullName
+          if (-not (Test-Path (Join-Path $out 'rivet_native.dll'))) {
+            throw 'rivet_native.dll is missing beside Taskly.exe'
+          }
+          $racket = Get-ChildItem $out -Filter '*racketcs*.dll' | Select-Object -First 1
+          if ($null -eq $racket) { throw 'Racket CS runtime DLL is missing beside Taskly.exe' }
+          if (-not (Test-Path (Join-Path $out 'rivet/res/core.zo'))) {
+            throw 'compiled Taskly Racket backend is missing from output'
+          }
+          foreach ($boot in @('petite.boot', 'scheme.boot', 'racket.boot')) {
+            if (-not (Test-Path (Join-Path $out "rivet/runtime/$boot"))) {
+              throw "$boot is missing from Taskly output"
+            }
+          }
+          Write-Host "Embedded Taskly output: $out"
