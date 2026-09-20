@@ -108,7 +108,7 @@
      (define doomed (service-add-task! service "delete me" #:list-id (todo-list-id renamed-list)))
      (check-true (service-delete-list! service (todo-list-id renamed-list)))
      (check-false (service-task service (task-item-id doomed)))
-     (check-true (service-task service (task-item-id moved)))
+     (check-not-false (service-task service (task-item-id moved)))
 
      (close-taskly-service service)))
  (lambda ()
