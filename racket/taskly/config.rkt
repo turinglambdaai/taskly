@@ -58,7 +58,7 @@
      (for ([key (in-list '("last-db-path" "language" "last-selected-list-id"))])
        (define value (config-ref config key #f))
        (when value
-         (fprintf out "~a = ~a\n" key value)))))))
+         (fprintf out "~a = ~a\n" key value))))))
 
 (define (resolve-database-path [override #f] [config (read-config)])
   (cond
