@@ -5,7 +5,8 @@
          "rivet-schema.rkt"
          "service.rkt")
 
-(provide start)
+(provide start
+         start-stdio)
 
 (define current-service (box #f))
 (define-event changed)
@@ -91,5 +92,15 @@
   (when deleted? (publish! service))
   deleted?)
 
+;; Native embedded hosts pass anonymous pipe file descriptors here.
 (define (start in-fd out-fd)
   (serve-fds in-fd out-fd))
+
+;; The managed development host speaks the exact same RVT1 protocol over
+;; stdin/stdout. This is deliberately only a transport alternative: the
+;; Taskly service and RPC surface remain identical to the embedded host.
+(define (start-stdio)
+  (serve (current-input-port) (current-output-port)))
+
+(module+ main
+  (start-stdio))
