@@ -27,6 +27,21 @@
      (check-equal? (record-ref dto 'due-date) "2026-09-20")
      (check-true (void? (record-ref dto 'due-time)))
 
+     (define restored-task (dto->task dto))
+     (check-equal? (task-item-id restored-task) (task-item-id created))
+     (check-equal? (task-item-list-id restored-task) (task-item-list-id created))
+     (check-equal? (task-item-text restored-task) (task-item-text created))
+     (check-equal? (task-item-due-date restored-task) "2026-09-20")
+     (check-false (task-item-due-time restored-task))
+
+     (define first-list (car (service-lists service)))
+     (define list-dto (list->dto first-list))
+     (define restored-list (dto->list list-dto))
+     (check-equal? (todo-list-id restored-list) (todo-list-id first-list))
+     (check-equal? (todo-list-name restored-list) (todo-list-name first-list))
+     (check-equal? (todo-list-icon restored-list) (todo-list-icon first-list))
+     (check-equal? (todo-list-color restored-list) (todo-list-color first-list))
+
      (define snapshot (snapshot->dto service))
      (define counts (record-ref snapshot 'counts))
      (check-equal? (record-ref counts 'all) 1)
