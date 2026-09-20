@@ -40,6 +40,9 @@
 (define (nullable value)
   (if value value (void)))
 
+(define (optional->false value)
+  (if (void? value) #f value))
+
 (define (task->dto task)
   (Task (task-item-id task)
         (task-item-list-id task)
@@ -51,12 +54,30 @@
         (nullable (task-item-notes task))
         (task-item-created-at task)))
 
+(define (dto->task dto)
+  (task-item (record-ref dto 'id)
+             (record-ref dto 'list-id)
+             (record-ref dto 'text)
+             (optional->false (record-ref dto 'due-date))
+             (optional->false (record-ref dto 'due-time))
+             (record-ref dto 'completed)
+             (record-ref dto 'created-at)
+             (optional->false (record-ref dto 'notes))
+             (optional->false (record-ref dto 'list-name))))
+
 (define (list->dto item)
   (TodoList (todo-list-id item)
             (todo-list-name item)
             (nullable (todo-list-icon item))
             (nullable (todo-list-color item))
             (todo-list-pending-count item)))
+
+(define (dto->list dto)
+  (todo-list (record-ref dto 'id)
+             (record-ref dto 'name)
+             (optional->false (record-ref dto 'icon))
+             (optional->false (record-ref dto 'color))
+             (record-ref dto 'pending-count)))
 
 (define (counts->dto counts)
   (SmartCounts (list-ref counts 0)
