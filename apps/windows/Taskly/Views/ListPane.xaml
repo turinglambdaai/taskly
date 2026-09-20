@@ -4,119 +4,157 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Background="{ThemeResource ThemeSidebarBrush}">
 
+    <UserControl.Resources>
+        <!-- 0.7.0-style smart tile: colored fill, glyph top-left, bold count
+             top-right, semibold label bottom-left. -->
+        <Style x:Key="SmartTile" TargetType="Button">
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Height" Value="68" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="UseSystemFocusVisuals" Value="False" />
+        </Style>
+        <Style x:Key="TileGlyph" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Margin" Value="12,10,0,0" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+        <Style x:Key="TileCount" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Margin" Value="0,10,12,0" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+        <Style x:Key="TileLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="12,0,0,10" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+        </Style>
+    </UserControl.Resources>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Padding="12" Spacing="16">
 
-            <!-- Smart views: single quiet column (macOS Reminders sidebar style) -->
-            <Grid ColumnSpacing="2">
+            <!-- Smart view tiles (2×2, 0.7.0 layout) -->
+            <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="8" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Button Grid.Row="0" Grid.Column="0" x:Name="TileToday" Click="OnTileToday"
-                        Background="Transparent" BorderThickness="0" CornerRadius="8"
-                        Padding="10,7" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                    <Grid ColumnSpacing="10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Width="26" Height="26" CornerRadius="6" Background="{StaticResource SmartListTodayBrush}">
-                            <TextBlock x:Name="TileTodayIcon" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <TextBlock Grid.Column="1" x:Name="TileTodayLabel" Foreground="{ThemeResource ThemeOnSurfaceBrush}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="2" x:Name="TileTodayCount" Foreground="{ThemeResource ThemeSecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" />
+                        Style="{StaticResource SmartTile}" Background="{StaticResource SmartListTodayBrush}">
+                    <Grid>
+                        <TextBlock x:Name="TileTodayIcon" Style="{StaticResource TileGlyph}"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" />
+                        <TextBlock x:Name="TileTodayCount" Style="{StaticResource TileCount}" />
+                        <TextBlock x:Name="TileTodayLabel" Style="{StaticResource TileLabel}" />
                     </Grid>
                 </Button>
 
-                <Button Grid.Row="1" x:Name="TilePlanned" Click="OnTilePlanned"
-                        Background="Transparent" BorderThickness="0" CornerRadius="8"
-                        Padding="10,7" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                    <Grid ColumnSpacing="10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Width="26" Height="26" CornerRadius="6" Background="{StaticResource SmartListScheduledBrush}">
-                            <TextBlock x:Name="TilePlannedIcon" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <TextBlock Grid.Column="1" x:Name="TilePlannedLabel" Foreground="{ThemeResource ThemeOnSurfaceBrush}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="2" x:Name="TilePlannedCount" Foreground="{ThemeResource ThemeSecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" />
+                <Button Grid.Row="0" Grid.Column="2" x:Name="TilePlanned" Click="OnTilePlanned"
+                        Style="{StaticResource SmartTile}" Background="{StaticResource SmartListScheduledBrush}">
+                    <Grid>
+                        <TextBlock x:Name="TilePlannedIcon" Style="{StaticResource TileGlyph}"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" />
+                        <TextBlock x:Name="TilePlannedCount" Style="{StaticResource TileCount}" />
+                        <TextBlock x:Name="TilePlannedLabel" Style="{StaticResource TileLabel}" />
                     </Grid>
                 </Button>
 
-                <Button Grid.Row="2" x:Name="TileAll" Click="OnTileAll"
-                        Background="Transparent" BorderThickness="0" CornerRadius="8"
-                        Padding="10,7" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                    <Grid ColumnSpacing="10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Width="26" Height="26" CornerRadius="6" Background="{StaticResource SmartListAllBrush}">
-                            <TextBlock x:Name="TileAllIcon" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <TextBlock Grid.Column="1" x:Name="TileAllLabel" Foreground="{ThemeResource ThemeOnSurfaceBrush}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="2" x:Name="TileAllCount" Foreground="{ThemeResource ThemeSecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" />
+                <Button Grid.Row="2" Grid.Column="0" x:Name="TileAll" Click="OnTileAll"
+                        Style="{StaticResource SmartTile}" Background="{StaticResource SmartListAllBrush}">
+                    <Grid>
+                        <TextBlock x:Name="TileAllIcon" Style="{StaticResource TileGlyph}"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" />
+                        <TextBlock x:Name="TileAllCount" Style="{StaticResource TileCount}" />
+                        <TextBlock x:Name="TileAllLabel" Style="{StaticResource TileLabel}" />
                     </Grid>
                 </Button>
 
-                <Button Grid.Row="3" x:Name="TileCompleted" Click="OnTileCompleted"
-                        Background="Transparent" BorderThickness="0" CornerRadius="8"
-                        Padding="10,7" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                    <Grid ColumnSpacing="10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Width="26" Height="26" CornerRadius="6" Background="{StaticResource SmartListCompletedBrush}">
-                            <TextBlock x:Name="TileCompletedIcon" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <TextBlock Grid.Column="1" x:Name="TileCompletedLabel" Foreground="{ThemeResource ThemeOnSurfaceBrush}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="2" x:Name="TileCompletedCount" Foreground="{ThemeResource ThemeSecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" />
+                <Button Grid.Row="2" Grid.Column="2" x:Name="TileCompleted" Click="OnTileCompleted"
+                        Style="{StaticResource SmartTile}" Background="{StaticResource SmartListCompletedBrush}">
+                    <Grid>
+                        <TextBlock x:Name="TileCompletedIcon" Style="{StaticResource TileGlyph}"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" />
+                        <TextBlock x:Name="TileCompletedCount" Style="{StaticResource TileCount}" />
+                        <TextBlock x:Name="TileCompletedLabel" Style="{StaticResource TileLabel}" />
                     </Grid>
                 </Button>
             </Grid>
 
-            <!-- My Lists -->
-            <Grid>
+            <!-- My Lists header + add button (0.7.0 layout) -->
+            <Grid Margin="4,0,4,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="MyListsHeader" Grid.Column="0"
-                           FontSize="13" FontWeight="SemiBold"
+                           FontSize="12" FontWeight="SemiBold"
                            Foreground="{ThemeResource ThemeSecondaryTextBrush}"
                            VerticalAlignment="Center" />
                 <Button x:Name="AddListButton" Grid.Column="1" Click="OnAddList"
-                        Background="Transparent" BorderThickness="0" Padding="4">
-                    <TextBlock Text="✚" Foreground="{ThemeResource AccentBrush}" FontWeight="Bold" />
+                        Background="Transparent" BorderThickness="0" Padding="4,2"
+                        UseSystemFocusVisuals="False">
+                    <TextBlock Text="✚" FontSize="14" Foreground="{ThemeResource AccentBrush}" />
                 </Button>
             </Grid>
 
             <ListView x:Name="ListsList" SelectionMode="None" IsItemClickEnabled="True">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0,1" />
+                        <Setter Property="UseSystemFocusVisuals" Value="False" />
+                        <Setter Property="CornerRadius" Value="8" />
+                    </Style>
+                </ListView.ItemContainerStyle>
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="8" Padding="10,8" CornerRadius="8">
-                            <Ellipse Width="32" Height="32">
-                                <Ellipse.Fill>
-                                    <SolidColorBrush Color="{Binding RowColor}" />
-                                </Ellipse.Fill>
-                            </Ellipse>
-                            <TextBlock Text="{Binding IconText}" FontSize="14" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding Name}" FontSize="13" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding PendingText}" FontSize="11" Opacity="0.7" VerticalAlignment="Center" />
-                        </StackPanel>
+                        <!-- 0.7.0 card row: surface fill + hairline border so rows
+                             read as containers; emoji sits inside the color dot. -->
+                        <Border CornerRadius="8" Padding="10,8"
+                                Background="{ThemeResource ThemeSurfaceBrush}"
+                                BorderBrush="{ThemeResource ThemeDividerBrush}"
+                                BorderThickness="1">
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16"
+                                        VerticalAlignment="Center">
+                                    <Border.Background>
+                                        <SolidColorBrush Color="{Binding RowColor}" />
+                                    </Border.Background>
+                                    <TextBlock Text="{Binding IconText}" FontSize="17"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="2" Text="{Binding PendingText}" FontSize="13"
+                                           Foreground="{ThemeResource ThemeSecondaryTextBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,4,0" />
+                            </Grid>
+                        </Border>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>

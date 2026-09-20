@@ -72,13 +72,18 @@
 | window default | 1024×768 (min 760×520) |
 | sidebar width | 280 (200…420) |
 | menu bar / status bar height | 32 / 28 |
-| smart view row | transparent row, 26×26 icon badge (radius 6) with white glyph, label in `text/primary`, count in `text/secondary`; semantic color fills the badge only — never a full-width tile fill |
+| smart view tile | 2×2 grid of 68×tile-height color fills (radius 12): white glyph top-left (16px), bold white count top-right (16px), semibold white label bottom-left (14px) |
+| list row | card: surface fill + 1px divider border, radius 8, padding 10,8; 32px round color dot with the emoji inside (17px), name 13px, gray count right |
 | list icon size | 32 (round) |
 | checkbox size | 18–22 (round) |
 | corner radius (rows/cards) | 8 / 10 / 12 |
 | content padding | 16, 8; sidebar item 12, 10 |
 | task text | 14px; list name 13px |
 | font stack | system UI font of the platform (`-apple-system` / Segoe UI / GNOME default), CJK fallback PingFang SC / Microsoft YaHei / Noto Sans CJK SC |
+
+Tile glyphs are monochrome platform icon fonts (Windows: Segoe Fluent Icons;
+macOS: SF Symbols; Linux: symbolic icons), not emoji — mixed emoji/text runs
+render fallback debris on some stacks.
 
 ## App icon
 
