@@ -2,22 +2,18 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
-using Taskly.Data;
 using Taskly.Models;
-using Taskly.Repositories;
 using Taskly.Services;
 
 namespace Taskly.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
-    private readonly SQLiteDatabase _db = new();
+    private readonly ITasklyBackend _backend;
     private readonly ConfigService _config = new();
     private readonly I18nService _i18n = I18nService.Instance;
     private DateParser DateParser { get; } = new();
 
-    public TaskRepository Tasks { get; private set; }
-    public ListRepository Lists { get; private set; }
     public ReminderService Reminder { get; }
 
     public ObservableCollection<TodoList> ListCollection { get; } = new();
@@ -57,7 +53,13 @@ public partial class MainViewModel : ObservableObject
     public int CompletedCount { get; private set; }
 
     public MainViewModel()
+        : this(new NativeTasklyBackend(I18nService.Instance))
     {
+    }
+
+    public MainViewModel(ITasklyBackend backend)
+    {
+        _backend = backend ?? throw new ArgumentNullException(nameof(backend));
         _config.Load();
         _i18n.SetLanguage(_config.Language);
         _i18n.LanguageChanged += () =>
@@ -66,10 +68,7 @@ public partial class MainViewModel : ObservableObject
             LanguageChanged?.Invoke();
         };
 
-        Tasks = new TaskRepository(_db, _i18n);
-        Lists = new ListRepository(_db, _i18n);
-        Reminder = new ReminderService(_db, _i18n);
-
+        Reminder = new ReminderService(_backend, _i18n);
         StatusMessage = T("statusDatabaseNotConnected");
     }
 
@@ -85,35 +84,27 @@ public partial class MainViewModel : ObservableObject
 
     public async Task OpenOrCreateDatabaseAsync(string path)
     {
-        _db.Close();
-        _db.SetDatabasePath(path);
-        Tasks = new TaskRepository(_db, _i18n);
-        Lists = new ListRepository(_db, _i18n);
-
         try
         {
-            await _db.EnsureConnectedAsync();
+            var snapshot = await _backend.OpenAsync(path);
+            IsConnected = _backend.IsConnected;
+            Reminder.ResetNotified();
+
+            _config.LastDbPath = path;
+            _config.Save();
+
+            ApplySnapshot(snapshot, replaceTasks: true);
+            RestoreSelection();
+            await RefreshAsync();
+            RefreshPersistentStatus();
+            ShowTransientStatus(T("statusDatabaseConnected"));
+            Reminder.Start();
         }
         catch (Exception ex)
         {
             IsConnected = false;
             ShowTransientStatus(ex.Message);
-            return;
         }
-
-        IsConnected = true;
-        Reminder.ResetNotified();
-
-        _config.LastDbPath = path;
-        _config.Save();
-
-        await ReloadListsAsync();
-        RestoreSelection();
-        await RefreshCountsAsync();
-        await RefreshAsync();
-        RefreshPersistentStatus();
-        ShowTransientStatus(T("statusDatabaseConnected"));
-        Reminder.Start();
     }
 
     public async Task OpenDefaultDatabaseAsync()
@@ -126,7 +117,7 @@ public partial class MainViewModel : ObservableObject
 
     public async Task CloseDatabaseAsync()
     {
-        await _db.CloseAsync();
+        await _backend.CloseAsync();
         IsConnected = false;
         ListCollection.Clear();
         TaskItems.Clear();
@@ -154,28 +145,56 @@ public partial class MainViewModel : ObservableObject
 
     // ---------------- refresh ----------------
 
+    private void ApplySnapshot(TasklySnapshot snapshot, bool replaceTasks)
+    {
+        ListCollection.Clear();
+        foreach (var list in snapshot.Lists)
+        {
+            ListCollection.Add(list);
+        }
+
+        TodayCount = snapshot.Counts.Today;
+        PlannedCount = snapshot.Counts.Planned;
+        AllCount = snapshot.Counts.All;
+        CompletedCount = snapshot.Counts.Completed;
+        CountsChanged?.Invoke();
+
+        if (replaceTasks)
+        {
+            TaskItems.Clear();
+            foreach (var task in snapshot.Tasks)
+            {
+                TaskItems.Add(task);
+            }
+        }
+    }
+
     public async Task ReloadListsAsync()
     {
-        var lists = await Lists.GetAllListsAsync();
-        ListCollection.Clear();
-        foreach (var l in lists)
+        if (!IsConnected)
         {
-            ListCollection.Add(l);
+            ListCollection.Clear();
+            return;
         }
+
+        var snapshot = await _backend.LoadSnapshotAsync(CurrentView, CurrentListId, ShowCompletedTasks);
+        ApplySnapshot(snapshot, replaceTasks: false);
     }
 
     public async Task RefreshCountsAsync()
     {
-        TodayCount = await Tasks.GetTodayTaskCountAsync();
-        PlannedCount = await Tasks.GetPlannedTaskCountAsync();
-        AllCount = await Tasks.GetIncompleteTaskCountAsync();
-        CompletedCount = await Tasks.GetCompletedTaskCountAsync();
-        foreach (var l in ListCollection)
+        if (!IsConnected)
         {
-            l.PendingCount = await Tasks.GetTaskCountByListAsync(l.Id);
+            TodayCount = 0;
+            PlannedCount = 0;
+            AllCount = 0;
+            CompletedCount = 0;
+            CountsChanged?.Invoke();
+            return;
         }
 
-        CountsChanged?.Invoke();
+        var snapshot = await _backend.LoadSnapshotAsync(CurrentView, CurrentListId, ShowCompletedTasks);
+        ApplySnapshot(snapshot, replaceTasks: false);
     }
 
     public async Task RefreshAsync()
@@ -188,20 +207,21 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            List<TaskItem> tasks;
             if (!string.IsNullOrEmpty(_searchKeyword))
             {
-                tasks = await Tasks.SearchTasksAsync(_searchKeyword);
+                var snapshot = await _backend.LoadSnapshotAsync(CurrentView, CurrentListId, ShowCompletedTasks);
+                ApplySnapshot(snapshot, replaceTasks: false);
+                var tasks = await _backend.SearchTasksAsync(_searchKeyword);
+                TaskItems.Clear();
+                foreach (var task in tasks)
+                {
+                    TaskItems.Add(task);
+                }
             }
             else
             {
-                tasks = await Tasks.GetTasksByViewAsync(CurrentView, CurrentListId, showCompleted: ShowCompletedTasks);
-            }
-
-            TaskItems.Clear();
-            foreach (var t in tasks)
-            {
-                TaskItems.Add(t);
+                var snapshot = await _backend.LoadSnapshotAsync(CurrentView, CurrentListId, ShowCompletedTasks);
+                ApplySnapshot(snapshot, replaceTasks: true);
             }
         }
         catch
@@ -364,8 +384,7 @@ public partial class MainViewModel : ObservableObject
             DateTime.Now.ToString("o", CultureInfo.InvariantCulture), dueDate, dueTime);
         try
         {
-            await Tasks.AddTaskAsync(task);
-            await RefreshCountsAsync();
+            await _backend.AddTaskAsync(task);
             await RefreshAsync();
             ShowTransientStatus(T("statusTaskAdded"));
         }
@@ -377,8 +396,7 @@ public partial class MainViewModel : ObservableObject
 
     public async Task ToggleCompletedAsync(TaskItem task)
     {
-        await Tasks.ToggleTaskCompletedAsync(task.Id);
-        await RefreshCountsAsync();
+        await _backend.SetCompletedAsync(task.Id, !task.Completed);
         await RefreshAsync();
         ShowTransientStatus(T("statusUpdateTaskState"));
     }
@@ -387,8 +405,7 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
-            await Tasks.UpdateTaskAsync(task);
-            await RefreshCountsAsync();
+            await _backend.UpdateTaskAsync(task);
             await RefreshAsync();
             ShowTransientStatus(T("statusTaskUpdated"));
         }
@@ -400,8 +417,7 @@ public partial class MainViewModel : ObservableObject
 
     public async Task DeleteTaskAsync(TaskItem task)
     {
-        await Tasks.DeleteTaskAsync(task.Id);
-        await RefreshCountsAsync();
+        await _backend.DeleteTaskAsync(task.Id);
         await RefreshAsync();
         ShowTransientStatus(T("statusTaskDeleted"));
     }
@@ -409,8 +425,7 @@ public partial class MainViewModel : ObservableObject
     public async Task MoveTaskToListAsync(TaskItem task, TodoList list)
     {
         task.ListId = list.Id;
-        await Tasks.UpdateTaskAsync(task);
-        await RefreshCountsAsync();
+        await _backend.UpdateTaskAsync(task);
         await RefreshAsync();
         ShowTransientStatus(string.Format(CultureInfo.InvariantCulture, T("statusTaskMoved"), list.Name));
     }
@@ -421,10 +436,8 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
-            var id = await Lists.AddListAsync(name, icon, color);
-            await ReloadListsAsync();
-            await RefreshCountsAsync();
-            await SelectViewAsync(TaskViewType.List, id);
+            var created = await _backend.CreateListAsync(name, icon, color);
+            await SelectViewAsync(TaskViewType.List, created.Id);
             ShowTransientStatus(string.Format(CultureInfo.InvariantCulture, T("statusCreateList"), name.Trim()));
         }
         catch (ArgumentException ex)
@@ -438,9 +451,14 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
-            await Lists.UpdateListAsync(id, name, icon, color, clearIcon, clearColor);
-            await ReloadListsAsync();
-            await RefreshCountsAsync();
+            var existing = ListCollection.FirstOrDefault(list => list.Id == id)
+                ?? throw new ArgumentException($"List not found: {id}");
+            var replacement = new TodoList(
+                id,
+                name,
+                clearIcon ? null : icon ?? existing.Icon,
+                clearColor ? null : color ?? existing.Color);
+            await _backend.UpdateListAsync(replacement);
             await RefreshAsync();
         }
         catch (ArgumentException ex)
@@ -451,9 +469,7 @@ public partial class MainViewModel : ObservableObject
 
     public async Task DeleteListAsync(TodoList list)
     {
-        await Lists.DeleteListAsync(list.Id);
-        await ReloadListsAsync();
-        await RefreshCountsAsync();
+        await _backend.DeleteListAsync(list.Id);
         if (CurrentView == TaskViewType.List && CurrentListId == list.Id)
         {
             await SelectViewAsync(TaskViewType.All);
