@@ -97,7 +97,15 @@ jobs:
       - name: Run Taskly embedded runtime smoke
         shell: pwsh
         run: |
-          & $env:TASKLY_RIVET_EXE __rivet-smoke
-          if ($LASTEXITCODE -ne 0) {
-            throw "Taskly embedded Rivet smoke failed with exit code $LASTEXITCODE"
+          # Taskly.exe is built as WinExe. PowerShell's direct invocation of a
+          # GUI-subsystem executable may return before the process exits and
+          # leave $LASTEXITCODE unset. Explicitly wait for the real process.
+          $process = Start-Process `
+            -FilePath $env:TASKLY_RIVET_EXE `
+            -ArgumentList '__rivet-smoke' `
+            -Wait `
+            -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Taskly embedded Rivet smoke failed with exit code $($process.ExitCode)"
           }
+          Write-Host 'Taskly embedded Rivet smoke completed successfully.'

@@ -36,7 +36,13 @@ public static class Program
                 .GetResult();
             System.Console.Out.Flush();
             System.Console.Error.Flush();
-            Environment.Exit(exitCode);
+
+            // Do not call Environment.Exit here. The smoke owns an embedded
+            // Racket runtime and has already awaited its disposal; returning
+            // normally lets native/Racket thread teardown finish before the
+            // Windows process terminates.
+            Environment.ExitCode = exitCode;
+            return;
         }
 #endif
 
