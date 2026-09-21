@@ -60,6 +60,53 @@ jobs:
         shell: pwsh
         run: raco rivet build-dotnet
 
+      - name: Run Taskly backend in plain .NET console host
+        shell: pwsh
+        run: |
+          $stage = Join-Path $env:GITHUB_WORKSPACE '.rivet\dotnet\windows-x64'
+          $smoke = Join-Path $env:RUNNER_TEMP 'taskly-embedded-console'
+          New-Item -ItemType Directory -Force -Path $smoke | Out-Null
+
+          $project = @"
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <OutputType>Exe</OutputType>
+              <TargetFramework>net8.0</TargetFramework>
+              <ImplicitUsings>enable</ImplicitUsings>
+              <Nullable>enable</Nullable>
+            </PropertyGroup>
+            <ItemGroup>
+              <ProjectReference Include="$env:RIVET_ROOT\platform\dotnet\Rivet.Runtime\Rivet.Runtime.csproj" />
+              <Compile Include="$env:GITHUB_WORKSPACE\dotnet\GeneratedBackend.cs" Link="GeneratedBackend.cs" />
+            </ItemGroup>
+          </Project>
+          "@
+          Set-Content -Path (Join-Path $smoke 'Smoke.csproj') -Value $project -Encoding utf8
+
+          $program = @'
+          using Rivet.Runtime;
+          using Taskly.RivetGenerated;
+
+          var stage = args[0];
+          var db = Path.Combine(Path.GetTempPath(), $"taskly-console-{Guid.NewGuid():N}.db");
+          Console.WriteLine("console:client-start");
+          await using var client = await EmbeddedRivetClient.StartAsync(new EmbeddedRivetOptions(stage));
+          Console.WriteLine("console:client-ready");
+          var api = new RivetAPI(client);
+          Console.WriteLine("console:open-start");
+          var snapshot = await api.OpenDatabaseAsync(db);
+          Console.WriteLine($"console:open-done:lists={snapshot.Lists.Count}:tasks={snapshot.Tasks.Count}");
+          await api.CloseDatabaseAsync();
+          Console.WriteLine("console:close-done");
+          try { File.Delete(db); } catch { }
+          '@
+          Set-Content -Path (Join-Path $smoke 'Program.cs') -Value $program -Encoding utf8
+
+          # The bridge and libracketcs are staged at the bundle root. Ensure the
+          # normal Windows loader can resolve the same native files as Taskly.
+          $env:PATH = "$stage;$env:PATH"
+          dotnet run --project (Join-Path $smoke 'Smoke.csproj') -c Release -- $stage
+
       - name: Build WinUI Rivet mode
         shell: pwsh
         run: |
@@ -113,7 +160,8 @@ jobs:
           }
           Write-Host '--- end smoke phases ---'
           if ($process.ExitCode -ne 0) {
+            $hex = [BitConverter]::ToUInt32([BitConverter]::GetBytes([int]$process.ExitCode), 0)
             throw ('Taskly embedded Rivet smoke failed with exit code {0} (0x{1:X8})' -f `
-              $process.ExitCode, ([uint32]$process.ExitCode))
+              $process.ExitCode, $hex)
           }
           Write-Host 'Taskly embedded Rivet smoke completed successfully.'
