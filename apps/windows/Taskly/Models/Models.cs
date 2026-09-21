@@ -24,38 +24,75 @@ public static class UiTheme
 }
 
 /// <summary>Task model; mirrors the tasks table (DATA-FORMAT.md, schema v4).</summary>
-public partial class TaskItem : ObservableObject
+public sealed class TaskItem : ObservableObject
 {
-    [ObservableProperty]
-    public partial int Id { get; set; }
+    private int _id;
+    private int _listId;
+    private string _text = "";
+    private string _createdAt = "";
+    private string? _dueDate;
+    private string? _dueTime;
+    private bool _completed;
+    private string? _notes;
+    private string? _listName;
 
-    [ObservableProperty]
-    public partial int ListId { get; set; }
+    public int Id
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
 
-    [ObservableProperty]
-    public partial string Text { get; set; } = "";
+    public int ListId
+    {
+        get => _listId;
+        set => SetProperty(ref _listId, value);
+    }
+
+    public string Text
+    {
+        get => _text;
+        set => SetProperty(ref _text, value);
+    }
 
     /// <summary>ISO-8601 round-trip local timestamp (compat with .NET "o").</summary>
-    [ObservableProperty]
-    public partial string CreatedAt { get; set; } = "";
+    public string CreatedAt
+    {
+        get => _createdAt;
+        set => SetProperty(ref _createdAt, value);
+    }
 
     /// <summary>"yyyy-MM-dd" or null.</summary>
-    [ObservableProperty]
-    public partial string? DueDate { get; set; }
+    public string? DueDate
+    {
+        get => _dueDate;
+        set => SetProperty(ref _dueDate, value);
+    }
 
     /// <summary>"HH:mm" or null.</summary>
-    [ObservableProperty]
-    public partial string? DueTime { get; set; }
+    public string? DueTime
+    {
+        get => _dueTime;
+        set => SetProperty(ref _dueTime, value);
+    }
 
-    [ObservableProperty]
-    public partial bool Completed { get; set; }
+    public bool Completed
+    {
+        get => _completed;
+        set => SetProperty(ref _completed, value);
+    }
 
-    [ObservableProperty]
-    public partial string? Notes { get; set; }
+    public string? Notes
+    {
+        get => _notes;
+        set => SetProperty(ref _notes, value);
+    }
 
     /// <summary>Join artifact (LEFT JOIN lists); never persisted.</summary>
-    [ObservableProperty]
-    public partial string? ListName { get; set; }
+    public string? ListName
+    {
+        get => _listName;
+        set => SetProperty(ref _listName, value);
+    }
 
     public TaskItem() { }
 
@@ -101,12 +138,12 @@ public partial class TaskItem : ObservableObject
         ? Microsoft.UI.Xaml.Visibility.Collapsed
         : Microsoft.UI.Xaml.Visibility.Visible;
 
-    public Models.TaskItem With(int? id = null, int? listId = null, string? text = null,
+    public TaskItem With(int? id = null, int? listId = null, string? text = null,
         string? dueDate = null, string? dueTime = null, bool? completed = null,
         string? notes = null, bool clearDueDate = false, bool clearDueTime = false,
         bool clearNotes = false)
     {
-        return new Models.TaskItem(
+        return new TaskItem(
             id ?? Id, listId ?? ListId, text ?? Text, CreatedAt,
             clearDueDate ? null : (dueDate ?? DueDate),
             clearDueTime ? null : (dueTime ?? DueTime),
@@ -117,27 +154,48 @@ public partial class TaskItem : ObservableObject
 }
 
 /// <summary>Task list; color is a signed ARGB int as stored in the DB.</summary>
-public partial class TodoList : ObservableObject
+public sealed class TodoList : ObservableObject
 {
     public const string DefaultIcon = "📋";
     /// <summary>System blue, ARGB 0xFF007AFF, as a signed 32-bit int.</summary>
     public const int DefaultColor = unchecked((int)0xFF007AFF);
 
-    [ObservableProperty]
-    public partial int Id { get; set; }
+    private int _id;
+    private string _name = "";
+    private string? _icon;
+    private int? _color;
+    private int _pendingCount;
 
-    [ObservableProperty]
-    public partial string Name { get; set; } = "";
+    public int Id
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
 
-    [ObservableProperty]
-    public partial string? Icon { get; set; }
+    public string Name
+    {
+        get => _name;
+        set => SetProperty(ref _name, value);
+    }
 
-    [ObservableProperty]
-    public partial int? Color { get; set; }
+    public string? Icon
+    {
+        get => _icon;
+        set => SetProperty(ref _icon, value);
+    }
+
+    public int? Color
+    {
+        get => _color;
+        set => SetProperty(ref _color, value);
+    }
 
     /// <summary>Unfinished count, UI-only.</summary>
-    [ObservableProperty]
-    public partial int PendingCount { get; set; }
+    public int PendingCount
+    {
+        get => _pendingCount;
+        set => SetProperty(ref _pendingCount, value);
+    }
 
     public TodoList(int id, string name, string? icon = null, int? color = null)
     {
@@ -153,7 +211,7 @@ public partial class TodoList : ObservableObject
     {
         get
         {
-            var hex = unchecked((uint)(Color ?? Models.TodoList.DefaultColor));
+            var hex = unchecked((uint)(Color ?? DefaultColor));
             return Windows.UI.Color.FromArgb(
                 (byte)((hex >> 24) & 0xFF),
                 (byte)((hex >> 16) & 0xFF),
