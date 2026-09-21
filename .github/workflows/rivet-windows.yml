@@ -73,7 +73,7 @@ jobs:
       - name: Verify embedded runtime layout
         shell: pwsh
         run: |
-          $exe = Get-ChildItem 'apps/windows/Taskly/bin/Release' -Recurse -Filter 'Taskly.exe' |
+          $exe = Get-ChildItem 'apps/windows/Taskly/bin' -Recurse -Filter 'Taskly.exe' |
             Sort-Object LastWriteTime -Descending |
             Select-Object -First 1
           if ($null -eq $exe) { throw 'Taskly.exe was not produced' }
@@ -91,4 +91,13 @@ jobs:
               throw "$boot is missing from Taskly output"
             }
           }
+          "TASKLY_RIVET_EXE=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Write-Host "Embedded Taskly output: $out"
+
+      - name: Run Taskly embedded runtime smoke
+        shell: pwsh
+        run: |
+          & $env:TASKLY_RIVET_EXE __rivet-smoke
+          if ($LASTEXITCODE -ne 0) {
+            throw "Taskly embedded Rivet smoke failed with exit code $LASTEXITCODE"
+          }
