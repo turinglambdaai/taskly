@@ -6,6 +6,7 @@ using GeneratedList = Taskly.RivetGenerated.TodoList;
 using GeneratedTask = Taskly.RivetGenerated.Task;
 using ModelList = Taskly.Models.TodoList;
 using ModelTask = Taskly.Models.TaskItem;
+using AsyncTask = System.Threading.Tasks.Task;
 
 namespace Taskly.Services;
 
@@ -48,7 +49,7 @@ public sealed class RivetTasklyBackend : ITasklyBackend
         }
     }
 
-    public async Task CloseAsync(CancellationToken cancellationToken = default)
+    public async AsyncTask CloseAsync(CancellationToken cancellationToken = default)
     {
         if (_api is not null && _connected)
         {
