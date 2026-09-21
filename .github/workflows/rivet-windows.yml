@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RIVET_COMMIT: fe01374f1219277e88a33801e8f3cef914e3e79f
+  RIVET_COMMIT: 2ddf9585095d9fc81aeeafe842a1bea710982cc6
 
 jobs:
   windows:
