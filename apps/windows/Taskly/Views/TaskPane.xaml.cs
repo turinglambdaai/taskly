@@ -10,7 +10,6 @@ public sealed partial class TaskPane : UserControl
 {
     public MainViewModel? Vm { get; set; }
     private MainViewModel? _subscribedVm;
-    private bool _searchChangedByProgram;
 
     public TaskPane()
     {
@@ -25,13 +24,10 @@ public sealed partial class TaskPane : UserControl
         }
 
         Vm = vm;
-        TasksList.ItemsSource = vm?.TaskItems;
+        TasksList.ItemsSource = vm.TaskItems;
         _subscribedVm = vm;
-        if (vm is not null)
-        {
-            vm.CountsChanged += RefreshEmptyState;
-            vm.TaskItems.CollectionChanged += (_, _) => RefreshEmptyState();
-        }
+        vm.CountsChanged += RefreshEmptyState;
+        vm.TaskItems.CollectionChanged += (_, _) => RefreshEmptyState();
 
         ApplyLanguage();
         RefreshEmptyState();
@@ -190,7 +186,7 @@ public sealed partial class TaskPane : UserControl
 
     private async void OnSearchTextChanged(object sender, TextChangedEventArgs args)
     {
-        if (_searchChangedByProgram || Vm is null)
+        if (Vm is null)
         {
             return;
         }
