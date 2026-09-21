@@ -97,15 +97,23 @@ jobs:
       - name: Run Taskly embedded runtime smoke
         shell: pwsh
         run: |
-          # Taskly.exe is built as WinExe. PowerShell's direct invocation of a
-          # GUI-subsystem executable may return before the process exits and
-          # leave $LASTEXITCODE unset. Explicitly wait for the real process.
+          $log = Join-Path $env:RUNNER_TEMP 'taskly-rivet-smoke.log'
+          Remove-Item $log -ErrorAction SilentlyContinue
+          $env:TASKLY_RIVET_SMOKE_LOG = $log
           $process = Start-Process `
             -FilePath $env:TASKLY_RIVET_EXE `
             -ArgumentList '__rivet-smoke' `
             -Wait `
             -PassThru
+          Write-Host '--- Taskly embedded smoke phases ---'
+          if (Test-Path $log) {
+            Get-Content $log
+          } else {
+            Write-Host '(no phase log was produced)'
+          }
+          Write-Host '--- end smoke phases ---'
           if ($process.ExitCode -ne 0) {
-            throw "Taskly embedded Rivet smoke failed with exit code $($process.ExitCode)"
+            throw ('Taskly embedded Rivet smoke failed with exit code {0} (0x{1:X8})' -f `
+              $process.ExitCode, ([uint32]$process.ExitCode))
           }
           Write-Host 'Taskly embedded Rivet smoke completed successfully.'
