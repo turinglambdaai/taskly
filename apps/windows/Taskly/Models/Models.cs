@@ -27,35 +27,35 @@ public static class UiTheme
 public partial class TaskItem : ObservableObject
 {
     [ObservableProperty]
-    private int _id;
+    public partial int Id { get; set; }
 
     [ObservableProperty]
-    private int _listId;
+    public partial int ListId { get; set; }
 
     [ObservableProperty]
-    private string _text = "";
+    public partial string Text { get; set; } = "";
 
     /// <summary>ISO-8601 round-trip local timestamp (compat with .NET "o").</summary>
     [ObservableProperty]
-    private string _createdAt = "";
+    public partial string CreatedAt { get; set; } = "";
 
     /// <summary>"yyyy-MM-dd" or null.</summary>
     [ObservableProperty]
-    private string? _dueDate;
+    public partial string? DueDate { get; set; }
 
     /// <summary>"HH:mm" or null.</summary>
     [ObservableProperty]
-    private string? _dueTime;
+    public partial string? DueTime { get; set; }
 
     [ObservableProperty]
-    private bool _completed;
+    public partial bool Completed { get; set; }
 
     [ObservableProperty]
-    private string? _notes;
+    public partial string? Notes { get; set; }
 
     /// <summary>Join artifact (LEFT JOIN lists); never persisted.</summary>
     [ObservableProperty]
-    private string? _listName;
+    public partial string? ListName { get; set; }
 
     public TaskItem() { }
 
@@ -124,20 +124,20 @@ public partial class TodoList : ObservableObject
     public const int DefaultColor = unchecked((int)0xFF007AFF);
 
     [ObservableProperty]
-    private int _id;
+    public partial int Id { get; set; }
 
     [ObservableProperty]
-    private string _name = "";
+    public partial string Name { get; set; } = "";
 
     [ObservableProperty]
-    private string? _icon;
+    public partial string? Icon { get; set; }
 
     [ObservableProperty]
-    private int? _color;
+    public partial int? Color { get; set; }
 
     /// <summary>Unfinished count, UI-only.</summary>
     [ObservableProperty]
-    private int _pendingCount;
+    public partial int PendingCount { get; set; }
 
     public TodoList(int id, string name, string? icon = null, int? color = null)
     {
