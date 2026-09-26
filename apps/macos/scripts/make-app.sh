@@ -1,17 +1,48 @@
 #!/bin/bash
-# Builds Taskly.app from the Swift package (release) and optionally a DMG.
-# Usage: scripts/make-app.sh [output-dir]
+# Build Taskly.app from the Swift package.
+# Usage: scripts/make-app.sh [--universal] [output-dir]
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-OUT_DIR="${1:-.build/app}"
+
+UNIVERSAL=0
+OUT_DIR=".build/app"
+OUTPUT_SET=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --universal)
+      UNIVERSAL=1
+      shift
+      ;;
+    --help|-h)
+      echo "Usage: scripts/make-app.sh [--universal] [output-dir]"
+      exit 0
+      ;;
+    --*)
+      echo "Unknown option: $1" >&2
+      exit 2
+      ;;
+    *)
+      if [[ $OUTPUT_SET == 1 ]]; then
+        echo "Only one output directory may be specified" >&2
+        exit 2
+      fi
+      OUT_DIR="$1"
+      OUTPUT_SET=1
+      shift
+      ;;
+  esac
+done
+
+VERSION_FILE="../../VERSION"
+[[ -f "$VERSION_FILE" ]] || { echo "Missing root VERSION file" >&2; exit 1; }
+VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
+[[ -n "$VERSION" ]] || { echo "Root VERSION file is empty" >&2; exit 1; }
+
 APP="$OUT_DIR/Taskly.app"
 CONTENT="$APP/Contents"
 MACOS="$CONTENT/MacOS"
 RES="$CONTENT/Resources"
-
-UNIVERSAL=0
-[[ "${1:-}" == "--universal" ]] && UNIVERSAL=1
 
 echo "▶ swift build -c release"
 if [[ $UNIVERSAL == 1 ]]; then
@@ -48,8 +79,8 @@ cat > "$CONTENT/Info.plist" <<PLIST
     <key>CFBundleName</key><string>Taskly</string>
     <key>CFBundleDisplayName</key><string>Taskly</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.0.0</string>
-    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleShortVersionString</key><string>$VERSION</string>
+    <key>CFBundleVersion</key><string>$VERSION</string>
     <key>CFBundleIconFile</key><string>Taskly</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSHighResolutionCapable</key><true/>
@@ -62,8 +93,10 @@ PLIST
 # Minimum deployment target: swift build may default to the host OS.
 vtool -set-build-version macos 14.0 14.0 "$MACOS/Taskly" 2>/dev/null || true
 
+# Development/beta packages are ad-hoc signed here. Commercial stable builds
+# must replace this with Developer ID signing + notarization in release CI.
 codesign --force --deep --sign - "$APP" 2>/dev/null || true
 
-echo "✔ Built $APP"
+echo "✔ Built $APP (v$VERSION)"
 echo "  Launch: open $APP"
 echo "  CLI:    $APP/Contents/MacOS/Taskly list --json"
