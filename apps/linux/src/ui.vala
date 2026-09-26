@@ -213,9 +213,13 @@ window.taskly-root { background-color: #FFFFFF; }
         task_pane.margin_end = 12;
         task_pane.hexpand = true;
 
-        search = new Gtk.Entry();
+        search = new Gtk.SearchEntry();
         search.placeholder_text = ctx.t("searchHint");
         search.changed.connect(() => refresh_all());
+        // Toolbar search (Reminders convention): packed left of the toggle.
+        search.width_request = 200;
+        search.valign = Gtk.Align.CENTER;
+        header.pack_end(search);
 
         quick_add = new Gtk.Entry();
         quick_add.placeholder_text = ctx.t("taskListInputHint");
@@ -227,7 +231,6 @@ window.taskly-root { background-color: #FFFFFF; }
         });
 
         input_area = new Gtk.Box(Gtk.Orientation.VERTICAL, 8);
-        input_area.append(search);
         input_area.append(quick_add);
 
         // Secondary header line (DESIGN-TOKENS view header), hidden while

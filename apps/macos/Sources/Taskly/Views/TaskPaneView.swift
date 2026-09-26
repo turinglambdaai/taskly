@@ -81,37 +81,7 @@ struct TaskPaneView: View {
     private var inputArea: some View {
         @Bindable var state = state
         return VStack(spacing: 8) {
-            // Native addition: search field (0.6.4 shipped search via CLI only).
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(state.theme.tertiaryText)
-                    .font(.system(size: 12))
-                TextField(state.t("searchHint"), text: Binding(
-                    get: { state.searchText },
-                    set: { state.searchText = $0; state.refresh(); state.refreshStatusPersistent() }
-                ))
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                if !state.searchText.isEmpty {
-                    Button {
-                        state.searchText = ""
-                        state.refresh()
-                        state.refreshStatusPersistent()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(state.theme.tertiaryText)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 10)
-            .frame(height: 36)
-            .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(state.theme.inputBorder, lineWidth: 1))
-
-            // Quick add
+            // Quick add — the pane's single, prominent input
             HStack {
                 TextField(state.t("taskListInputHint"), text: $state.quickAddText)
                     .textFieldStyle(.plain)

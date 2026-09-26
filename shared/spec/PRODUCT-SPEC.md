@@ -20,6 +20,9 @@ place in a cloud-synced folder; agent-facing CLI in the same binary.
 - Status bar shows a persistent line (search term > view description >
   list name; `Database Not Connected` when closed). Transient messages
   (task added, switched list…) revert to persistent after 3 s.
+- **Search lives in the header toolbar** (right side, next to the
+  Show Completed toggle — Reminders convention). The quick-add field is
+  the task pane's only input, directly under the large view title.
 - Sidebar collapse toggle (`‹`/`›`); the task pane takes the full width.
 
 ## 3. Sidebar

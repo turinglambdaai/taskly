@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -113,6 +113,9 @@ public sealed partial class TaskPane : UserControl
 
         TitleText.Text = Vm.CurrentTitle;
         SubtitleText.Text = Vm.CurrentSubtitle;
+
+        // Search lives in the header toolbar; only show it when connected.
+        SearchArea.Visibility = Vm.IsConnected ? Visibility.Visible : Visibility.Collapsed;
 
         if (!Vm.IsConnected)
         {

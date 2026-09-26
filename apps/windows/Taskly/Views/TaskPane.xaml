@@ -1,4 +1,4 @@
-<UserControl
+﻿<UserControl
     x:Class="Taskly.Views.TaskPane"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -111,28 +111,32 @@
                            TextTrimming="CharacterEllipsis" />
             </StackPanel>
 
-            <Button x:Name="ShowCompletedToggle" Grid.Column="2" Click="OnToggleShowCompleted"
-                    Background="Transparent" BorderThickness="0" Padding="4"
-                    VerticalAlignment="Top" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10"
+                        VerticalAlignment="Top">
+                <!-- Search lives in the toolbar (Reminders convention); the
+                     quick-add field below is the pane's only input. -->
+                <Grid x:Name="SearchArea" Height="30" Width="190" CornerRadius="8"
+                      Background="{ThemeResource ThemeSurfaceBrush}"
+                      BorderBrush="{ThemeResource ThemeInputBorderBrush}" BorderThickness="1"
+                      Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Grid.Column="0" Glyph="&#xE721;" FontSize="12" Margin="8,0,0,0"
+                              Foreground="{ThemeResource ThemeTertiaryTextBrush}" />
+                    <TextBox x:Name="SearchBox" Grid.Column="1" Margin="4,0,4,0"
+                             BorderThickness="0" Background="Transparent" FontSize="13"
+                             VerticalAlignment="Center" MinHeight="0"
+                             KeyDown="OnSearchKeyDown" TextChanged="OnSearchTextChanged" />
+                </Grid>
+                <Button x:Name="ShowCompletedToggle" Click="OnToggleShowCompleted"
+                        Background="Transparent" BorderThickness="0" Padding="4" />
+            </StackPanel>
         </Grid>
 
-        <!-- Inputs: search + quick add, compact (36 / 40px) -->
-        <StackPanel x:Name="InputArea" Grid.Row="1" Padding="16,6,16,10" Spacing="8">
-            <Grid Padding="10,0" Height="36" CornerRadius="10"
-                  Background="{ThemeResource ThemeSurfaceBrush}"
-                  BorderBrush="{ThemeResource ThemeInputBorderBrush}" BorderThickness="1">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <FontIcon Grid.Column="0" Glyph="&#xE721;" FontSize="12"
-                          Foreground="{ThemeResource ThemeTertiaryTextBrush}" />
-                <TextBox x:Name="SearchBox" Grid.Column="1" Margin="6,0,0,0"
-                         BorderThickness="0" Background="Transparent" FontSize="13"
-                         VerticalAlignment="Center" MinHeight="0"
-                         KeyDown="OnSearchKeyDown" TextChanged="OnSearchTextChanged" />
-            </Grid>
-
+        <!-- Quick add: the pane's single, prominent input -->
+        <StackPanel x:Name="InputArea" Grid.Row="1" Padding="16,6,16,10">
             <Grid x:Name="QuickAddArea" Padding="12,0" Height="40" CornerRadius="10"
                   Background="{ThemeResource ThemeSurfaceBrush}"
                   BorderBrush="{ThemeResource ThemeInputBorderBrush}" BorderThickness="1">
