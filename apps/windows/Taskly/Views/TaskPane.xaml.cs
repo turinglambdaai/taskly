@@ -200,13 +200,14 @@ public sealed partial class TaskPane : UserControl
 
         WeekdayHeader.Children.Clear();
         var names = Vm.CalendarWeekdayHeader;
+        var secondary = Models.UiTheme.BrushOf(Models.UiTheme.Secondary);
         for (var i = 0; i < names.Count && i < 7; i++)
         {
             var label = new TextBlock
             {
                 Text = names[i],
                 FontSize = 12,
-                Foreground = (Brush)Application.Current.Resources["ThemeSecondaryTextBrush"],
+                Foreground = secondary,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Margin = new Thickness(0, 2, 0, 4),
             };
@@ -217,7 +218,10 @@ public sealed partial class TaskPane : UserControl
 
     private void RenderMonthGrid()
     {
-        if (Vm is null || !Vm.IsConnected || !Vm.IsCalendarView || Vm.CalendarYear == 0)
+        // The year-then-month assignment order means PropertyChanged can
+        // fire while month is still 0; DateTime would throw on that state.
+        if (Vm is null || !Vm.IsConnected || !Vm.IsCalendarView || Vm.CalendarYear == 0
+            || Vm.CalendarMonth is < 1 or > 12)
         {
             MonthGrid.Children.Clear();
             return;
@@ -250,10 +254,13 @@ public sealed partial class TaskPane : UserControl
         var isToday = dayKey == todayKey;
         var isSelected = Vm.SelectedCalendarDate == dayKey;
 
-        var inMonth = isCurrentMonth
-            ? (Brush)Application.Current.Resources["ThemeOnSurfaceBrush"]
-            : (Brush)Application.Current.Resources["ThemeTertiaryTextBrush"];
-        var numberColor = isToday ? (Brush)Application.Current.Resources["AccentBrush"] : inMonth;
+        // Static theme projection (same mechanism as the task-row brushes) —
+        // ResourceDictionary indexer lookups cannot see ThemeDictionaries.
+        var onSurface = Models.UiTheme.BrushOf(Models.UiTheme.OnSurface);
+        var tertiary = Models.UiTheme.BrushOf(Models.UiTheme.Tertiary);
+        var accent = Models.UiTheme.BrushOf(Models.UiTheme.Accent);
+        var numberColor = isToday ? accent : (isCurrentMonth ? onSurface : tertiary);
+        var transparent = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
 
         var dots = new StackPanel
         {
@@ -270,7 +277,7 @@ public sealed partial class TaskPane : UserControl
                 {
                     Width = 4,
                     Height = 4,
-                    Fill = (Brush)Application.Current.Resources["AccentBrush"],
+                    Fill = accent,
                 });
             }
         }
@@ -297,10 +304,8 @@ public sealed partial class TaskPane : UserControl
             Padding = new Thickness(0),
             BorderThickness = isSelected ? new Thickness(1) : new Thickness(0),
             CornerRadius = new CornerRadius(8),
-            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-            BorderBrush = isSelected
-                ? (Brush)Application.Current.Resources["AccentBrush"]
-                : new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            Background = transparent,
+            BorderBrush = isSelected ? accent : transparent,
             Tag = dayKey,
         };
         button.Click += OnDayCellClick;

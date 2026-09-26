@@ -94,6 +94,9 @@ public partial class MainViewModel : ObservableObject
         _i18n.LanguageChanged += () =>
         {
             RefreshPersistentStatus();
+            // Calendar group headers are pre-formatted strings; regenerate
+            // them so a language switch re-renders the day groups too.
+            _ = RefreshAsync();
             LanguageChanged?.Invoke();
         };
 
@@ -261,6 +264,11 @@ public partial class MainViewModel : ObservableObject
     /// plus the day-dot counts (PRODUCT-SPEC §4b).</summary>
     private async Task RefreshCalendarAsync()
     {
+        if (CalendarYear == 0 || CalendarMonth is < 1 or > 12)
+        {
+            return;
+        }
+
         var today = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         var beforeToday = DateTime.Now.Date.AddDays(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         var (start, end) = MonthRange(CalendarYear, CalendarMonth);

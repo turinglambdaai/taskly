@@ -14,6 +14,10 @@ public static class UiTheme
         ? Windows.UI.Color.FromArgb(0xFF, 0x0A, 0x84, 0xFF)
         : Windows.UI.Color.FromArgb(0xFF, 0x00, 0x7A, 0xFF);
 
+    public static Windows.UI.Color Secondary => IsDark
+        ? Windows.UI.Color.FromArgb(0xFF, 0x98, 0x98, 0x9E)
+        : Windows.UI.Color.FromArgb(0xFF, 0x8E, 0x8E, 0x93);
+
     public static Windows.UI.Color Tertiary => IsDark
         ? Windows.UI.Color.FromArgb(0xFF, 0x6B, 0x6B, 0x72)
         : Windows.UI.Color.FromArgb(0xFF, 0xB0, 0xB0, 0xB5);
@@ -21,6 +25,9 @@ public static class UiTheme
     public static Windows.UI.Color OnSurface => IsDark
         ? Windows.UI.Color.FromArgb(0xFF, 0xF5, 0xF5, 0xF7)
         : Windows.UI.Color.FromArgb(0xFF, 0x1D, 0x1D, 0x1F);
+
+    public static Microsoft.UI.Xaml.Media.SolidColorBrush BrushOf(Windows.UI.Color color) =>
+        new(color);
 }
 
 /// <summary>Task model; mirrors the tasks table (DATA-FORMAT.md, schema v4).</summary>
