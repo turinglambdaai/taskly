@@ -254,6 +254,9 @@ public class SQLiteDatabase : Object {
         task.completed = stmt.column_int64(column_index(stmt, "completed")) == 1;
         task.notes = stmt.column_text(column_index(stmt, "notes"));
         task.list_name = stmt.column_text(column_index(stmt, "list_name"));
+        if (stmt.column_type(column_index(stmt, "list_color")) != Sqlite.NULL) {
+            task.list_color = (int32) stmt.column_int64(column_index(stmt, "list_color"));
+        }
         return task;
     }
 
@@ -316,7 +319,7 @@ public class SQLiteDatabase : Object {
     // ---------------- tasks: queries ----------------
 
     private const string TASK_SELECT_BASE =
-        "SELECT t.*, l.name AS list_name FROM tasks t LEFT JOIN lists l ON t.list_id = l.id";
+        "SELECT t.*, l.name AS list_name, l.color AS list_color FROM tasks t LEFT JOIN lists l ON t.list_id = l.id";
 
     public GLib.List<TaskItem> get_all_tasks() throws GLib.Error {
         return task_list("%s".printf(TASK_SELECT_BASE), {});

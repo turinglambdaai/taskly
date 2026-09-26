@@ -11,6 +11,8 @@ public class CalendarView : Object {
     private Gtk.Box container;
     private Gtk.ScrolledWindow scroll;
     private unowned TaskRowBuilder build_task_row;
+    // Day-group time line column, rebuilt on every render.
+    private Gtk.Box timeline_box;
     private GLib.HashTable<string, Gtk.Widget> day_headers =
         new GLib.HashTable<string, Gtk.Widget>(str_hash, str_equal);
 
@@ -25,17 +27,29 @@ public class CalendarView : Object {
     public void render() {
         day_headers.remove_all();
 
-        container.append(build_nav_row());
-        container.append(build_weekday_row());
-        container.append(build_month_grid());
+        // Two-pane layout (DESIGN-TOKENS calendar time line): fixed-width
+        // month column + hairline divider + day-group time line column.
+        var month_pane = new Gtk.Box(Gtk.Orientation.VERTICAL, 6);
+        month_pane.width_request = 320;
+        month_pane.append(build_nav_row());
+        month_pane.append(build_weekday_row());
+        month_pane.append(build_month_grid());
 
+        timeline_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 4);
+        timeline_box.vexpand = true;
         try {
             append_timeline();
         } catch (GLib.Error e) {
             var error_label = new Gtk.Label(e.message);
             error_label.add_css_class("dim-label");
-            container.append(error_label);
+            timeline_box.append(error_label);
         }
+
+        var layout = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 12);
+        layout.append(month_pane);
+        layout.append(new Gtk.Separator(Gtk.Orientation.VERTICAL));
+        layout.append(timeline_box);
+        container.append(layout);
 
         var empty_label = new Gtk.Label(ctx.t("taskListEmpty"));
         empty_label.vexpand = true;
@@ -74,7 +88,8 @@ public class CalendarView : Object {
         return row;
     }
 
-    private string month_title() {
+    /// `{0}年{1}` full-month title, also reused as the calendar subtitle.
+    public string month_title() {
         return ctx.i18n.format("calMonthTitle", ctx.calendar_year.to_string(),
             ctx.t("calMonth%d".printf(ctx.calendar_month)));
     }
@@ -151,12 +166,19 @@ public class CalendarView : Object {
         var monday_first = ctx.config.language() == "zh";
         var dow = first.get_day_of_week();
         var col = monday_first ? dow - 1 : dow % 7;
+
+        // Dynamic row count: pad only to the weeks the month actually
+        // occupies (a 6-row grid only when the month needs it).
+        var days_in_month = first.add_months(1).add_days(-1).get_day_of_month();
+        var cells_needed = col + days_in_month;
+        var row_count = (cells_needed + 6) / 7;
+
         var start = first.add_days(-col);
         var today_key = new DateTime.now_local().format("%Y-%m-%d");
 
         var dots = load_day_dots();
 
-        for (var i = 0; i < 42; i++) {
+        for (var i = 0; i < row_count * 7; i++) {
             var day = start.add_days(i);
             var key = day.format("%Y-%m-%d");
             var in_month = day.get_year() == ctx.calendar_year && day.get_month() == ctx.calendar_month;
@@ -271,7 +293,7 @@ public class CalendarView : Object {
         if (overdue.length() > 0) {
             append_group_header(ctx.t("calOverdue"), (int) overdue.length(), false, null);
             foreach (var task in overdue) {
-                container.append(build_task_row(task));
+                timeline_box.append(build_task_row(task));
             }
         }
 
@@ -296,7 +318,7 @@ public class CalendarView : Object {
         }
         append_group_header(format_day_header(key), (int) group.length(), key == today_key, key);
         foreach (var task in group) {
-            container.append(build_task_row(task));
+            timeline_box.append(build_task_row(task));
         }
     }
 
@@ -313,14 +335,14 @@ public class CalendarView : Object {
         count_label.add_css_class("cal-header-count");
         row.append(label);
         row.append(count_label);
-        container.append(row);
+        timeline_box.append(row);
 
         if (date_key != null) {
             day_headers.insert(date_key, row);
         }
     }
 
-    /// Group header text: `9月26日 · 周五` / `Friday, September 26`;
+    /// Group header text: `9月26日 · 周五` / `Fri, Sep 26`;
     /// today/tomorrow/yesterday replace the weekday slot (4b).
     private string format_day_header(string date_key) {
         var date = parse_date_key(date_key);
@@ -339,7 +361,7 @@ public class CalendarView : Object {
             // GLib day_of_week 1..7 maps directly onto calWeekday1..7.
             weekday_label = ctx.t("calWeekday%d".printf(date.get_day_of_week()));
         }
-        var month_name = ctx.t("calMonth%d".printf(date.get_month()));
+        var month_name = ctx.t("calMonthShort%d".printf(date.get_month()));
         return ctx.i18n.format("calDayHeader", month_name,
             date.get_day_of_month().to_string(), weekday_label);
     }

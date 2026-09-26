@@ -28,6 +28,9 @@ public static class UiTheme
 
     public static Microsoft.UI.Xaml.Media.SolidColorBrush BrushOf(Windows.UI.Color color) =>
         new(color);
+
+    public static Windows.UI.Color WithAlpha(Windows.UI.Color color, byte alpha) =>
+        Windows.UI.Color.FromArgb(alpha, color.R, color.G, color.B);
 }
 
 /// <summary>Task model; mirrors the tasks table (DATA-FORMAT.md, schema v4).</summary>
@@ -64,11 +67,16 @@ public partial class TaskItem : ObservableObject
     [ObservableProperty]
     private string? _listName;
 
+    /// <summary>Join artifact (lists.color, signed ARGB); never persisted.
+    /// Drives the checkbox ring color (Reminders-style list identity).</summary>
+    [ObservableProperty]
+    private int? _listColor;
+
     public TaskItem() { }
 
     public TaskItem(int id, int listId, string text, string createdAt,
         string? dueDate = null, string? dueTime = null, bool completed = false,
-        string? notes = null, string? listName = null)
+        string? notes = null, string? listName = null, int? listColor = null)
     {
         Id = id;
         ListId = listId;
@@ -79,12 +87,26 @@ public partial class TaskItem : ObservableObject
         Completed = completed;
         Notes = notes;
         ListName = listName;
+        ListColor = listColor;
     }
 
     // UI projections for the task-row data template (classic {Binding}).
 
-    public Windows.UI.Color RingColor => Completed ? UiTheme.Accent : UiTheme.Tertiary;
-    public Windows.UI.Color RingFill => Completed ? UiTheme.Accent : Microsoft.UI.Colors.Transparent;
+    private Windows.UI.Color ListAccent =>
+        ListColor is null ? UiTheme.Accent : FromArgbInt(ListColor.Value);
+
+    private static Windows.UI.Color FromArgbInt(int argb)
+    {
+        var hex = unchecked((uint)argb);
+        return Windows.UI.Color.FromArgb(
+            (byte)((hex >> 24) & 0xFF),
+            (byte)((hex >> 16) & 0xFF),
+            (byte)((hex >> 8) & 0xFF),
+            (byte)(hex & 0xFF));
+    }
+
+    public Windows.UI.Color RingColor => Completed ? UiTheme.Tertiary : ListAccent;
+    public Windows.UI.Color RingFill => Completed ? UiTheme.Tertiary : Microsoft.UI.Colors.Transparent;
 
     public Microsoft.UI.Xaml.Media.Brush TextBrush =>
         new Microsoft.UI.Xaml.Media.SolidColorBrush(
@@ -94,13 +116,85 @@ public partial class TaskItem : ObservableObject
         ? Windows.UI.Text.TextDecorations.Strikethrough
         : Windows.UI.Text.TextDecorations.None;
 
-    public string DueText => DueDate is null
-        ? ""
-        : "🗓 " + DueDate + (string.IsNullOrEmpty(DueTime) ? "" : "  🕐 " + DueTime);
+    /// <summary>Localized due display: 今天/明天/昨天 → `9月26日` / `September 26`
+    /// (DESIGN-TOKENS due-date semantics); cross-year falls back to ISO.</summary>
+    public string DueText
+    {
+        get
+        {
+            if (DueDate is null)
+            {
+                return "";
+            }
+
+            var i18n = Services.I18nService.Instance;
+            var dateText = DueDate;
+            if (DateTime.TryParseExact(DueDate, "yyyy-MM-dd",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var date))
+            {
+                var today = DateTime.Now.Date;
+                if (date == today)
+                {
+                    dateText = i18n.T("navToday");
+                }
+                else if (date == today.AddDays(1))
+                {
+                    dateText = i18n.T("dateTomorrow");
+                }
+                else if (date == today.AddDays(-1))
+                {
+                    dateText = i18n.T("dateYesterday");
+                }
+                else if (date.Year == today.Year)
+                {
+                    var monthName = i18n.T($"calMonthShort{date.Month}");
+                    dateText = i18n.Current == "zh"
+                        ? $"{monthName}{date.Day}日"
+                        : $"{monthName} {date.Day}";
+                }
+            }
+
+            return string.IsNullOrEmpty(DueTime) ? dateText : $"{dateText}  {DueTime}";
+        }
+    }
+
+    /// <summary>Meta-line color: overdue incomplete = danger red, due today =
+    /// accent, otherwise secondary (DESIGN-TOKENS due-date semantics).</summary>
+    public Microsoft.UI.Xaml.Media.Brush DueBrush
+    {
+        get
+        {
+            Windows.UI.Color color;
+            if (Completed || DueDate is null)
+            {
+                color = UiTheme.Secondary;
+            }
+            else if (DateTime.TryParseExact(DueDate, "yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var date))
+            {
+                var today = DateTime.Now.Date;
+                color = date < today ? Windows.UI.Color.FromArgb(0xFF, 0xFF, 0x3B, 0x30)
+                    : date == today ? UiTheme.Accent
+                    : UiTheme.Secondary;
+            }
+            else
+            {
+                color = UiTheme.Secondary;
+            }
+
+            return new Microsoft.UI.Xaml.Media.SolidColorBrush(color);
+        }
+    }
 
     public Microsoft.UI.Xaml.Visibility MetaVisibility => DueDate is null
         ? Microsoft.UI.Xaml.Visibility.Collapsed
         : Microsoft.UI.Xaml.Visibility.Visible;
+
+    public Microsoft.UI.Xaml.Visibility CheckVisibility => Completed
+        ? Microsoft.UI.Xaml.Visibility.Visible
+        : Microsoft.UI.Xaml.Visibility.Collapsed;
 
     public string NotesText => Notes ?? "";
 
@@ -199,10 +293,13 @@ public sealed record CalendarSectionHeader(
 {
     public string CountText => Count > 0 ? Count.ToString() : "";
 
-    /// <summary>Today's header renders in the accent color (§4b); WinUI has
-    /// no data triggers, so the brush is a projected property like TaskItem's.</summary>
+    /// <summary>Today's header in accent, overdue in danger red (§4b); WinUI
+    /// has no data triggers, so the brush is a projected property.</summary>
     public Microsoft.UI.Xaml.Media.Brush HeaderBrush =>
-        new Microsoft.UI.Xaml.Media.SolidColorBrush(IsToday ? UiTheme.Accent : UiTheme.OnSurface);
+        new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            IsOverdue ? Windows.UI.Color.FromArgb(0xFF, 0xFF, 0x3B, 0x30)
+            : IsToday ? UiTheme.Accent
+            : UiTheme.OnSurface);
 }
 
 /// <summary>Error with a user-facing message and a category; the category

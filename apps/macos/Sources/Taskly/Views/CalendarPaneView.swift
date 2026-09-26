@@ -1,20 +1,30 @@
 import SwiftUI
 
-/// Calendar view (PRODUCT-SPEC §4b): compact month grid on top, tasks
-/// grouped by day below. Seeing and jumping, not editing — rows are the
-/// standard §5 rows.
+/// Calendar view (PRODUCT-SPEC §4b): compact month rail on the left, tasks
+/// grouped by day on the right. Seeing and jumping, not editing — rows are
+/// the standard §5 rows.
 struct CalendarPaneView: View {
     @Environment(AppState.self) private var state
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 7)
 
     var body: some View {
-        VStack(spacing: 0) {
-            monthNav
-            weekdayHeader
-            monthGrid
-            Divider().overlay(state.theme.divider)
+        // Month rail on the left, day-group time line on the right,
+        // hairline divider between them (DESIGN-TOKENS calendar layout).
+        HStack(alignment: .top, spacing: 0) {
+            VStack(spacing: 0) {
+                monthNav
+                weekdayHeader
+                monthGrid
+            }
+            .frame(width: 320, alignment: .top)
+
+            Rectangle()
+                .fill(state.theme.divider)
+                .frame(width: 1)
+
             timeLine
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -69,7 +79,7 @@ struct CalendarPaneView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - Month grid (6 rows, adjacent-month cells clickable)
+    // MARK: - Month grid (dynamic row count, adjacent-month cells clickable)
 
     private var monthGrid: some View {
         let first = firstOfMonth
@@ -80,9 +90,14 @@ struct CalendarPaneView: View {
         let col = mondayFirst ? (dow + 5) % 7 : dow - 1
         let start = Calendar.current.date(byAdding: .day, value: -col, to: first) ?? first
         let todayKey = DateParser.string(from: Date(), format: "yyyy-MM-dd")
+        // Only as many grid rows as the month needs (a 28-day February that
+        // starts on the week's first day renders 4 rows, not 6).
+        let daysInMonth = Calendar.current.range(of: .day, in: .month, for: first)?.count ?? 30
+        let cellsNeeded = col + daysInMonth
+        let rowCount = Int(ceil(Double(cellsNeeded) / 7.0))
 
         return LazyVGrid(columns: columns, spacing: 2) {
-            ForEach(0..<42, id: \.self) { index in
+            ForEach(0..<(rowCount * 7), id: \.self) { index in
                 let day = Calendar.current.date(byAdding: .day, value: index, to: start) ?? start
                 DayCell(day: day, todayKey: todayKey)
             }

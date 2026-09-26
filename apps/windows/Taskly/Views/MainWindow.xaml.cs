@@ -19,7 +19,7 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
 
         Title = "Taskly";
-        AppWindow.Resize(new SizeInt32(1024, 768));
+        AppWindow.Resize(new SizeInt32(1280, 880));
         // Unpackaged WinUI shows the default icon unless told otherwise.
         AppWindow.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "taskly.ico"));
 

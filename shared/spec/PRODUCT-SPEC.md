@@ -66,9 +66,12 @@ editing stays in the row/dialog (§5, §6).
   displayed month to the current month and the selected date to today.
 - Month grid: 7 columns, weekday short names from `calWeekdayShort1..7`;
   week starts Monday for zh, Sunday for en (index 1 = Monday in both key
-  sets; en rendering reorders Sunday to the front). Always 6 rows; leading
-  and trailing days from adjacent months render in the tertiary text color
-  and stay clickable.
+  sets; en rendering reorders Sunday to the front). Render only as many
+  week rows as the month needs (5 or 6); leading and trailing days from
+  adjacent months render in the tertiary text color and stay clickable.
+- Pane layout: the month rail (navigation + grid) sits beside the time
+  line, separated by a hairline divider, so a 6-row grid never crowds the
+  day groups out of the viewport.
 - Day dots: a day cell with N incomplete dated tasks (any lists) shows
   min(N, 3) accent dots under the day number; completed tasks do not count.
 - Month navigation: `‹` / `›` step one month; the `calTodayButton` returns
@@ -80,11 +83,12 @@ editing stays in the row/dialog (§5, §6).
   2. Then one group per day of the displayed month that has tasks (per the
      same show-completed toggle): the month is queried as one range and
      grouped client-side.
-- Group header: `calDayHeader` formatted (`9月26日 · 周五` / `Friday,
-  September 26`); the weekday slot shows the relative word (navToday /
-  dateTomorrow / dateYesterday) when the date is today/tomorrow/yesterday;
-  today's header renders in the accent color. Each header shows the group's
-  task count.
+- Group header: `calDayHeader` formatted with short month names
+  (`9月26日 · 周五` / `Wednesday, Sep 30`); the weekday slot shows the
+  relative word (navToday / dateTomorrow / dateYesterday) when the date is
+  today/tomorrow/yesterday; today's header renders in the accent color and
+  the overdue header in `#FF3B30`. Each header shows the group's task
+  count.
 - Clicking a day cell (adjacent-month cells included) selects that date and
   scrolls the time line to that group; selection itself never re-queries.
 - Task rows inside groups are the §5 rows with all their interactions
@@ -106,8 +110,12 @@ Data-layer contract (all platforms, names may follow platform style):
 
 - 18px circular checkbox: incomplete = hollow ring; complete = ring +
   check in accent; completed text gets strikethrough + tertiary color.
-- Meta line under the text when present: `🗓 dueDate [🕐 HH:mm]` and a
-  single-line-ellipsized notes preview.
+- Meta line under the text when present: the localized due date
+  (today/tomorrow/yesterday/`Aug 31`/`8月31日`, plus the time when set) in
+  its semantic color (overdue incomplete `#FF3B30`, due today accent,
+  otherwise text/secondary; completed always secondary), and a
+  single-line-ellipsized notes preview. The checkbox ring takes the task's
+  list color (accent fallback).
 - `ⓘ` button (always visible) opens the detail dialog.
 - Edit mode (double-click row): text field focused+selected; Enter=save,
   Esc=cancel, click-outside=save; date/time buttons open pickers and write

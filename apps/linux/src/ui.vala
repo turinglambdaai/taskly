@@ -74,8 +74,11 @@ public class TasklyUi : Object {
     private Gtk.Entry quick_add;
     private Gtk.Entry search;
     private Gtk.Box input_area;
+    private Gtk.Label subtitle_label;
     private GLib.HashTable<TaskViewType, Gtk.Label> tile_counts;
     private GLib.HashTable<Gtk.Button, TaskViewType> tile_buttons;
+    // Per-color CssProvider pool for list dots, keyed by "#RRGGBB".
+    private GLib.HashTable<string, Gtk.CssProvider> dot_providers;
     private CalendarView calendar_view;
     private uint flash_source = 0;
 
@@ -83,12 +86,13 @@ public class TasklyUi : Object {
         this.ctx = ctx;
         tile_counts = new GLib.HashTable<TaskViewType, Gtk.Label>(int_hash, int_equal);
         tile_buttons = new GLib.HashTable<Gtk.Button, TaskViewType>(direct_hash, direct_equal);
+        dot_providers = new GLib.HashTable<string, Gtk.CssProvider>(str_hash, str_equal);
     }
 
     public const string APP_CSS = """
 window.taskly-root { background-color: #FFFFFF; }
 .sidebar { background-color: #F2F2F2; border-right: 1px solid #E3E3E8; }
-.smart-tile { color: white; border-radius: 12px; padding: 8px 10px; }
+.smart-tile { color: white; border-radius: 12px; padding: 8px 10px; border: 2px solid transparent; opacity: 0.72; }
 .smart-tile.today { background-color: #007AFF; }
 .smart-tile.planned { background-color: #FF3B30; }
 .smart-tile.all { background-color: #8E8E93; }
@@ -96,6 +100,8 @@ window.taskly-root { background-color: #FFFFFF; }
 .smart-tile .title { font-weight: 600; }
 .smart-tile .count { opacity: 0.85; font-size: 11px; }
 .smart-tile.calendar { background-color: #5856D6; }
+.smart-tile:hover { opacity: 0.88; background-image: none; }
+.smart-tile.selected { border-color: white; opacity: 1.0; }
 .cal-weekday { color: #8E8E93; font-size: 12px; }
 .cal-title { font-weight: 600; }
 .cal-cell { padding: 2px 4px; border-radius: 8px; border: 1px solid transparent; }
@@ -111,6 +117,10 @@ window.taskly-root { background-color: #FFFFFF; }
 .task-row { border-radius: 10px; padding: 8px 12px; }
 .task-row.completed .task-text { color: #B0B0B5; text-decoration: line-through; }
 .task-meta { color: #8E8E93; font-size: 12px; }
+.task-meta.due-overdue { color: #FF3B30; }
+.task-meta.due-today { color: #007AFF; }
+.list-dot { border-radius: 4px; background-color: #007AFF; }
+.subtitle { color: #8E8E93; font-size: 13px; }
 .section-header { color: #8E8E93; font-weight: 600; }
 .statusbar { background-color: #F2F2F2; border-top: 1px solid #E3E3E8; }
 """;
@@ -120,8 +130,8 @@ window.taskly-root { background-color: #FFFFFF; }
 
         var win = new Adw.ApplicationWindow(app);
         win.title = "Taskly";
-        win.default_width = 1024;
-        win.default_height = 768;
+        win.default_width = 1280;
+        win.default_height = 880;
         win.add_css_class("taskly-root");
         ctx.window = win;
 
@@ -218,6 +228,15 @@ window.taskly-root { background-color: #FFFFFF; }
         input_area = new Gtk.Box(Gtk.Orientation.VERTICAL, 8);
         input_area.append(search);
         input_area.append(quick_add);
+
+        // Secondary header line (DESIGN-TOKENS view header), hidden while
+        // searching.
+        subtitle_label = new Gtk.Label("");
+        subtitle_label.add_css_class("subtitle");
+        subtitle_label.halign = Gtk.Align.START;
+        subtitle_label.ellipsize = Pango.EllipsizeMode.END;
+
+        task_pane.append(subtitle_label);
         task_pane.append(input_area);
 
         var tasks_scroll = new Gtk.ScrolledWindow();
@@ -466,6 +485,9 @@ window.taskly-root { background-color: #FFFFFF; }
             ? i18n.t("hideCompletedToggle")
             : i18n.t("showCompletedToggle");
 
+        // Smart-tile selection ring tracks the active view.
+        update_tile_selection();
+
         // Counts
         try {
             var today = ctx.db.get_today_task_count();
@@ -482,9 +504,72 @@ window.taskly-root { background-color: #FFFFFF; }
 
         rebuild_lists();
         rebuild_tasks(search_text);
+        update_subtitle();
         status_label.label = status;
         quick_add.placeholder_text = ctx.t("taskListInputHint");
         search.placeholder_text = ctx.t("searchHint");
+    }
+
+    /// Marks the active view's smart tile with the "selected" class and
+    /// clears it from the rest (DESIGN-TOKENS smart view tile).
+    private void update_tile_selection() {
+        foreach (unowned Gtk.Button button in tile_buttons.get_keys()) {
+            if (tile_buttons.lookup(button) == ctx.current_view) {
+                button.add_css_class("selected");
+            } else {
+                button.remove_css_class("selected");
+            }
+        }
+    }
+
+    /// Secondary header line (DESIGN-TOKENS view header): full date under
+    /// Today, the displayed month under Calendar, open-task counts
+    /// elsewhere. Hidden while searching.
+    private void update_subtitle() {
+        subtitle_label.visible = search.text.length == 0;
+        if (!subtitle_label.visible) {
+            return;
+        }
+        try {
+            switch (ctx.current_view) {
+                case TaskViewType.TODAY:
+                    subtitle_label.label = today_subtitle();
+                    break;
+                case TaskViewType.CALENDAR:
+                    subtitle_label.label = calendar_view.month_title();
+                    break;
+                case TaskViewType.PLANNED:
+                    subtitle_label.label = ctx.i18n.format("subtitleOpenTasks",
+                        ctx.db.get_planned_task_count().to_string());
+                    break;
+                case TaskViewType.COMPLETED:
+                    subtitle_label.label = ctx.i18n.format("subtitleCompleted",
+                        ctx.db.get_completed_task_count().to_string());
+                    break;
+                case TaskViewType.LIST:
+                    subtitle_label.label = ctx.i18n.format("subtitleOpenTasks",
+                        ctx.db.get_task_count_by_list(ctx.current_list_id).to_string());
+                    break;
+                default:
+                    subtitle_label.label = ctx.i18n.format("subtitleOpenTasks",
+                        ctx.db.get_incomplete_task_count().to_string());
+                    break;
+            }
+        } catch (GLib.Error e) {
+            // Subtitle refresh failure: leave the previous text.
+        }
+    }
+
+    /// `2026年9月26日 周五` / `Friday, September 26, 2026` (subtitleToday).
+    private string today_subtitle() {
+        var now = new DateTime.now_local();
+        // GLib day_of_week is 1=Monday … 7=Sunday: calWeekday1..7 maps
+        // directly (4b).
+        return ctx.i18n.format("subtitleToday",
+            now.get_year().to_string(),
+            ctx.t("calMonth%d".printf(now.get_month())),
+            now.get_day_of_month().to_string(),
+            ctx.t("calWeekday%d".printf(now.get_day_of_week())));
     }
 
     private string view_status() {
@@ -664,6 +749,10 @@ window.taskly-root { background-color: #FFFFFF; }
         if (due_display.length > 0) {
             var meta = new Gtk.Label("🗓 " + due_display);
             meta.add_css_class("task-meta");
+            var tone = due_tone_class(task);
+            if (tone.length > 0) {
+                meta.add_css_class(tone);
+            }
             meta.halign = Gtk.Align.START;
             meta.xalign = 0.0f;
             text_box.append(meta);
@@ -681,6 +770,7 @@ window.taskly-root { background-color: #FFFFFF; }
         detail_button.add_css_class("flat");
         detail_button.tooltip_text = ctx.t("tooltipTaskEdit");
 
+        row.append(build_list_dot(task));
         row.append(checkbox);
         row.append(text_box);
         row.append(detail_button);
@@ -708,6 +798,65 @@ window.taskly-root { background-color: #FFFFFF; }
         return row;
     }
 
+    /// 8px circular list-color dot leading each task row (DESIGN-TOKENS
+    /// checkbox semantics: list color with accent fallback). GTK4 has no
+    /// dynamic color API, so the tint comes from a per-color CssProvider
+    /// (cached pool) added to the dot widget itself.
+    private Gtk.Widget build_list_dot(TaskItem task) {
+        var dot = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
+        dot.add_css_class("list-dot");
+        dot.width_request = 8;
+        dot.height_request = 8;
+        dot.valign = Gtk.Align.CENTER;
+        dot.get_style_context().add_provider(
+            provider_for_list_color(task.list_color ?? DEFAULT_LIST_COLOR),
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
+        return dot;
+    }
+
+    private Gtk.CssProvider provider_for_list_color(int32 argb) {
+        var key = list_color_hex(argb);
+        var existing = dot_providers.lookup(key);
+        if (existing != null) {
+            return existing;
+        }
+        var provider = new Gtk.CssProvider();
+        try {
+            provider.load_from_string(".list-dot { background-color: %s; }".printf(key));
+        } catch (Error e) {
+            // Non-fatal: the dot keeps the accent fallback from APP_CSS.
+        }
+        dot_providers.insert(key, provider);
+        return provider;
+    }
+
+    /// Signed ARGB int (lists.color storage format) → `#RRGGBB`.
+    private string list_color_hex(int32 argb) {
+        var rgb = ((uint32) argb) & 0x00FFFFFFu;
+        return "#%02X%02X%02X".printf(
+            (uint) ((rgb >> 16) & 0xFFu),
+            (uint) ((rgb >> 8) & 0xFFu),
+            (uint) (rgb & 0xFFu));
+    }
+
+    /// Semantic class for the due-date label (DESIGN-TOKENS due-date
+    /// semantics): overdue incomplete red, due today accent, otherwise no
+    /// override (gray). yyyy-MM-dd strings compare lexicographically.
+    private string due_tone_class(TaskItem task) {
+        var date_only = DateParser.extract_date_only(task.due_date);
+        if (date_only == null) {
+            return "";
+        }
+        var today = DateParser.today_string();
+        if (date_only == today) {
+            return "due-today";
+        }
+        if (!task.completed && date_only < today) {
+            return "due-overdue";
+        }
+        return "";
+    }
+
     private string format_due_display(TaskItem task) {
         var date_only = DateParser.extract_date_only(task.due_date);
         if (date_only == null) {
@@ -721,11 +870,30 @@ window.taskly-root { background-color: #FFFFFF; }
             label = ctx.i18n.t("dateTomorrow");
         } else if (date_only == now.add_days(-1).format("%Y-%m-%d")) {
             label = ctx.i18n.t("dateYesterday");
+        } else {
+            label = format_month_day(date_only);
         }
         if (task.due_time != null && task.due_time.length > 0) {
             return "%s %s".printf(label, task.due_time);
         }
         return label;
+    }
+
+    /// Non-relative dates render localized (DESIGN-TOKENS due-date
+    /// semantics): zh `9月26日`, en `Sep 26`, month name from the
+    /// calMonthShort keys.
+    private string format_month_day(string date_only) {
+        var parts = date_only.split("-");
+        if (parts.length != 3) {
+            return date_only;
+        }
+        var month_name = ctx.t("calMonthShort%d".printf(int.parse(parts[1])));
+        var day = int.parse(parts[2]);
+        if (ctx.config.language() == "zh") {
+            // zh calMonthShort already carries the 月 suffix: `9月` + `26日`.
+            return "%s%d日".printf(month_name, day);
+        }
+        return "%s %d".printf(month_name, day);
     }
 }
 

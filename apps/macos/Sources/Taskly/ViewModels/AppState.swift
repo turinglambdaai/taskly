@@ -207,6 +207,38 @@ public final class AppState {
         }
     }
 
+    /// Secondary header line (DESIGN-TOKENS view header): full date under
+    /// Today, the displayed month under Calendar, open/completed counts
+    /// elsewhere. Empty while disconnected or searching.
+    var currentSubtitle: String {
+        _ = languageChangedToken
+        if !isConnected || !searchText.isEmpty {
+            return ""
+        }
+        switch currentView {
+        case .today:
+            let now = Date()
+            let cal = Calendar.current
+            return i18n.format(
+                "subtitleToday",
+                cal.component(.year, from: now),
+                i18n.t("calMonth\(cal.component(.month, from: now))"),
+                cal.component(.day, from: now),
+                i18n.t("calWeekday\((cal.component(.weekday, from: now) + 5) % 7 + 1)"))
+        case .calendar:
+            return calendarMonthTitle
+        case .planned:
+            return i18n.format("subtitleOpenTasks", plannedCount)
+        case .completed:
+            return i18n.format("subtitleCompleted", completedCount)
+        case .list(let id):
+            let pending = lists.first { $0.id == id }?.pendingCount ?? 0
+            return i18n.format("subtitleOpenTasks", pending)
+        case .all:
+            return i18n.format("subtitleOpenTasks", allCount)
+        }
+    }
+
     func newDatabase(at url: URL) {
         let path = url.path
         do {
@@ -421,7 +453,7 @@ public final class AppState {
     func formatDayHeader(_ dateKey: String) -> String {
         guard let date = parseDateKey(dateKey) else { return dateKey }
         let cal = Calendar.current
-        let monthName = i18n.t("calMonth\(cal.component(.month, from: date))")
+        let monthName = i18n.t("calMonthShort\(cal.component(.month, from: date))")
         let weekday = relativeDayLabel(dateKey)
             ?? i18n.t("calWeekday\((cal.component(.weekday, from: date) + 5) % 7 + 1)")
         return i18n.format("calDayHeader", monthName, cal.component(.day, from: date), weekday)

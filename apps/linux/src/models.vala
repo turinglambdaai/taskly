@@ -24,6 +24,9 @@ public class TaskItem : Object {
     public string? notes { get; set; default = null; }
     // Join artifact (LEFT JOIN lists); never persisted.
     public string? list_name { get; set; default = null; }
+    // Join artifact (LEFT JOIN lists); never persisted. Signed ARGB int or
+    // null (plain field: nullable value types cannot be GObject properties).
+    public int32? list_color;
 
     public TaskItem clone() {
         var copy = new TaskItem();
@@ -36,6 +39,7 @@ public class TaskItem : Object {
         copy.completed = completed;
         copy.notes = notes;
         copy.list_name = list_name;
+        copy.list_color = list_color;
         return copy;
     }
 }

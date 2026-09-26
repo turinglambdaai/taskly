@@ -130,5 +130,20 @@
   "calWeekdayShort4": "Thu",
   "calWeekdayShort5": "Fri",
   "calWeekdayShort6": "Sat",
-  "calWeekdayShort7": "Sun"
+  "calWeekdayShort7": "Sun",
+  "subtitleToday": "{3}, {1} {2}, {0}",
+  "subtitleOpenTasks": "{0} open",
+  "subtitleCompleted": "{0} completed",
+  "calMonthShort1": "Jan",
+  "calMonthShort2": "Feb",
+  "calMonthShort3": "Mar",
+  "calMonthShort4": "Apr",
+  "calMonthShort5": "May",
+  "calMonthShort6": "Jun",
+  "calMonthShort7": "Jul",
+  "calMonthShort8": "Aug",
+  "calMonthShort9": "Sep",
+  "calMonthShort10": "Oct",
+  "calMonthShort11": "Nov",
+  "calMonthShort12": "Dec"
 }

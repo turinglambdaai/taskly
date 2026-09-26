@@ -142,6 +142,18 @@ private struct SmartTile: View {
     let color: Color
     let count: Int
 
+    @State private var isHovering = false
+
+    private var isSelected: Bool {
+        state.currentView == view
+    }
+
+    /// Active tile keeps full saturation; the rest recede to 0.72 and lift
+    /// to 0.88 on hover (DESIGN-TOKENS smart-tile states).
+    private var tileOpacity: Double {
+        isSelected ? 1.0 : (isHovering ? 0.88 : 0.72)
+    }
+
     var body: some View {
         Button {
             state.select(view)
@@ -172,9 +184,18 @@ private struct SmartTile: View {
             .frame(maxWidth: .infinity)
             .frame(height: Palette.tileHeight)
             .background(color, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                // 2px white inset ring on the active view's tile.
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(Color.white, lineWidth: 2)
+                    .opacity(isSelected ? 1 : 0))
         }
         .buttonStyle(.plain)
         .disabled(!state.isConnected)
+        .opacity(tileOpacity)
+        .onHover { hovering in
+            isHovering = hovering
+        }
     }
 }
 

@@ -34,7 +34,7 @@ struct TaskPaneView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .top, spacing: 10) {
             Button {
                 withAnimation(.easeInOut(duration: 0.15)) {
                     state.isSidebarVisible.toggle()
@@ -47,10 +47,20 @@ struct TaskPaneView: View {
             .buttonStyle(.plain)
             .help(state.isSidebarVisible ? state.t("sidebarHide") : state.t("sidebarShow"))
 
-            Text(state.currentTitle)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(state.theme.onSurface)
-                .lineLimit(1)
+            // Large title + secondary subtitle line (DESIGN-TOKENS view header).
+            VStack(alignment: .leading, spacing: 2) {
+                Text(state.currentTitle)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(state.theme.onSurface)
+                    .lineLimit(1)
+                let subtitle = state.currentSubtitle
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.system(size: 13))
+                        .foregroundStyle(state.theme.secondaryText)
+                        .lineLimit(1)
+                }
+            }
 
             Spacer()
 

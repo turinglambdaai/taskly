@@ -76,6 +76,7 @@ public partial class MainViewModel : ObservableObject
 
     public event Action? CountsChanged;
     public event Action? LanguageChanged;
+    public event Action? SubtitleChanged;
 
     public int TodayCount { get; private set; }
     public int PlannedCount { get; private set; }
@@ -322,7 +323,7 @@ public partial class MainViewModel : ObservableObject
     public string FormatDayHeader(string dateKey)
     {
         var date = DateTime.ParseExact(dateKey, "yyyy-MM-dd", CultureInfo.InvariantCulture);
-        var monthName = T($"calMonth{date.Month}");
+        var monthName = T($"calMonthShort{date.Month}");
         var relative = RelativeDayLabel(dateKey);
         var weekday = relative ?? T($"calWeekday{((int)date.DayOfWeek + 6) % 7 + 1}");
         return string.Format(CultureInfo.InvariantCulture, T("calDayHeader"), monthName, date.Day, weekday);
@@ -417,8 +418,50 @@ public partial class MainViewModel : ObservableObject
         CalendarScrollRequested?.Invoke(dateKey);
     }
 
+    /// <summary>Secondary header line (DESIGN-TOKENS view header): full
+    /// date under Today, the displayed month under Calendar, open-task
+    /// counts elsewhere.</summary>
+    public string CurrentSubtitle
+    {
+        get
+        {
+            if (!IsConnected || !string.IsNullOrEmpty(_searchKeyword))
+            {
+                return "";
+            }
+
+            switch (CurrentView)
+            {
+                case TaskViewType.Today:
+                {
+                    var now = DateTime.Now;
+                    var monthName = T($"calMonth{now.Month}");
+                    var weekday = T($"calWeekday{((int)now.DayOfWeek + 6) % 7 + 1}");
+                    return string.Format(CultureInfo.InvariantCulture, T("subtitleToday"),
+                        now.Year, monthName, now.Day, weekday);
+                }
+                case TaskViewType.Calendar:
+                    return CalendarMonthTitle;
+                case TaskViewType.Planned:
+                    return string.Format(CultureInfo.InvariantCulture, T("subtitleOpenTasks"), PlannedCount);
+                case TaskViewType.Completed:
+                    return string.Format(CultureInfo.InvariantCulture, T("subtitleCompleted"), CompletedCount);
+                case TaskViewType.List:
+                {
+                    var list = ListCollection.FirstOrDefault(l => l.Id == CurrentListId);
+                    return string.Format(CultureInfo.InvariantCulture, T("subtitleOpenTasks"),
+                        list?.PendingCount ?? 0);
+                }
+                default:
+                    return string.Format(CultureInfo.InvariantCulture, T("subtitleOpenTasks"), AllCount);
+            }
+        }
+    }
+
     private void UpdateTitle()
     {
+        SubtitleChanged?.Invoke();
+
         if (!string.IsNullOrEmpty(_searchKeyword))
         {
             CurrentTitle = $"{T("searchHint")}: {_searchKeyword}";

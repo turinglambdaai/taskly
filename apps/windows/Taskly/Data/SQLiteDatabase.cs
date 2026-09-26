@@ -302,7 +302,7 @@ public sealed class SQLiteDatabase : IDisposable
     // ------------------------
 
     private const string TaskSelectBase = $"""
-        SELECT t.*, l.name AS list_name
+        SELECT t.*, l.name AS list_name, l.color AS list_color
         FROM {TableTasks} t
         LEFT JOIN {TableLists} l ON t.list_id = l.id
         """;
@@ -681,9 +681,15 @@ public sealed class SQLiteDatabase : IDisposable
         var dueTime = GetOpt("due_time");
         var notes = GetOpt("notes");
         var listName = GetOpt("list_name");
+        int? listColor = null;
+        if (row.TryGetValue("list_color", out var lc) && lc is not null && lc != DBNull.Value)
+        {
+            listColor = Convert.ToInt32(lc, CultureInfo.InvariantCulture);
+        }
+
         var completed = row.TryGetValue("completed", out var cv) && cv is not null &&
                         Convert.ToInt32(cv, CultureInfo.InvariantCulture) == 1;
 
-        return new TaskItem(id, listId, text, createdAt, dueDate, dueTime, completed, notes, listName);
+        return new TaskItem(id, listId, text, createdAt, dueDate, dueTime, completed, notes, listName, listColor);
     }
 }

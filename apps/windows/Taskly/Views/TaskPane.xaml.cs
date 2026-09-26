@@ -25,6 +25,7 @@ public sealed partial class TaskPane : UserControl
         if (_subscribedVm is not null)
         {
             _subscribedVm.CountsChanged -= RefreshEmptyState;
+            _subscribedVm.SubtitleChanged -= RefreshSubtitle;
             _subscribedVm.CalendarScrollRequested -= ScrollCalendarTo;
             _subscribedVm.CalendarCountsChanged -= RenderMonthGrid;
             _subscribedVm.CalendarRows.CollectionChanged -= OnCalendarRowsChanged;
@@ -38,6 +39,7 @@ public sealed partial class TaskPane : UserControl
         if (vm is not null)
         {
             vm.CountsChanged += RefreshEmptyState;
+            vm.SubtitleChanged += RefreshSubtitle;
             vm.TaskItems.CollectionChanged += (_, _) => RefreshEmptyState();
             vm.CalendarRows.CollectionChanged += OnCalendarRowsChanged;
             vm.CalendarCountsChanged += RenderMonthGrid;
@@ -80,7 +82,19 @@ public sealed partial class TaskPane : UserControl
         }
 
         TitleText.Text = Vm.CurrentTitle;
+        SubtitleText.Text = Vm.CurrentSubtitle;
         RefreshEmptyState();
+    }
+
+    private void RefreshSubtitle()
+    {
+        if (Vm is not null)
+        {
+            // UpdateTitle raises this after the collections already fired,
+            // so this is the one place the title reliably catches up too.
+            TitleText.Text = Vm.CurrentTitle;
+            SubtitleText.Text = Vm.CurrentSubtitle;
+        }
     }
 
     private void RefreshEmptyState()
@@ -98,6 +112,7 @@ public sealed partial class TaskPane : UserControl
             : Vm.T("taskListInputHintNoDb");
 
         TitleText.Text = Vm.CurrentTitle;
+        SubtitleText.Text = Vm.CurrentSubtitle;
 
         if (!Vm.IsConnected)
         {
@@ -237,7 +252,12 @@ public sealed partial class TaskPane : UserControl
         var col = mondayFirst ? ((int)first.DayOfWeek + 6) % 7 : (int)first.DayOfWeek;
         var gridStart = first.AddDays(-col);
 
-        for (var i = 0; i < 42; i++)
+        // Only as many week rows as the month needs (5 or 6) — a fixed 42
+        // cells overflows short months out of the 512-logical-pt window.
+        var cellsNeeded = col + DateTime.DaysInMonth(Vm.CalendarYear, Vm.CalendarMonth);
+        var rowCount = (int)Math.Ceiling(cellsNeeded / 7.0);
+
+        for (var i = 0; i < rowCount * 7; i++)
         {
             var day = gridStart.AddDays(i);
             var cell = BuildDayCell(day, todayKey);
@@ -259,15 +279,42 @@ public sealed partial class TaskPane : UserControl
         var onSurface = Models.UiTheme.BrushOf(Models.UiTheme.OnSurface);
         var tertiary = Models.UiTheme.BrushOf(Models.UiTheme.Tertiary);
         var accent = Models.UiTheme.BrushOf(Models.UiTheme.Accent);
-        var numberColor = isToday ? accent : (isCurrentMonth ? onSurface : tertiary);
         var transparent = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+
+        // Today = accent-filled circle with a white number (Reminders-style);
+        // selection = accent ring + accent-tinted fill on non-today days.
+        var number = new Grid
+        {
+            Width = 24,
+            Height = 24,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        number.Children.Add(new Ellipse
+        {
+            Width = 24,
+            Height = 24,
+            Fill = isToday ? accent : transparent,
+        });
+        number.Children.Add(new TextBlock
+        {
+            Text = day.Day.ToString(CultureInfo.InvariantCulture),
+            FontSize = 13,
+            FontWeight = isToday ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal,
+            Foreground = isToday
+                ? Models.UiTheme.BrushOf(Microsoft.UI.Colors.White)
+                : isCurrentMonth ? onSurface : tertiary,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
 
         var dots = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Bottom,
             Spacing = 3,
-            Margin = new Thickness(0, 0, 0, 4),
+            Margin = new Thickness(0, 0, 0, 2),
         };
         if (Vm.CalendarDayCounts.TryGetValue(dayKey, out var count))
         {
@@ -282,29 +329,23 @@ public sealed partial class TaskPane : UserControl
             }
         }
 
-        var content = new Grid { MinHeight = 40 };
-        content.Children.Add(new TextBlock
-        {
-            Text = day.Day.ToString(CultureInfo.InvariantCulture),
-            FontSize = 13,
-            FontWeight = isToday ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal,
-            Foreground = numberColor,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 6, 0, 0),
-        });
+        var content = new Grid { Height = 34 };
+        content.Children.Add(number);
         content.Children.Add(dots);
 
+        var tint = Models.UiTheme.WithAlpha(Models.UiTheme.Accent, 0x14);
         var button = new Button
         {
             Content = content,
-            MinHeight = 44,
+            Height = 34,
+            MinHeight = 0,
+            VerticalAlignment = VerticalAlignment.Top,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(0),
             BorderThickness = isSelected ? new Thickness(1) : new Thickness(0),
             CornerRadius = new CornerRadius(8),
-            Background = transparent,
+            Background = isSelected && !isToday ? Models.UiTheme.BrushOf(tint) : transparent,
             BorderBrush = isSelected ? accent : transparent,
             Tag = dayKey,
         };

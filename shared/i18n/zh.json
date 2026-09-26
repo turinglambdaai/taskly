@@ -130,5 +130,20 @@
   "calWeekdayShort4": "四",
   "calWeekdayShort5": "五",
   "calWeekdayShort6": "六",
-  "calWeekdayShort7": "日"
+  "calWeekdayShort7": "日",
+  "subtitleToday": "{0}年{1}{2}日 {3}",
+  "subtitleOpenTasks": "{0} 个未完成",
+  "subtitleCompleted": "{0} 个已完成",
+  "calMonthShort1": "1月",
+  "calMonthShort2": "2月",
+  "calMonthShort3": "3月",
+  "calMonthShort4": "4月",
+  "calMonthShort5": "5月",
+  "calMonthShort6": "6月",
+  "calMonthShort7": "7月",
+  "calMonthShort8": "8月",
+  "calMonthShort9": "9月",
+  "calMonthShort10": "10月",
+  "calMonthShort11": "11月",
+  "calMonthShort12": "12月"
 }

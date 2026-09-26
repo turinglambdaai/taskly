@@ -24,6 +24,7 @@ namespace Taskly.Views;
             if (_subscribedVm is not null)
             {
                 _subscribedVm.CountsChanged -= RefreshCounts;
+                _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
                 ListsList.ItemClick -= OnListItemClick;
                 ListsList.RightTapped -= OnListRightTapped;
             }
@@ -34,11 +35,63 @@ namespace Taskly.Views;
             if (vm is not null)
             {
                 vm.CountsChanged += RefreshCounts;
+                vm.PropertyChanged += OnViewModelPropertyChanged;
                 ListsList.ItemClick += OnListItemClick;
                 ListsList.RightTapped += OnListRightTapped;
             }
 
+            WireTileHover(TileToday);
+            WireTileHover(TilePlanned);
+            WireTileHover(TileAll);
+            WireTileHover(TileCompleted);
+            WireTileHover(TileCalendar);
+
             ApplyLanguage();
+        }
+
+        // Hover = a slight lift (never gray): plain surfaces keep the fill.
+        private void WireTileHover(Border tile)
+        {
+            // Hover eases an unselected tile toward full saturation; the
+            // selected tile stays at full.
+            tile.PointerEntered += (_, _) =>
+                tile.Opacity = tile.BorderThickness.Left > 0 ? 1.0 : 0.88;
+            tile.PointerExited += (_, _) =>
+                tile.Opacity = tile.BorderThickness.Left > 0 ? 1.0 : 0.72;
+        }
+
+        private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(MainViewModel.CurrentView))
+            {
+                RefreshTileSelection();
+            }
+        }
+
+        /// <summary>Active view's tile gets a white inset ring (DESIGN-TOKENS).</summary>
+        private void RefreshTileSelection()
+        {
+            if (Vm is null)
+            {
+                return;
+            }
+
+            SetSelected(TileToday, Vm.CurrentView == TaskViewType.Today);
+            SetSelected(TilePlanned, Vm.CurrentView == TaskViewType.Planned);
+            SetSelected(TileAll, Vm.CurrentView == TaskViewType.All);
+            SetSelected(TileCompleted, Vm.CurrentView == TaskViewType.Completed);
+            SetSelected(TileCalendar, Vm.CurrentView == TaskViewType.Calendar);
+        }
+
+        private static void SetSelected(Border tile, bool selected)
+        {
+            tile.BorderThickness = selected ? new Thickness(2) : new Thickness(0);
+            tile.BorderBrush = selected
+                ? new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.White)
+                : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            tile.Padding = selected ? new Thickness(10, 8, 10, 8) : new Thickness(12, 10, 12, 10);
+            // The active view pops to full saturation; the rest recede.
+            tile.Opacity = selected ? 1.0 : 0.72;
         }
 
         public void ApplyLanguage()
@@ -62,6 +115,7 @@ namespace Taskly.Views;
             TileCalendarIcon.Text = "\uE8BF";
             TileCalendarLabel.Text = Vm.T("navCalendar");
             MyListsHeader.Text = Vm.T("sectionMyLists");
+            RefreshTileSelection();
             RefreshCounts();
         }
 
@@ -80,19 +134,19 @@ namespace Taskly.Views;
         TileCompletedCount.Text = Vm.CompletedCount > 0 ? Vm.CompletedCount.ToString() : "";
     }
 
-    private async void OnTileToday(object sender, RoutedEventArgs e) =>
+    private async void OnTileToday(object sender, TappedRoutedEventArgs e) =>
         await Vm.SelectViewAsync(TaskViewType.Today);
 
-    private async void OnTilePlanned(object sender, RoutedEventArgs e) =>
+    private async void OnTilePlanned(object sender, TappedRoutedEventArgs e) =>
         await Vm.SelectViewAsync(TaskViewType.Planned);
 
-    private async void OnTileAll(object sender, RoutedEventArgs e) =>
+    private async void OnTileAll(object sender, TappedRoutedEventArgs e) =>
         await Vm.SelectViewAsync(TaskViewType.All);
 
-    private async void OnTileCompleted(object sender, RoutedEventArgs e) =>
+    private async void OnTileCompleted(object sender, TappedRoutedEventArgs e) =>
         await Vm.SelectViewAsync(TaskViewType.Completed);
 
-    private async void OnTileCalendar(object sender, RoutedEventArgs e) =>
+    private async void OnTileCalendar(object sender, TappedRoutedEventArgs e) =>
         await Vm.SelectViewAsync(TaskViewType.Calendar);
 
     private async void OnListItemClick(object sender, ItemClickEventArgs e)

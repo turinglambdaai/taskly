@@ -80,7 +80,7 @@ struct TaskRowView: View {
                         }
                     }
                 }
-                .foregroundStyle(state.theme.secondaryText)
+                .foregroundStyle(dueDateColor)
             }
             if let notes = task.notes, !notes.isEmpty {
                 Text(notes)
@@ -93,12 +93,29 @@ struct TaskRowView: View {
     }
 
     private var displayDate: String {
-        let parser = DateParser()
-        return parser.formatDateOnlyForDisplay(
+        guard let dateOnly = DateParser.extractDateOnly(task.dueDate), !dateOnly.isEmpty else {
+            return ""
+        }
+        // Relative word (今天/明天/昨天) first, mirroring
+        // formatDateOnlyForDisplay's logic.
+        let relative = DateParser().formatDateOnlyForDisplay(
             task.dueDate,
             todayLabel: state.t("navToday"),
             tomorrowLabel: state.t("dateTomorrow"),
             yesterdayLabel: state.t("dateYesterday"))
+        if relative != dateOnly {
+            return relative
+        }
+        // Same-year dates render as "9月30日" / "Sep 30" (short month names);
+        // cross-year falls back to the ISO key.
+        guard let date = strictDate(from: dateOnly) else { return dateOnly }
+        let cal = Calendar.current
+        guard cal.component(.year, from: date) == cal.component(.year, from: Date()) else {
+            return dateOnly
+        }
+        let monthName = state.t("calMonthShort\(cal.component(.month, from: date))")
+        let day = cal.component(.day, from: date)
+        return state.config.language == "zh" ? "\(monthName)\(day)日" : "\(monthName) \(day)"
     }
 
     private var checkbox: some View {
@@ -107,18 +124,54 @@ struct TaskRowView: View {
         } label: {
             ZStack {
                 Circle()
+                    .fill(task.completed ? state.theme.tertiaryText : Color.clear)
+                    .frame(width: 18, height: 18)
+                Circle()
                     .strokeBorder(
-                        task.completed ? state.theme.accent : state.theme.tertiaryText,
+                        task.completed ? state.theme.tertiaryText : task.listAccentColor,
                         lineWidth: 1.5)
                     .frame(width: 18, height: 18)
                 if task.completed {
                     Image(systemName: "checkmark")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(state.theme.accent)
+                        .foregroundStyle(.white)
                 }
             }
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Due-date semantics (DESIGN-TOKENS)
+
+    /// Meta-line color: overdue incomplete = danger red, due today = accent,
+    /// otherwise (or completed) secondary.
+    private var dueDateColor: Color {
+        if task.completed {
+            return state.theme.secondaryText
+        }
+        guard let day = dueDay else {
+            return state.theme.secondaryText
+        }
+        let today = Calendar.current.startOfDay(for: Date())
+        if day < today { return Palette.danger }
+        if day == today { return state.theme.accent }
+        return state.theme.secondaryText
+    }
+
+    /// Start-of-day of the task's due date, or nil when absent/unparseable.
+    private var dueDay: Date? {
+        guard let dateOnly = DateParser.extractDateOnly(task.dueDate),
+              !dateOnly.isEmpty,
+              let date = strictDate(from: dateOnly)
+        else { return nil }
+        return Calendar.current.startOfDay(for: date)
+    }
+
+    private func strictDate(from dateOnly: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: dateOnly)
     }
 
     // MARK: - Edit mode

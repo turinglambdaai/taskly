@@ -7,41 +7,34 @@
     <UserControl.Resources>
         <!-- 0.7.0-style smart tile: colored fill, glyph top-left, bold count
              top-right, semibold label bottom-left. -->
-        <Style x:Key="SmartTile" TargetType="Button">
+        <!-- Smart tiles are plain surfaces (no button chrome): the default
+             WinUI button hover/pressed states gray out colored fills. -->
+        <Style x:Key="SmartTile" TargetType="Border">
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Height" Value="68" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="VerticalAlignment" Value="Top" />
-            <Setter Property="UseSystemFocusVisuals" Value="False" />
+            <Setter Property="Padding" Value="12,10" />
         </Style>
         <!-- Full-width calendar tile (PRODUCT-SPEC §4b): 56px, no count. -->
-        <Style x:Key="CalendarTile" TargetType="Button" BasedOn="{StaticResource SmartTile}">
+        <Style x:Key="CalendarTile" TargetType="Border" BasedOn="{StaticResource SmartTile}">
             <Setter Property="Height" Value="56" />
+            <Setter Property="Padding" Value="12,8" />
         </Style>
         <Style x:Key="TileGlyph" TargetType="TextBlock">
             <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontSize" Value="16" />
-            <Setter Property="Margin" Value="12,10,0,0" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
             <Setter Property="VerticalAlignment" Value="Top" />
         </Style>
         <Style x:Key="TileCount" TargetType="TextBlock">
             <Setter Property="Foreground" Value="White" />
             <Setter Property="FontSize" Value="16" />
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Margin" Value="0,10,12,0" />
-            <Setter Property="HorizontalAlignment" Value="Right" />
             <Setter Property="VerticalAlignment" Value="Top" />
         </Style>
         <Style x:Key="TileLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="White" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="12,0,0,10" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
             <Setter Property="VerticalAlignment" Value="Bottom" />
         </Style>
     </UserControl.Resources>
@@ -49,7 +42,8 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Padding="12" Spacing="16">
 
-            <!-- Smart view tiles (2×2, 0.7.0 layout) -->
+            <!-- Smart view tiles (2×2, 0.7.0 layout): two-row geometry —
+                 glyph + count on top, label at the bottom. -->
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -62,57 +56,79 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Button Grid.Row="0" Grid.Column="0" x:Name="TileToday" Click="OnTileToday"
-                        Style="{StaticResource SmartTile}" Background="{StaticResource SmartListTodayBrush}">
-                    <Grid>
-                        <TextBlock x:Name="TileTodayIcon" Style="{StaticResource TileGlyph}"
-                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" />
-                        <TextBlock x:Name="TileTodayCount" Style="{StaticResource TileCount}" />
-                        <TextBlock x:Name="TileTodayLabel" Style="{StaticResource TileLabel}" />
+                <Border Grid.Row="0" Grid.Column="0" x:Name="TileToday" Style="{StaticResource SmartTile}"
+                        Background="{StaticResource SmartListTodayBrush}" Tapped="OnTileToday">
+                    <Grid RowSpacing="0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0">
+                            <TextBlock x:Name="TileTodayIcon" Style="{StaticResource TileGlyph}" HorizontalAlignment="Left" />
+                            <TextBlock x:Name="TileTodayCount" Style="{StaticResource TileCount}" HorizontalAlignment="Right" />
+                        </Grid>
+                        <TextBlock x:Name="TileTodayLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
                     </Grid>
-                </Button>
+                </Border>
 
-                <Button Grid.Row="0" Grid.Column="2" x:Name="TilePlanned" Click="OnTilePlanned"
-                        Style="{StaticResource SmartTile}" Background="{StaticResource SmartListScheduledBrush}">
+                <Border Grid.Row="0" Grid.Column="2" x:Name="TilePlanned" Style="{StaticResource SmartTile}"
+                        Background="{StaticResource SmartListScheduledBrush}" Tapped="OnTilePlanned">
                     <Grid>
-                        <TextBlock x:Name="TilePlannedIcon" Style="{StaticResource TileGlyph}"
-                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" />
-                        <TextBlock x:Name="TilePlannedCount" Style="{StaticResource TileCount}" />
-                        <TextBlock x:Name="TilePlannedLabel" Style="{StaticResource TileLabel}" />
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0">
+                            <TextBlock x:Name="TilePlannedIcon" Style="{StaticResource TileGlyph}" HorizontalAlignment="Left" />
+                            <TextBlock x:Name="TilePlannedCount" Style="{StaticResource TileCount}" HorizontalAlignment="Right" />
+                        </Grid>
+                        <TextBlock x:Name="TilePlannedLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
                     </Grid>
-                </Button>
+                </Border>
 
-                <Button Grid.Row="2" Grid.Column="0" x:Name="TileAll" Click="OnTileAll"
-                        Style="{StaticResource SmartTile}" Background="{StaticResource SmartListAllBrush}">
+                <Border Grid.Row="2" Grid.Column="0" x:Name="TileAll" Style="{StaticResource SmartTile}"
+                        Background="{StaticResource SmartListAllBrush}" Tapped="OnTileAll">
                     <Grid>
-                        <TextBlock x:Name="TileAllIcon" Style="{StaticResource TileGlyph}"
-                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" />
-                        <TextBlock x:Name="TileAllCount" Style="{StaticResource TileCount}" />
-                        <TextBlock x:Name="TileAllLabel" Style="{StaticResource TileLabel}" />
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0">
+                            <TextBlock x:Name="TileAllIcon" Style="{StaticResource TileGlyph}" HorizontalAlignment="Left" />
+                            <TextBlock x:Name="TileAllCount" Style="{StaticResource TileCount}" HorizontalAlignment="Right" />
+                        </Grid>
+                        <TextBlock x:Name="TileAllLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
                     </Grid>
-                </Button>
+                </Border>
 
-                <Button Grid.Row="2" Grid.Column="2" x:Name="TileCompleted" Click="OnTileCompleted"
-                        Style="{StaticResource SmartTile}" Background="{StaticResource SmartListCompletedBrush}">
+                <Border Grid.Row="2" Grid.Column="2" x:Name="TileCompleted" Style="{StaticResource SmartTile}"
+                        Background="{StaticResource SmartListCompletedBrush}" Tapped="OnTileCompleted">
                     <Grid>
-                        <TextBlock x:Name="TileCompletedIcon" Style="{StaticResource TileGlyph}"
-                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" />
-                        <TextBlock x:Name="TileCompletedCount" Style="{StaticResource TileCount}" />
-                        <TextBlock x:Name="TileCompletedLabel" Style="{StaticResource TileLabel}" />
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0">
+                            <TextBlock x:Name="TileCompletedIcon" Style="{StaticResource TileGlyph}" HorizontalAlignment="Left" />
+                            <TextBlock x:Name="TileCompletedCount" Style="{StaticResource TileCount}" HorizontalAlignment="Right" />
+                        </Grid>
+                        <TextBlock x:Name="TileCompletedLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
                     </Grid>
-                </Button>
+                </Border>
             </Grid>
 
             <!-- Calendar tile (PRODUCT-SPEC §4b): full-width, no count badge -->
-            <Button x:Name="TileCalendar" Click="OnTileCalendar"
-                    Style="{StaticResource CalendarTile}"
-                    Background="{StaticResource SmartListCalendarBrush}">
+            <Border x:Name="TileCalendar" Style="{StaticResource CalendarTile}"
+                    Background="{StaticResource SmartListCalendarBrush}" Tapped="OnTileCalendar">
                 <Grid>
-                    <TextBlock x:Name="TileCalendarIcon" Style="{StaticResource TileGlyph}"
-                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" />
-                    <TextBlock x:Name="TileCalendarLabel" Style="{StaticResource TileLabel}" />
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="TileCalendarIcon" Grid.Row="0" Style="{StaticResource TileGlyph}" HorizontalAlignment="Left" />
+                    <TextBlock x:Name="TileCalendarLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
                 </Grid>
-            </Button>
+            </Border>
 
             <!-- My Lists header + add button (0.7.0 layout) -->
             <Grid Margin="4,0,4,0">

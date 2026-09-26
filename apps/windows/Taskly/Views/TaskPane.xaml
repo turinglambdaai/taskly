@@ -9,7 +9,7 @@
         <!-- Shared §5 task-row template: the flat list and the calendar
              time line must stay visually identical (PRODUCT-SPEC §4b). -->
         <DataTemplate x:Key="TaskRowTemplate">
-            <Grid Padding="16,10" CornerRadius="10" Background="Transparent">
+            <Grid Padding="16,12" CornerRadius="10" Background="Transparent">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -19,14 +19,19 @@
                 <Button Grid.Column="0" Click="OnToggleCompleted"
                         Background="Transparent" BorderThickness="0" Padding="4"
                         VerticalAlignment="Top">
-                    <Ellipse Width="18" Height="18" StrokeThickness="1.5">
-                        <Ellipse.Stroke>
-                            <SolidColorBrush Color="{Binding RingColor}" />
-                        </Ellipse.Stroke>
-                        <Ellipse.Fill>
-                            <SolidColorBrush Color="{Binding RingFill}" />
-                        </Ellipse.Fill>
-                    </Ellipse>
+                    <Grid Width="20" Height="20">
+                        <Ellipse Width="20" Height="20" StrokeThickness="1.5">
+                            <Ellipse.Stroke>
+                                <SolidColorBrush Color="{Binding RingColor}" />
+                            </Ellipse.Stroke>
+                            <Ellipse.Fill>
+                                <SolidColorBrush Color="{Binding RingFill}" />
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <FontIcon Glyph="&#xE73E;" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  Foreground="White"
+                                  Visibility="{Binding CheckVisibility}" />
+                    </Grid>
                 </Button>
 
                 <StackPanel Grid.Column="1" Margin="12,0,0,0" Spacing="4">
@@ -35,7 +40,7 @@
                                TextDecorations="{Binding Decorations}"
                                TextWrapping="Wrap" MaxLines="3" />
                     <TextBlock Text="{Binding DueText}" FontSize="12"
-                               Foreground="{ThemeResource ThemeSecondaryTextBrush}"
+                               Foreground="{Binding DueBrush}"
                                Visibility="{Binding MetaVisibility}" />
                     <TextBlock Text="{Binding NotesText}" FontSize="12"
                                Foreground="{ThemeResource ThemeTertiaryTextBrush}"
@@ -45,7 +50,7 @@
 
                 <Button Grid.Column="2" Click="OnOpenDetail"
                         Background="Transparent" BorderThickness="0" Padding="4"
-                        VerticalAlignment="Top">
+                        VerticalAlignment="Top" Opacity="0.45">
                     <FontIcon Glyph="&#xE946;" FontSize="14"
                               Foreground="{ThemeResource ThemeTertiaryTextBrush}" />
                 </Button>
@@ -80,8 +85,8 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Grid Grid.Row="0" Padding="16,10">
+        <!-- Header: large view title + subtitle (DESIGN-TOKENS view header) -->
+        <Grid Grid.Row="0" Padding="16,10,16,4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -90,20 +95,29 @@
 
             <Button x:Name="SidebarToggle" Grid.Column="0" Click="OnToggleSidebar"
                     Background="Transparent" BorderThickness="0" Padding="6"
-                    Content="&#xE700;" FontFamily="{ThemeResource SymbolThemeFontFamily}" />
+                    Content="&#xE700;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                    VerticalAlignment="Top" />
 
-            <TextBlock x:Name="TitleText" Grid.Column="1"
-                       FontSize="17" FontWeight="SemiBold" Margin="10,0,0,0"
-                       Foreground="{ThemeResource ThemeOnSurfaceBrush}"
-                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Margin="10,0,0,0"
+                        VerticalAlignment="Top">
+                <TextBlock x:Name="TitleText"
+                           FontSize="24" FontWeight="SemiBold"
+                           Foreground="{ThemeResource ThemeOnSurfaceBrush}"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="SubtitleText"
+                           FontSize="13" Margin="0,2,0,0"
+                           Foreground="{ThemeResource ThemeSecondaryTextBrush}"
+                           TextTrimming="CharacterEllipsis" />
+            </StackPanel>
 
             <Button x:Name="ShowCompletedToggle" Grid.Column="2" Click="OnToggleShowCompleted"
-                    Background="Transparent" BorderThickness="0" Padding="4" />
+                    Background="Transparent" BorderThickness="0" Padding="4"
+                    VerticalAlignment="Top" />
         </Grid>
 
-        <!-- Inputs: search + quick add -->
-        <StackPanel x:Name="InputArea" Grid.Row="1" Padding="16,4,16,10" Spacing="8">
-            <Grid Padding="10,6" CornerRadius="8"
+        <!-- Inputs: search + quick add, compact (36 / 40px) -->
+        <StackPanel x:Name="InputArea" Grid.Row="1" Padding="16,6,16,10" Spacing="8">
+            <Grid Padding="10,0" Height="36" CornerRadius="10"
                   Background="{ThemeResource ThemeSurfaceBrush}"
                   BorderBrush="{ThemeResource ThemeInputBorderBrush}" BorderThickness="1">
                 <Grid.ColumnDefinitions>
@@ -112,16 +126,18 @@
                 </Grid.ColumnDefinitions>
                 <FontIcon Grid.Column="0" Glyph="&#xE721;" FontSize="12"
                           Foreground="{ThemeResource ThemeTertiaryTextBrush}" />
-                <TextBox x:Name="SearchBox" Grid.Column="1"
+                <TextBox x:Name="SearchBox" Grid.Column="1" Margin="6,0,0,0"
                          BorderThickness="0" Background="Transparent" FontSize="13"
+                         VerticalAlignment="Center" MinHeight="0"
                          KeyDown="OnSearchKeyDown" TextChanged="OnSearchTextChanged" />
             </Grid>
 
-            <Grid x:Name="QuickAddArea" Padding="12,9" CornerRadius="8"
+            <Grid x:Name="QuickAddArea" Padding="12,0" Height="40" CornerRadius="10"
                   Background="{ThemeResource ThemeSurfaceBrush}"
                   BorderBrush="{ThemeResource ThemeInputBorderBrush}" BorderThickness="1">
                 <TextBox x:Name="QuickAddBox"
                          BorderThickness="0" Background="Transparent" FontSize="14"
+                         VerticalAlignment="Center" MinHeight="0"
                          KeyDown="OnQuickAddKeyDown" />
             </Grid>
         </StackPanel>
@@ -135,68 +151,83 @@
                       ItemTemplate="{StaticResource TaskRowTemplate}">
             </ListView>
 
-            <!-- Calendar view (PRODUCT-SPEC §4b): month grid on top, day
-                 groups below. Grids are filled in code-behind. -->
+            <!-- Calendar view (PRODUCT-SPEC §4b): month rail on the left,
+                 day-group time line on the right (a 6-row grid cannot share
+                 a column with the time line in a 768-high window). -->
             <Grid x:Name="CalendarArea" Visibility="Collapsed">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
-                <!-- Month navigation -->
-                <Grid Grid.Row="0" Padding="16,6,16,2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Button x:Name="CalPrevMonth" Grid.Column="0" Click="OnCalPrevMonth"
-                            Background="Transparent" BorderThickness="0" Padding="6"
-                            Content="&#xE76B;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                            Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
-                    <TextBlock x:Name="CalMonthTitle" Grid.Column="1"
-                               FontSize="14" FontWeight="SemiBold" Margin="8,0,0,0"
-                               Foreground="{ThemeResource ThemeOnSurfaceBrush}"
-                               VerticalAlignment="Center" TextAlignment="Center" />
-                    <Button x:Name="CalTodayButton" Grid.Column="2" Click="OnCalToday"
-                            Background="Transparent" BorderThickness="0" Padding="8,2"
-                            FontSize="13" Foreground="{ThemeResource AccentBrush}" />
-                    <Button x:Name="CalNextMonth" Grid.Column="3" Click="OnCalNextMonth"
-                            Background="Transparent" BorderThickness="0" Padding="6"
-                            Content="&#xE76C;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                            Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
-                </Grid>
-
-                <!-- Weekday short-name row (7 equal columns, language-ordered) -->
-                <Grid x:Name="WeekdayHeader" Grid.Row="1" Margin="16,4,16,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                </Grid>
-
-                <!-- 6×7 month grid (code-behind) -->
-                <Grid x:Name="MonthGrid" Grid.Row="2" Margin="16,0,16,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+                <!-- Month rail: navigation + weekday row + 6×7 grid -->
+                <Grid Grid.Column="0" Width="322" Margin="12,0,4,0"
+                      VerticalAlignment="Stretch">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
+
+                    <!-- Month navigation -->
+                    <Grid Grid.Row="0" Padding="4,2,4,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="CalPrevMonth" Grid.Column="0" Click="OnCalPrevMonth"
+                                Background="Transparent" BorderThickness="0" Padding="6"
+                                Content="&#xE76B;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
+                        <TextBlock x:Name="CalMonthTitle" Grid.Column="1"
+                                   FontSize="14" FontWeight="SemiBold" Margin="4,0,0,0"
+                                   Foreground="{ThemeResource ThemeOnSurfaceBrush}"
+                                   VerticalAlignment="Center" TextAlignment="Center" />
+                        <Button x:Name="CalTodayButton" Grid.Column="2" Click="OnCalToday"
+                                Background="Transparent" BorderThickness="0" Padding="8,2"
+                                FontSize="13" Foreground="{ThemeResource AccentBrush}" />
+                        <Button x:Name="CalNextMonth" Grid.Column="3" Click="OnCalNextMonth"
+                                Background="Transparent" BorderThickness="0" Padding="6"
+                                Content="&#xE76C;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
+                    </Grid>
+
+                    <!-- Weekday short-name row (7 equal columns, language-ordered) -->
+                    <Grid x:Name="WeekdayHeader" Grid.Row="1" Margin="2,6,2,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                    </Grid>
+
+                    <!-- 6×7 month grid (code-behind) -->
+                    <Grid x:Name="MonthGrid" Grid.Row="2" Margin="2,0,2,8"
+                          VerticalAlignment="Top">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                    </Grid>
                 </Grid>
+
+                <!-- Hairline divider between the rail and the time line -->
+                <Border Grid.Column="1" Width="1" HorizontalAlignment="Left"
+                        VerticalAlignment="Stretch" Margin="0,4"
+                        Background="{ThemeResource ThemeDividerBrush}" />
 
                 <!-- Day-group time line (empty month → §4b empty state) -->
-                <Grid Grid.Row="3">
+                <Grid Grid.Column="1" Margin="13,0,12,0">
                     <ListView x:Name="CalendarList" SelectionMode="None"
                               Background="Transparent"
                               IsDoubleTapEnabled="True"
