@@ -8,6 +8,7 @@ public enum Palette {
     public static let planned = Color(hex: 0xFF3B30)
     public static let all = Color(hex: 0x8E8E93)
     public static let completed = Color(hex: 0x8E8E93)
+    public static let calendar = Color(hex: 0x5856D6)
     public static let flagged = Color(hex: 0xFF9500)
     public static let danger = Color(hex: 0xFF3B30)
 

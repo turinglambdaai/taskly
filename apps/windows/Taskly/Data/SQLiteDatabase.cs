@@ -369,6 +369,42 @@ public sealed class SQLiteDatabase : IDisposable
             $"{TaskSelectBase} WHERE t.due_date IS NOT NULL ORDER BY t.completed ASC, t.due_date ASC LIMIT @limit OFFSET @offset",
             new Dictionary<string, object?> { ["limit"] = limit, ["offset"] = offset });
 
+    /// <summary>Dated tasks with due_date in [startDate, endDate] inclusive
+    /// (yyyy-MM-dd strings; the calendar view queries months and the overdue
+    /// tail with this — PRODUCT-SPEC §4b).</summary>
+    public async Task<List<TaskItem>> GetTasksInRangeAsync(string startDate, string endDate,
+        bool includeCompleted = false, int limit = 1000, int offset = 0)
+    {
+        var completedFilter = includeCompleted ? "" : " AND t.completed = 0";
+        return await QueryTasksAsync(
+            $"{TaskSelectBase} WHERE t.due_date IS NOT NULL AND date(t.due_date) >= @startDate AND date(t.due_date) <= @endDate"
+            + completedFilter
+            + " ORDER BY t.due_date ASC, t.id DESC LIMIT @limit OFFSET @offset",
+            new Dictionary<string, object?> { ["startDate"] = startDate, ["endDate"] = endDate, ["limit"] = limit, ["offset"] = offset });
+    }
+
+    /// <summary>Incomplete-task count per due date in [startDate, endDate]
+    /// inclusive — the calendar month-grid day dots.</summary>
+    public async Task<List<DueDayCount>> GetDueDayCountsAsync(string startDate, string endDate)
+    {
+        await EnsureConnectedAsync();
+        var counts = new List<DueDayCount>();
+        var cmd = _connection!.CreateCommand();
+        cmd.CommandText =
+            $"SELECT date(due_date) AS d, COUNT(*) FROM {TableTasks} " +
+            "WHERE due_date IS NOT NULL AND completed = 0 AND date(due_date) >= @startDate AND date(due_date) <= @endDate " +
+            "GROUP BY d";
+        cmd.Parameters.AddWithValue("@startDate", startDate);
+        cmd.Parameters.AddWithValue("@endDate", endDate);
+        var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            counts.Add(new DueDayCount(reader.GetString(0), Convert.ToInt32(reader.GetInt64(1))));
+        }
+
+        return counts;
+    }
+
     public async Task<List<TaskItem>> GetIncompleteTasksAsync(int limit = 1000, int offset = 0) =>
         await QueryTasksAsync(
             $"{TaskSelectBase} WHERE t.completed = 0 ORDER BY t.id DESC LIMIT @limit OFFSET @offset",

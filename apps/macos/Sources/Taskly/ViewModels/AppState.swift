@@ -6,6 +6,7 @@ enum SmartView: Hashable {
     case all
     case completed
     case list(Int)
+    case calendar
 
     var titleKey: String {
         switch self {
@@ -14,6 +15,7 @@ enum SmartView: Hashable {
         case .all: return "navAll"
         case .completed: return "navCompleted"
         case .list: return ""
+        case .calendar: return "navCalendar"
         }
     }
 
@@ -25,7 +27,37 @@ enum SmartView: Hashable {
         case .all: return .all
         case .completed: return .completed
         case .list(let id): return .list(id)
+        case .calendar: return .calendar
         }
+    }
+}
+
+/// Group header inside the calendar time line (PRODUCT-SPEC §4b).
+struct CalendarSectionHeader: Identifiable, Hashable {
+    let id = UUID()
+    let text: String
+    let count: Int
+    let isToday: Bool
+    let isOverdue: Bool
+    /// "yyyy-MM-dd" of the group's day; nil for the overdue group.
+    let dateKey: String?
+}
+
+/// One rendered row of the calendar time line: a day header or a task.
+enum CalendarRow: Identifiable {
+    case header(CalendarSectionHeader)
+    case task(TaskItem)
+
+    var id: String {
+        switch self {
+        case .header(let h): return "header-\(h.id.uuidString)"
+        case .task(let t): return "task-\(t.id)"
+        }
+    }
+
+    var header: CalendarSectionHeader? {
+        if case .header(let h) = self { return h }
+        return nil
     }
 }
 
@@ -52,6 +84,17 @@ public final class AppState {
     var showCompleted = false
     var isConnected = false
 
+    // Calendar view state (PRODUCT-SPEC §4b)
+    var calendarYear = 0
+    /// 1–12; month the calendar grid shows.
+    var calendarMonth = 0
+    /// "yyyy-MM-dd" of the highlighted day cell.
+    var calendarSelectedDate: String?
+    /// due date → incomplete count, for the month grid day dots.
+    var calendarDayCounts: [String: Int] = [:]
+    /// Overdue tail + displayed-month day groups, rendered in order.
+    var calendarRows: [CalendarRow] = []
+
     // UI state
     var searchText = ""
     var quickAddText = ""
@@ -73,6 +116,12 @@ public final class AppState {
     var plannedCount = 0
     var allCount = 0
     var completedCount = 0
+
+    /// Calendar pane visible only in the calendar view without a search
+    /// (search shows flat results, as in every view).
+    var isCalendarView: Bool {
+        currentView == .calendar && searchText.isEmpty
+    }
 
     init() {
         config.load()
@@ -119,6 +168,7 @@ public final class AppState {
         case .planned: return i18n.t("statusShowPlanned")
         case .all: return i18n.t("statusShowAll")
         case .completed: return i18n.t("statusShowCompleted")
+        case .calendar: return i18n.t("statusShowCalendar")
         case .list(let id):
             let name = lists.first { $0.id == id }?.name ?? "List \(id)"
             return "\(i18n.t("statusSwitchList"))".replacingOccurrences(of: "{0}", with: name)
@@ -152,6 +202,7 @@ public final class AppState {
         case .planned: return i18n.t("navPlanned")
         case .all: return i18n.t("navAll")
         case .completed: return i18n.t("navCompleted")
+        case .calendar: return i18n.t("navCalendar")
         case .list(let id): return lists.first { $0.id == id }?.name ?? "List \(id)"
         }
     }
@@ -192,6 +243,10 @@ public final class AppState {
         isConnected = false
         lists = []
         tasks = []
+        calendarRows = []
+        calendarDayCounts = [:]
+        calendarYear = 0
+        calendarSelectedDate = nil
         currentView = .all
         refreshCounts()
         refreshStatusPersistent()
@@ -239,9 +294,16 @@ public final class AppState {
     func refresh() {
         guard isConnected else {
             tasks = []
+            calendarRows = []
             return
         }
         do {
+            if isCalendarView {
+                try refreshCalendar()
+                return
+            }
+
+            calendarRows = []
             if !searchText.isEmpty {
                 tasks = try tasksRepository.searchTasks(searchText)
             } else {
@@ -250,7 +312,145 @@ public final class AppState {
             }
         } catch {
             tasks = []
+            calendarRows = []
         }
+    }
+
+    /// Calendar view data: overdue tail + displayed-month day groups, plus
+    /// the day-dot counts (PRODUCT-SPEC §4b).
+    private func refreshCalendar() throws {
+        let cal = Calendar.current
+        let now = Date()
+        let todayKey = DateParser.string(from: now, format: "yyyy-MM-dd")
+        let beforeTodayKey = DateParser.string(
+            from: cal.date(byAdding: .day, value: -1, to: now) ?? now, format: "yyyy-MM-dd")
+        let monthStartDate = makeCalendarDate(year: calendarYear, month: calendarMonth, day: 1)
+        let monthStartKey = DateParser.string(from: monthStartDate, format: "yyyy-MM-dd")
+        let monthEndDate = cal.date(byAdding: .day, value: -1,
+            to: cal.date(byAdding: .month, value: 1, to: monthStartDate) ?? monthStartDate) ?? monthStartDate
+        let monthEndKey = DateParser.string(from: monthEndDate, format: "yyyy-MM-dd")
+
+        let overdue = try tasksRepository.getTasksInRange(
+            startDate: "1900-01-01", endDate: beforeTodayKey, includeCompleted: showCompleted)
+        let monthTasks = try tasksRepository.getTasksInRange(
+            startDate: monthStartKey, endDate: monthEndKey, includeCompleted: showCompleted)
+        let counts = try tasksRepository.getDueDayCounts(startDate: monthStartKey, endDate: monthEndKey)
+
+        calendarDayCounts = Dictionary(uniqueKeysWithValues: counts.map { ($0.date, $0.count) })
+
+        var rows: [CalendarRow] = []
+        if !overdue.isEmpty {
+            rows.append(.header(CalendarSectionHeader(
+                text: i18n.t("calOverdue"), count: overdue.count,
+                isToday: false, isOverdue: true, dateKey: nil)))
+            overdue.forEach { rows.append(.task($0)) }
+        }
+        let groups = Dictionary(grouping: monthTasks, by: { $0.dueDate ?? "" })
+        for dateKey in groups.keys.sorted() where !dateKey.isEmpty {
+            let group = groups[dateKey] ?? []
+            rows.append(.header(CalendarSectionHeader(
+                text: formatDayHeader(dateKey), count: group.count,
+                isToday: dateKey == todayKey, isOverdue: false, dateKey: dateKey)))
+            group.forEach { rows.append(.task($0)) }
+        }
+        calendarRows = rows
+    }
+
+    private func makeCalendarDate(year: Int, month: Int, day: Int) -> Date {
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = day
+        return Calendar.current.date(from: components) ?? Date()
+    }
+
+    // MARK: - Calendar interactions (PRODUCT-SPEC §4b)
+
+    func navigateCalendarMonth(_ delta: Int) {
+        guard calendarYear != 0 else { return }
+        let first = makeCalendarDate(year: calendarYear, month: calendarMonth, day: 1)
+        let target = Calendar.current.date(byAdding: .month, value: delta, to: first) ?? first
+        let comps = Calendar.current.dateComponents([.year, .month], from: target)
+        calendarYear = comps.year ?? calendarYear
+        calendarMonth = comps.month ?? calendarMonth
+        calendarSelectedDate = DateParser.string(
+            from: makeCalendarDate(year: calendarYear, month: calendarMonth, day: 1), format: "yyyy-MM-dd")
+        refresh()
+    }
+
+    func goCalendarToday() {
+        let now = Date()
+        let comps = Calendar.current.dateComponents([.year, .month], from: now)
+        calendarYear = comps.year ?? calendarYear
+        calendarMonth = comps.month ?? calendarMonth
+        calendarSelectedDate = DateParser.string(from: now, format: "yyyy-MM-dd")
+        refresh()
+    }
+
+    /// Day-cell click from the month grid; adjacent-month cells switch the
+    /// displayed month first (§4b).
+    func selectCalendarDate(_ dateKey: String) {
+        guard let date = parseDateKey(dateKey) else { return }
+        let comps = Calendar.current.dateComponents([.year, .month], from: date)
+        if comps.year != calendarYear || comps.month != calendarMonth {
+            calendarYear = comps.year ?? calendarYear
+            calendarMonth = comps.month ?? calendarMonth
+            calendarSelectedDate = dateKey
+            refresh()
+        } else {
+            calendarSelectedDate = dateKey
+        }
+    }
+
+    /// Month-grid title: `2026年9月` / `September 2026`.
+    var calendarMonthTitle: String {
+        i18n.format("calMonthTitle", String(calendarYear), i18n.t("calMonth\(calendarMonth)"))
+    }
+
+    /// Weekday short-name row ordered by the language's week start
+    /// (zh Monday-first, en Sunday-first); key index 1 = Monday.
+    var calendarWeekdayHeader: [String] {
+        let names = (1...7).map { i18n.t("calWeekdayShort\($0)") }
+        return config.language == "zh"
+            ? names
+            : [names[6], names[0], names[1], names[2], names[3], names[4], names[5]]
+    }
+
+    /// Group header text: `9月26日 · 周五` / `Friday, September 26`;
+    /// today/tomorrow/yesterday replace the weekday slot (§4b).
+    func formatDayHeader(_ dateKey: String) -> String {
+        guard let date = parseDateKey(dateKey) else { return dateKey }
+        let cal = Calendar.current
+        let monthName = i18n.t("calMonth\(cal.component(.month, from: date))")
+        let weekday = relativeDayLabel(dateKey)
+            ?? i18n.t("calWeekday\((cal.component(.weekday, from: date) + 5) % 7 + 1)")
+        return i18n.format("calDayHeader", monthName, cal.component(.day, from: date), weekday)
+    }
+
+    /// navToday / dateTomorrow / dateYesterday when the key is one of those
+    /// three days relative to now; nil otherwise.
+    func relativeDayLabel(_ dateKey: String) -> String? {
+        guard let date = parseDateKey(dateKey) else { return nil }
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let day = cal.startOfDay(for: date)
+        if day == today { return i18n.t("navToday") }
+        if day == cal.date(byAdding: .day, value: 1, to: today) { return i18n.t("dateTomorrow") }
+        if day == cal.date(byAdding: .day, value: -1, to: today) { return i18n.t("dateYesterday") }
+        return nil
+    }
+
+    /// Strict "yyyy-MM-dd" parse (asDate falls back to now, which the
+    /// calendar must not do for malformed keys).
+    @ObservationIgnored private lazy var dayKeyFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+
+    private func parseDateKey(_ key: String) -> Date? {
+        dayKeyFormatter.date(from: key)
     }
 
     // MARK: - Selection
@@ -261,6 +461,18 @@ public final class AppState {
         if case .list(let id) = view {
             config.lastSelectedListId = id
             config.save()
+        }
+        if view == .calendar {
+            let now = Date()
+            let comps = Calendar.current.dateComponents([.year, .month], from: now)
+            let entering = calendarYear == 0
+            if entering || calendarYear != comps.year || calendarMonth != comps.month {
+                calendarYear = comps.year ?? 0
+                calendarMonth = comps.month ?? 0
+            }
+            if entering || calendarSelectedDate == nil {
+                calendarSelectedDate = DateParser.string(from: now, format: "yyyy-MM-dd")
+            }
         }
         refresh()
         refreshStatusPersistent()

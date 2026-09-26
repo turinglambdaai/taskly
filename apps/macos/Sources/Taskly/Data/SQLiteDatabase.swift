@@ -453,6 +453,35 @@ public final class SQLiteDatabase: @unchecked Sendable {
         }
     }
 
+    /// Dated tasks with due_date in [startDate, endDate] inclusive
+    /// (yyyy-MM-dd strings; the calendar view queries months and the overdue
+    /// tail with this — PRODUCT-SPEC §4b).
+    public func getTasksInRange(startDate: String, endDate: String, includeCompleted: Bool = false,
+                                limit: Int = 1000, offset: Int = 0) throws -> [TaskItem] {
+        try ensureConnected()
+        return try queue.sync {
+            let completedFilter = includeCompleted ? "" : " AND t.completed = 0"
+            return try queryRows(
+                "\(SQLiteDatabase.taskSelectBase) WHERE t.due_date IS NOT NULL AND date(t.due_date) >= ? AND date(t.due_date) <= ?"
+                    + completedFilter + " ORDER BY t.due_date ASC, t.id DESC LIMIT ? OFFSET ?",
+                [.text(startDate), .text(endDate), .int(Int64(limit)), .int(Int64(offset))]
+            ) { [weak self] row in self!.task(from: row) }
+        }
+    }
+
+    /// Incomplete-task count per due date in [startDate, endDate] inclusive —
+    /// the calendar month-grid day dots.
+    public func getDueDayCounts(startDate: String, endDate: String) throws -> [(date: String, count: Int)] {
+        try ensureConnected()
+        return try queue.sync {
+            try queryRows(
+                "SELECT date(due_date) AS d, COUNT(*) AS c FROM tasks WHERE due_date IS NOT NULL AND completed = 0"
+                    + " AND date(due_date) >= ? AND date(due_date) <= ? GROUP BY d",
+                [.text(startDate), .text(endDate)]
+            ) { row in (date: row.text("d") ?? "", count: row.int("c") ?? 0) }
+        }
+    }
+
     public func getIncompleteTasks(limit: Int = 1000, offset: Int = 0) throws -> [TaskItem] {
         try ensureConnected()
         return try queue.sync {

@@ -17,7 +17,11 @@ struct TaskPaneView: View {
 
             ZStack {
                 if state.isConnected {
-                    taskList
+                    if state.isCalendarView {
+                        CalendarPaneView()
+                    } else {
+                        taskList
+                    }
                 } else {
                     emptyState(
                         icon: "📂", opacity: 0.4,

@@ -79,6 +79,14 @@ public sealed class TaskRepository
         return await _db.SearchTasksAsync(keyword.Trim());
     }
 
+    /// <summary>Calendar view data (PRODUCT-SPEC §4b); the view groups and
+    /// renders client-side.</summary>
+    public Task<List<TaskItem>> GetTasksInRangeAsync(string startDate, string endDate, bool includeCompleted = false) =>
+        _db.GetTasksInRangeAsync(startDate, endDate, includeCompleted);
+
+    public Task<List<DueDayCount>> GetDueDayCountsAsync(string startDate, string endDate) =>
+        _db.GetDueDayCountsAsync(startDate, endDate);
+
     public Task<TaskItem?> GetTaskByIdAsync(int id) => _db.GetTaskByIdAsync(id);
 
     public Task<int> GetTaskCountByListAsync(int listId) => _db.GetTaskCountByListAsync(listId);

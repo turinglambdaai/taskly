@@ -54,6 +54,7 @@
             <SolidColorBrush x:Key="SmartListScheduledBrush" Color="#FF3B30" />
             <SolidColorBrush x:Key="SmartListAllBrush" Color="#8E8E93" />
             <SolidColorBrush x:Key="SmartListCompletedBrush" Color="#8E8E93" />
+            <SolidColorBrush x:Key="SmartListCalendarBrush" Color="#5856D6" />
             <SolidColorBrush x:Key="DangerBrush" Color="#FF3B30" />
             <!-- List-palette presets live in C# (Repositories.ListPalette.Colors);
                  WinUI 3 has no x:Array markup extension. -->

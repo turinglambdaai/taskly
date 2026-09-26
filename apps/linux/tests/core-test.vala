@@ -91,6 +91,59 @@ int main(string[] args) {
         failures += check("search hit", db.search_tasks("牛奶").length() == 1);
         failures += check("search miss", db.search_tasks("不存在").length() == 0);
 
+        // Calendar data-layer contract (PRODUCT-SPEC 4b): bounds inclusive,
+        // due_date ASC ordering, incomplete-only unless requested, and day
+        // dots count incomplete tasks per date.
+        var seed_range = new TaskItem();
+        seed_range.list_id = list_id;
+        seed_range.created_at = "x";
+        seed_range.text = "early";
+        seed_range.due_date = "2026-09-01";
+        db.add_task(seed_range);
+        var seed_mid = new TaskItem();
+        seed_mid.list_id = list_id;
+        seed_mid.created_at = "x";
+        seed_mid.text = "mid";
+        seed_mid.due_date = "2026-09-15";
+        db.add_task(seed_mid);
+        var seed_late = new TaskItem();
+        seed_late.list_id = list_id;
+        seed_late.created_at = "x";
+        seed_late.text = "late";
+        seed_late.due_date = "2026-09-30";
+        db.add_task(seed_late);
+        var seed_out = new TaskItem();
+        seed_out.list_id = list_id;
+        seed_out.created_at = "x";
+        seed_out.text = "outside";
+        seed_out.due_date = "2026-10-05";
+        db.add_task(seed_out);
+
+        var in_range = db.get_tasks_in_range("2026-09-01", "2026-09-30");
+        failures += check("range count", in_range.length() == 3);
+        failures += check("range order", in_range.nth_data(0).due_date == "2026-09-01"
+            && in_range.nth_data(1).due_date == "2026-09-15"
+            && in_range.nth_data(2).due_date == "2026-09-30");
+
+        db.set_task_completed(seed_mid.id, true);
+        failures += check("range excludes completed",
+            db.get_tasks_in_range("2026-09-01", "2026-09-30").length() == 2);
+        failures += check("range includes completed",
+            db.get_tasks_in_range("2026-09-01", "2026-09-30", true).length() == 3);
+
+        var day_counts = db.get_due_day_counts("2026-09-01", "2026-09-30");
+        bool found_mid_done = false;
+        bool found_first = false;
+        foreach (var item in day_counts) {
+            if (item.date == "2026-09-15" && item.count == 0) {
+                found_mid_done = true;
+            }
+            if (item.date == "2026-09-01" && item.count == 1) {
+                found_first = true;
+            }
+        }
+        failures += check("day dots incomplete only", !found_mid_done && found_first);
+
         var list2 = db.add_list("Doomed", null, null);
         var t2 = new TaskItem();
         t2.list_id = list2;

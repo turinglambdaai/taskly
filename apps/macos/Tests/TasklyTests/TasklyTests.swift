@@ -182,6 +182,49 @@ final class DatabaseTests: XCTestCase {
         XCTAssertEqual(try db.getCompletedTasks().count, 1)
     }
 
+    /// Calendar data-layer contract (PRODUCT-SPEC §4b): range bounds are
+    /// inclusive, ordering is due_date ASC then id DESC, incomplete-only by
+    /// default, and day counts cover incomplete tasks per date only.
+    func testRangeQueries() throws {
+        try db.ensureConnected()
+        let listId = try db.addList(name: "R")
+
+        let t1 = TaskItem(id: 0, listId: listId, text: "early", createdAt: "x", dueDate: "2026-09-01")
+        let t2 = TaskItem(id: 0, listId: listId, text: "mid", createdAt: "x", dueDate: "2026-09-15")
+        let t3 = TaskItem(id: 0, listId: listId, text: "same day", createdAt: "x", dueDate: "2026-09-15")
+        let t4 = TaskItem(id: 0, listId: listId, text: "late", createdAt: "x", dueDate: "2026-09-30")
+        let t5 = TaskItem(id: 0, listId: listId, text: "outside", createdAt: "x", dueDate: "2026-10-05")
+        let t6 = TaskItem(id: 0, listId: listId, text: "undated", createdAt: "x")
+        for task in [t1, t2, t3, t4, t5, t6] { _ = try db.addTask(task) }
+
+        // Bounds inclusive, undated excluded, ordered by due date
+        let inRange = try db.getTasksInRange(startDate: "2026-09-01", endDate: "2026-09-30")
+        XCTAssertEqual(inRange.map(\.dueDate), ["2026-09-01", "2026-09-15", "2026-09-15", "2026-09-30"])
+        XCTAssertEqual(inRange.count, 4)
+        XCTAssertFalse(inRange.contains { $0.text == "undated" })
+
+        // Single-day range (calendar day groups)
+        let midDay = try db.getTasksInRange(startDate: "2026-09-15", endDate: "2026-09-15")
+        XCTAssertEqual(midDay.count, 2)
+
+        // Completed tasks excluded unless requested
+        let mid15 = try db.getTasksInRange(startDate: "2026-09-15", endDate: "2026-09-15")
+        _ = try db.setTaskCompleted(mid15[0].id, true)
+        XCTAssertEqual(try db.getTasksInRange(startDate: "2026-09-15", endDate: "2026-09-15").count, 1)
+        let withCompleted = try db.getTasksInRange(startDate: "2026-09-15", endDate: "2026-09-15", includeCompleted: true)
+        XCTAssertEqual(withCompleted.count, 2)
+        XCTAssertEqual(withCompleted.last?.completed, true, "same day: id DESC, the completed one sorts last")
+
+        // Day dots: incomplete tasks only, grouped per date
+        let counts = try db.getDueDayCounts(startDate: "2026-09-01", endDate: "2026-09-30")
+        let byDate = Dictionary(uniqueKeysWithValues: counts.map { ($0.date, $0.count) })
+        XCTAssertEqual(byDate["2026-09-01"], 1)
+        XCTAssertEqual(byDate["2026-09-15"], 1, "completed task no longer counts")
+        XCTAssertEqual(byDate["2026-09-30"], 1)
+        XCTAssertNil(byDate["2026-10-05"], "outside the range")
+        XCTAssertNil(byDate["2026-09-16"], "no phantom days")
+    }
+
     func testSearch() throws {
         try db.ensureConnected()
         let listId = try db.addList(name: "S")

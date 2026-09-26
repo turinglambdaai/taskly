@@ -83,6 +83,10 @@ struct SidebarView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 smartTiles
+                // Calendar tile (PRODUCT-SPEC §4b): full-width, no count.
+                SmartTile(view: .calendar, icon: "📆", titleKey: "navCalendar",
+                          color: Palette.calendar, count: 0)
+                    .frame(height: 56)
                 myLists
             }
             .padding(12)

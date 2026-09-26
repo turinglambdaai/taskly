@@ -174,6 +174,28 @@ public enum TaskViewType
     Planned,
     Completed,
     List,
+    Calendar,
+}
+
+/// <summary>Incomplete-task count per due date, for calendar day dots
+/// (PRODUCT-SPEC §4b).</summary>
+public record DueDayCount(string Date, int Count);
+
+/// <summary>Group header row inside the calendar time line; intermixed with
+/// TaskItem rows in the calendar list (PRODUCT-SPEC §4b).</summary>
+public sealed record CalendarSectionHeader(
+    string HeaderText,
+    int Count,
+    bool IsToday,
+    bool IsOverdue,
+    string? DateKey)
+{
+    public string CountText => Count > 0 ? Count.ToString() : "";
+
+    /// <summary>Today's header renders in the accent color (§4b); WinUI has
+    /// no data triggers, so the brush is a projected property like TaskItem's.</summary>
+    public Microsoft.UI.Xaml.Media.Brush HeaderBrush =>
+        new Microsoft.UI.Xaml.Media.SolidColorBrush(IsToday ? UiTheme.Accent : UiTheme.OnSurface);
 }
 
 /// <summary>Error with a user-facing message and a category; the category

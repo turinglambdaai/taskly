@@ -59,6 +59,8 @@ namespace Taskly.Views;
             TileAllLabel.Text = Vm.T("navAll");
             TileCompletedIcon.Text = "\uE73E";
             TileCompletedLabel.Text = Vm.T("navCompleted");
+            TileCalendarIcon.Text = "\uE8BF";
+            TileCalendarLabel.Text = Vm.T("navCalendar");
             MyListsHeader.Text = Vm.T("sectionMyLists");
             RefreshCounts();
         }
@@ -89,6 +91,9 @@ namespace Taskly.Views;
 
     private async void OnTileCompleted(object sender, RoutedEventArgs e) =>
         await Vm.SelectViewAsync(TaskViewType.Completed);
+
+    private async void OnTileCalendar(object sender, RoutedEventArgs e) =>
+        await Vm.SelectViewAsync(TaskViewType.Calendar);
 
     private async void OnListItemClick(object sender, ItemClickEventArgs e)
     {

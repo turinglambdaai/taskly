@@ -14,6 +14,7 @@
 | `tile/planned` | `#FF3B30` | Planned tile |
 | `tile/all` | `#8E8E93` | All tile |
 | `tile/completed` | `#8E8E93` | Completed tile |
+| `tile/calendar` | `#5856D6` | Calendar tile (PRODUCT-SPEC §4b) |
 | `flag` (reserved) | `#FF9500` | Flagged (unused) |
 | `danger` | `#FF3B30` | Destructive buttons |
 
@@ -73,6 +74,9 @@
 | sidebar width | 280 (200…420) |
 | menu bar / status bar height | 32 / 28 |
 | smart view tile | 2×2 grid of 68×tile-height color fills (radius 12): white glyph top-left (16px), bold white count top-right (16px), semibold white label bottom-left (14px) |
+| calendar tile | full-width 56px fill (radius 12), same white glyph/label geometry as smart tiles, no count |
+| calendar month grid | 7 columns × 6 rows of 44px cells (2px gap); day number 13px, adjacent-month days in text/tertiary; up to three 4px accent dots (3px apart) under the number; selected day gets a 1px accent border ring (radius 8) |
+| calendar time line | group header 13px semibold on background (today's header accent), count in text/secondary 12px; rows are standard task rows |
 | list row | card: surface fill + 1px divider border, radius 8, padding 10,8; 32px round color dot with the emoji inside (17px), name 13px, gray count right |
 | list icon size | 32 (round) |
 | checkbox size | 18–22 (round) |

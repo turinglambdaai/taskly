@@ -369,6 +369,34 @@ public class SQLiteDatabase : Object {
             { limit.to_string(), offset.to_string() });
     }
 
+    // Dated tasks with due_date in [start_date, end_date] inclusive
+    // (yyyy-MM-dd strings; the calendar view queries months and the overdue
+    // tail with this -- PRODUCT-SPEC 4b).
+    public GLib.List<TaskItem> get_tasks_in_range(string start_date, string end_date,
+                                                  bool include_completed = false,
+                                                  int64 limit = 1000, int64 offset = 0) throws GLib.Error {
+        var completed_filter = include_completed ? "" : " AND t.completed = 0";
+        return task_list(
+            TASK_SELECT_BASE + " WHERE t.due_date IS NOT NULL AND date(t.due_date) >= ? AND date(t.due_date) <= ?"
+            + completed_filter + " ORDER BY t.due_date ASC, t.id DESC LIMIT ? OFFSET ?",
+            { start_date, end_date, limit.to_string(), offset.to_string() });
+    }
+
+    // Incomplete-task count per due date in [start_date, end_date] inclusive
+    // -- the calendar month-grid day dots.
+    public GLib.List<DueDayCount> get_due_day_counts(string start_date, string end_date) throws GLib.Error {
+        return query<DueDayCount>(
+            "SELECT date(due_date) AS d, COUNT(*) AS c FROM tasks WHERE due_date IS NOT NULL AND completed = 0"
+            + " AND date(due_date) >= ? AND date(due_date) <= ? GROUP BY d",
+            { start_date, end_date },
+            (stmt) => {
+                var item = new DueDayCount();
+                item.date = stmt.column_text(column_index(stmt, "d")) ?? "";
+                item.count = (int64) stmt.column_int64(column_index(stmt, "c"));
+                return item;
+            });
+    }
+
     public GLib.List<TaskItem> get_incomplete_tasks(int64 limit = 1000, int64 offset = 0) throws GLib.Error {
         return task_list(
             TASK_SELECT_BASE + " WHERE t.completed = 0 ORDER BY t.id DESC LIMIT ? OFFSET ?",

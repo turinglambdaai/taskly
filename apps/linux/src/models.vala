@@ -56,7 +56,15 @@ public enum TaskViewType {
     TODAY,
     PLANNED,
     COMPLETED,
-    LIST;
+    LIST,
+    CALENDAR;
+}
+
+// Incomplete-task count per due date, for calendar day dots
+// (PRODUCT-SPEC 4b).
+public class DueDayCount : Object {
+    public string date { get; set; default = ""; }
+    public int64 count { get; set; default = 0; }
 }
 
 public enum AppErrorType {

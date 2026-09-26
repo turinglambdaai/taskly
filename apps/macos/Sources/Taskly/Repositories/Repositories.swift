@@ -7,6 +7,8 @@ public enum TaskViewType: Sendable, Hashable {
     case planned
     case completed
     case list(Int)
+    /// UI-only (PRODUCT-SPEC §4b); data flows through the range queries.
+    case calendar
 }
 
 /// Repository above SQLiteDatabase: validation + view dispatch + grouping.
@@ -41,7 +43,20 @@ public struct TaskRepository: Sendable {
             return showCompleted
                 ? try db.getTasksByListIncludingCompleted(id, limit: limit, offset: offset)
                 : try db.getTasksByList(id, limit: limit, offset: offset)
+        case .calendar:
+            // Not dispatched through the view switch; the calendar pane
+            // queries ranges directly (PRODUCT-SPEC §4b).
+            return try db.getIncompleteTasks(limit: limit, offset: offset)
         }
+    }
+
+    /// Calendar view data (PRODUCT-SPEC §4b); the pane groups client-side.
+    public func getTasksInRange(startDate: String, endDate: String, includeCompleted: Bool = false) throws -> [TaskItem] {
+        try db.getTasksInRange(startDate: startDate, endDate: endDate, includeCompleted: includeCompleted)
+    }
+
+    public func getDueDayCounts(startDate: String, endDate: String) throws -> [(date: String, count: Int)] {
+        try db.getDueDayCounts(startDate: startDate, endDate: endDate)
     }
 
     @discardableResult

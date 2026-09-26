@@ -13,6 +13,10 @@ public class AppContext : Object {
     public TaskViewType current_view = TaskViewType.ALL;
     public int64 current_list_id = 0;
     public bool show_completed = false;
+    // Calendar view state (PRODUCT-SPEC 4b); 0 year = never entered.
+    public int calendar_year = 0;
+    public int calendar_month = 0;
+    public string? calendar_selected_date = null;
     public Gtk.Window window; // transient parent for dialogs
     public TasklyUi? ui = null; // set after the window is built
 
@@ -43,6 +47,7 @@ public class AppContext : Object {
             case TaskViewType.TODAY: return t("navToday");
             case TaskViewType.PLANNED: return t("navPlanned");
             case TaskViewType.COMPLETED: return t("navCompleted");
+            case TaskViewType.CALENDAR: return t("navCalendar");
             case TaskViewType.LIST: return list_name_or_placeholder();
             default: return t("navAll");
         }
@@ -71,6 +76,7 @@ public class TasklyUi : Object {
     private Gtk.Box input_area;
     private GLib.HashTable<TaskViewType, Gtk.Label> tile_counts;
     private GLib.HashTable<Gtk.Button, TaskViewType> tile_buttons;
+    private CalendarView calendar_view;
     private uint flash_source = 0;
 
     public TasklyUi(AppContext ctx) {
@@ -89,6 +95,19 @@ window.taskly-root { background-color: #FFFFFF; }
 .smart-tile.completed { background-color: #8E8E93; }
 .smart-tile .title { font-weight: 600; }
 .smart-tile .count { opacity: 0.85; font-size: 11px; }
+.smart-tile.calendar { background-color: #5856D6; }
+.cal-weekday { color: #8E8E93; font-size: 12px; }
+.cal-title { font-weight: 600; }
+.cal-cell { padding: 2px 4px; border-radius: 8px; border: 1px solid transparent; }
+.cal-cell.selected { border-color: #007AFF; }
+.cal-cell .day { font-size: 13px; }
+.cal-cell .day.out { color: #B0B0B5; }
+.cal-cell .day.today { color: #007AFF; font-weight: 600; }
+.cal-dot { border-radius: 2px; background-color: #007AFF; }
+.cal-header { padding: 10px 4px 2px 4px; }
+.cal-header .cal-header-count { color: #8E8E93; font-size: 12px; }
+.cal-header label { color: #1D1D1F; font-size: 13px; font-weight: 600; }
+.cal-header.today-h label { color: #007AFF; }
 .task-row { border-radius: 10px; padding: 8px 12px; }
 .task-row.completed .task-text { color: #B0B0B5; text-decoration: line-through; }
 .task-meta { color: #8E8E93; font-size: 12px; }
@@ -153,6 +172,8 @@ window.taskly-root { background-color: #FFFFFF; }
         add_tile(tiles_grid, "navPlanned", "📅", "planned", TaskViewType.PLANNED, 0, 1);
         add_tile(tiles_grid, "navAll", "≡", "all", TaskViewType.ALL, 1, 0);
         add_tile(tiles_grid, "navCompleted", "✓", "completed", TaskViewType.COMPLETED, 1, 1);
+        // Calendar tile (PRODUCT-SPEC 4b): full-width, no count.
+        add_tile(tiles_grid, "navCalendar", "📆", "calendar", TaskViewType.CALENDAR, 2, 0, 2);
         sidebar.append(tiles_grid);
 
         var lists_header = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8);
@@ -205,6 +226,8 @@ window.taskly-root { background-color: #FFFFFF; }
         tasks_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 4);
         tasks_scroll.child = tasks_box;
         task_pane.append(tasks_scroll);
+
+        calendar_view = new CalendarView(ctx, tasks_box, tasks_scroll, build_task_row);
 
         // Layout
         var paned = new Gtk.Paned(Gtk.Orientation.HORIZONTAL);
@@ -294,7 +317,7 @@ window.taskly-root { background-color: #FFFFFF; }
     }
 
     private void add_tile(Gtk.Grid grid, string key, string icon, string css,
-                          TaskViewType view, int row, int col) {
+                          TaskViewType view, int row, int col, int width = 1) {
         var button = new Gtk.Button();
         button.add_css_class("smart-tile");
         button.add_css_class(css);
@@ -312,7 +335,7 @@ window.taskly-root { background-color: #FFFFFF; }
         tile_box.append(title);
         button.child = tile_box;
 
-        grid.attach(button, col, row, 1, 1);
+        grid.attach(button, col, row, width, 1);
         tile_counts[view] = count_label;
         tile_buttons[button] = view;
         button.clicked.connect(() => select_view(view));
@@ -322,6 +345,17 @@ window.taskly-root { background-color: #FFFFFF; }
 
     private void select_view(TaskViewType view) {
         ctx.current_view = view;
+        if (view == TaskViewType.CALENDAR) {
+            var now = new DateTime.now_local();
+            var entering = ctx.calendar_year == 0;
+            if (entering || ctx.calendar_year != now.get_year() || ctx.calendar_month != now.get_month()) {
+                ctx.calendar_year = now.get_year();
+                ctx.calendar_month = now.get_month();
+            }
+            if (entering || ctx.calendar_selected_date == null) {
+                ctx.calendar_selected_date = now.format("%Y-%m-%d");
+            }
+        }
         refresh_all();
     }
 
@@ -443,6 +477,7 @@ window.taskly-root { background-color: #FFFFFF; }
             case TaskViewType.TODAY: return ctx.t("statusShowToday");
             case TaskViewType.PLANNED: return ctx.t("statusShowPlanned");
             case TaskViewType.COMPLETED: return ctx.t("statusShowCompleted");
+            case TaskViewType.CALENDAR: return ctx.t("statusShowCalendar");
             case TaskViewType.LIST:
                 return ctx.t("statusSwitchList").replace("{0}", ctx.list_name_or_placeholder());
             default: return ctx.t("statusShowAll");
@@ -537,6 +572,13 @@ window.taskly-root { background-color: #FFFFFF; }
             var next = child.get_next_sibling();
             tasks_box.remove(child);
             child = next;
+        }
+
+        // Calendar pane renders its own month grid + day groups (4b);
+        // searching shows flat results, as in every view.
+        if (ctx.current_view == TaskViewType.CALENDAR && search_text.length == 0) {
+            calendar_view.render();
+            return;
         }
 
         GLib.List<TaskItem> tasks = new GLib.List<TaskItem>();
