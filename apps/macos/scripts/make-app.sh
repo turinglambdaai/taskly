@@ -47,15 +47,18 @@ RES="$CONTENT/Resources"
 echo "▶ swift build -c release"
 if [[ $UNIVERSAL == 1 ]]; then
   swift build -c release --arch arm64 --arch x86_64
+  # Multi-arch SwiftPM builds land in the Apple products dir, not .build/release.
+  BUILT=".build/apple/Products/Release"
 else
   swift build -c release
+  BUILT=".build/release"
 fi
 
 rm -rf "$APP"
 mkdir -p "$MACOS" "$RES"
 
-cp .build/release/Taskly "$MACOS/Taskly"
-cp -R .build/release/Taskly_Taskly.bundle "$RES/TasklyResources.bundle" 2>/dev/null || true
+cp "$BUILT/Taskly" "$MACOS/Taskly"
+cp -R "$BUILT/Taskly_Taskly.bundle" "$RES/TasklyResources.bundle" 2>/dev/null || true
 
 # Icon: icon_512.png → .icns (via iconset)
 ICONSET="$OUT_DIR/taskly.iconset"
