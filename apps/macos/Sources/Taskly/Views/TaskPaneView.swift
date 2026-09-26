@@ -105,8 +105,8 @@ struct TaskPaneView: View {
                 }
             }
             .padding(.horizontal, 10)
-            .frame(height: 32)
-            .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 8))
+            .frame(height: 36)
+            .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 10))
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(state.theme.inputBorder, lineWidth: 1))
@@ -126,8 +126,8 @@ struct TaskPaneView: View {
                 }
             }
             .padding(.horizontal, 12)
-            .frame(height: 38)
-            .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 8))
+            .frame(height: 40)
+            .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 10))
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(state.theme.inputBorder, lineWidth: 1))

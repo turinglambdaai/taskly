@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -50,7 +50,7 @@ namespace Taskly.Views;
         }
 
         // Hover = a slight lift (never gray): plain surfaces keep the fill.
-        private void WireTileHover(Border tile)
+        private void WireTileHover(Button tile)
         {
             // Hover eases an unselected tile toward full saturation; the
             // selected tile stays at full.
@@ -83,7 +83,7 @@ namespace Taskly.Views;
             SetSelected(TileCalendar, Vm.CurrentView == TaskViewType.Calendar);
         }
 
-        private static void SetSelected(Border tile, bool selected)
+        private static void SetSelected(Button tile, bool selected)
         {
             tile.BorderThickness = selected ? new Thickness(2) : new Thickness(0);
             tile.BorderBrush = selected
@@ -134,19 +134,19 @@ namespace Taskly.Views;
         TileCompletedCount.Text = Vm.CompletedCount > 0 ? Vm.CompletedCount.ToString() : "";
     }
 
-    private async void OnTileToday(object sender, TappedRoutedEventArgs e) =>
+    private async void OnTileToday(object sender, RoutedEventArgs e) =>
         await Vm.SelectViewAsync(TaskViewType.Today);
 
-    private async void OnTilePlanned(object sender, TappedRoutedEventArgs e) =>
+    private async void OnTilePlanned(object sender, RoutedEventArgs e) =>
         await Vm.SelectViewAsync(TaskViewType.Planned);
 
-    private async void OnTileAll(object sender, TappedRoutedEventArgs e) =>
+    private async void OnTileAll(object sender, RoutedEventArgs e) =>
         await Vm.SelectViewAsync(TaskViewType.All);
 
-    private async void OnTileCompleted(object sender, TappedRoutedEventArgs e) =>
+    private async void OnTileCompleted(object sender, RoutedEventArgs e) =>
         await Vm.SelectViewAsync(TaskViewType.Completed);
 
-    private async void OnTileCalendar(object sender, TappedRoutedEventArgs e) =>
+    private async void OnTileCalendar(object sender, RoutedEventArgs e) =>
         await Vm.SelectViewAsync(TaskViewType.Calendar);
 
     private async void OnListItemClick(object sender, ItemClickEventArgs e)

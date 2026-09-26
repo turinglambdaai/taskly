@@ -94,6 +94,7 @@
             </Grid.ColumnDefinitions>
 
             <Button x:Name="SidebarToggle" Grid.Column="0" Click="OnToggleSidebar"
+                    AutomationProperties.Name="Toggle sidebar"
                     Background="Transparent" BorderThickness="0" Padding="6"
                     Content="&#xE700;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
                     VerticalAlignment="Top" />
@@ -178,6 +179,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <Button x:Name="CalPrevMonth" Grid.Column="0" Click="OnCalPrevMonth"
+                                AutomationProperties.Name="Previous month"
                                 Background="Transparent" BorderThickness="0" Padding="6"
                                 Content="&#xE76B;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                 Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
@@ -189,6 +191,7 @@
                                 Background="Transparent" BorderThickness="0" Padding="8,2"
                                 FontSize="13" Foreground="{ThemeResource AccentBrush}" />
                         <Button x:Name="CalNextMonth" Grid.Column="3" Click="OnCalNextMonth"
+                                AutomationProperties.Name="Next month"
                                 Background="Transparent" BorderThickness="0" Padding="6"
                                 Content="&#xE76C;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                 Foreground="{ThemeResource ThemeSecondaryTextBrush}" />

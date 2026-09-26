@@ -114,6 +114,7 @@ window.taskly-root { background-color: #FFFFFF; }
 .cal-header .cal-header-count { color: #8E8E93; font-size: 12px; }
 .cal-header label { color: #1D1D1F; font-size: 13px; font-weight: 600; }
 .cal-header.today-h label { color: #007AFF; }
+.cal-header.overdue-h label { color: #FF3B30; }
 .task-row { border-radius: 10px; padding: 8px 12px; }
 .task-row.completed .task-text { color: #B0B0B5; text-decoration: line-through; }
 .task-meta { color: #8E8E93; font-size: 12px; }
@@ -525,6 +526,13 @@ window.taskly-root { background-color: #FFFFFF; }
     /// Secondary header line (DESIGN-TOKENS view header): full date under
     /// Today, the displayed month under Calendar, open-task counts
     /// elsewhere. Hidden while searching.
+    /// Subtitle-only refresh for paths that bypass refresh_all (the
+    /// calendar navigates months internally, so its title changes without a
+    /// full view refresh).
+    public void refresh_subtitle() {
+        update_subtitle();
+    }
+
     private void update_subtitle() {
         subtitle_label.visible = search.text.length == 0;
         if (!subtitle_label.visible) {
@@ -843,6 +851,11 @@ window.taskly-root { background-color: #FFFFFF; }
     /// semantics): overdue incomplete red, due today accent, otherwise no
     /// override (gray). yyyy-MM-dd strings compare lexicographically.
     private string due_tone_class(TaskItem task) {
+        // Completed tasks always render in the secondary tone (DESIGN-TOKENS
+        // due-date semantics), never in the due-today accent.
+        if (task.completed) {
+            return "";
+        }
         var date_only = DateParser.extract_date_only(task.due_date);
         if (date_only == null) {
             return "";
@@ -851,7 +864,7 @@ window.taskly-root { background-color: #FFFFFF; }
         if (date_only == today) {
             return "due-today";
         }
-        if (!task.completed && date_only < today) {
+        if (date_only < today) {
             return "due-overdue";
         }
         return "";

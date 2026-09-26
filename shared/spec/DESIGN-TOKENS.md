@@ -73,7 +73,7 @@
 | window default | 1280×880 (min 760×520 logical) |
 | sidebar width | 280 (200…420) |
 | menu bar / status bar height | 32 / 28 |
-| smart view tile | 2×2 grid of 68px color fills (radius 12), laid out as two rows: top row = white glyph left (18px) + bold white count right (16px), bottom row = semibold white label left (14px); the tile is a plain surface (no default button chrome) so hover darkens the fill ~8% and never grays it; the active view's tile gets a 2px white inset ring + 12% white overlay |
+| smart view tile | 2×2 grid of 68px color fills (radius 12), laid out as two rows: top row = white glyph left (18px) + bold white count right (16px), bottom row = semibold white label left (14px); the tile is a plain surface (no default button chrome) so hover darkens the fill ~8% and never grays it; the active view's tile gets a 2px white inset ring |
 | calendar tile | full-width 56px fill (radius 12), same two-row geometry without a count, same active/hover treatment |
 | calendar month grid | 7 columns × 6 rows of 40px cells (2px gap); day number 13px, adjacent-month days in text/tertiary; today = accent-filled circle with a white number; selected day gets a 1px accent border ring (radius 8) plus an accent-tinted fill; up to three 4px accent dots (3px apart) under the number |
 | calendar time line | group header 13px semibold on background (today's header accent, overdue header `#FF3B30`), count in text/secondary 12px; hairline divider between the month grid and the time line; rows are standard task rows |

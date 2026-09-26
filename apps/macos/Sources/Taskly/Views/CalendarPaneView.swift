@@ -169,7 +169,9 @@ private struct CalendarHeaderView: View {
         HStack {
             Text(header.text)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(header.isToday ? state.theme.accent : state.theme.onSurface)
+                .foregroundStyle(
+                    header.isOverdue ? Palette.danger
+                        : (header.isToday ? state.theme.accent : state.theme.onSurface))
                 .lineLimit(1)
             Spacer()
             if header.count > 0 {
@@ -202,11 +204,20 @@ private struct DayCell: View {
             state.selectCalendarDate(key)
         } label: {
             VStack(spacing: 3) {
-                Text("\(Calendar.current.component(.day, from: day))")
-                    .font(.system(size: 13, weight: isToday ? .semibold : .regular))
-                    .foregroundStyle(
-                        isToday ? state.theme.accent
-                            : (inMonth ? state.theme.onSurface : state.theme.tertiaryText))
+                // Today = accent-filled circle with a white number
+                // (DESIGN-TOKENS calendar month grid).
+                ZStack {
+                    if isToday {
+                        Circle()
+                            .fill(state.theme.accent)
+                            .frame(width: 24, height: 24)
+                    }
+                    Text("\(Calendar.current.component(.day, from: day))")
+                        .font(.system(size: 13, weight: isToday ? .semibold : .regular))
+                        .foregroundStyle(
+                            isToday ? Color.white
+                                : (inMonth ? state.theme.onSurface : state.theme.tertiaryText))
+                }
                 HStack(spacing: 3) {
                     ForEach(0..<dots, id: \.self) { _ in
                         Circle()
@@ -219,7 +230,7 @@ private struct DayCell: View {
             .frame(maxWidth: .infinity, minHeight: 44)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? state.theme.selection : Color.clear))
+                    .fill(isSelected && !isToday ? state.theme.accent.opacity(0.12) : Color.clear))
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(isSelected ? state.theme.accent : Color.clear, lineWidth: 1))

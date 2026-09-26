@@ -1,4 +1,4 @@
-<ContentDialog
+﻿<ContentDialog
     x:Class="Taskly.Dialogs.TaskDetailDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -8,9 +8,9 @@
 
     <StackPanel Width="420" Spacing="12">
         <TextBlock x:Name="TaskLabel" FontSize="12" Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
-        <TextBox x:Name="TaskTextBox" AcceptsReturn="True" Height="64" TextWrapping="Wrap" />
+        <TextBox x:Name="TaskTextBox" AutomationProperties.Name="Task text" AcceptsReturn="True" Height="64" TextWrapping="Wrap" />
         <TextBlock x:Name="NotesLabel" FontSize="12" Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
-        <TextBox x:Name="NotesBox" AcceptsReturn="True" Height="72" TextWrapping="Wrap" />
+        <TextBox x:Name="NotesBox" AutomationProperties.Name="Task notes" AcceptsReturn="True" Height="72" TextWrapping="Wrap" />
         <Grid ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />

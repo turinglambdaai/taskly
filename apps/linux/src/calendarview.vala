@@ -25,6 +25,7 @@ public class CalendarView : Object {
     }
 
     public void render() {
+        clear_container();
         day_headers.remove_all();
 
         // Two-pane layout (DESIGN-TOKENS calendar time line): fixed-width
@@ -114,6 +115,9 @@ public class CalendarView : Object {
     private void rerender() {
         clear_container();
         render();
+        // Month navigation bypasses refresh_all: keep the pane subtitle in
+        // step with the displayed month (PRODUCT-SPEC 4b).
+        ctx.ui_ref()?.refresh_subtitle();
     }
 
     private void clear_container() {
@@ -291,7 +295,7 @@ public class CalendarView : Object {
 
         var overdue = ctx.db.get_tasks_in_range("1900-01-01", before_today, ctx.show_completed);
         if (overdue.length() > 0) {
-            append_group_header(ctx.t("calOverdue"), (int) overdue.length(), false, null);
+            append_group_header(ctx.t("calOverdue"), (int) overdue.length(), false, true, null);
             foreach (var task in overdue) {
                 timeline_box.append(build_task_row(task));
             }
@@ -316,17 +320,21 @@ public class CalendarView : Object {
         if (key == null || key.length == 0 || group.length() == 0) {
             return;
         }
-        append_group_header(format_day_header(key), (int) group.length(), key == today_key, key);
+        append_group_header(format_day_header(key), (int) group.length(), key == today_key, false, key);
         foreach (var task in group) {
             timeline_box.append(build_task_row(task));
         }
     }
 
-    private void append_group_header(string text, int count, bool is_today, string? date_key) {
+    private void append_group_header(string text, int count, bool is_today,
+                                     bool is_overdue, string? date_key) {
         var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8);
         row.add_css_class("cal-header");
         if (is_today) {
             row.add_css_class("today-h");
+        }
+        if (is_overdue) {
+            row.add_css_class("overdue-h");
         }
         var label = new Gtk.Label(text);
         label.halign = Gtk.Align.START;

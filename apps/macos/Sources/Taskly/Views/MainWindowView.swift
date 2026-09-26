@@ -85,8 +85,7 @@ struct SidebarView: View {
                 smartTiles
                 // Calendar tile (PRODUCT-SPEC §4b): full-width, no count.
                 SmartTile(view: .calendar, icon: "📆", titleKey: "navCalendar",
-                          color: Palette.calendar, count: 0)
-                    .frame(height: 56)
+                          color: Palette.calendar, count: 0, height: 56)
                 myLists
             }
             .padding(12)
@@ -141,6 +140,7 @@ private struct SmartTile: View {
     let titleKey: String
     let color: Color
     let count: Int
+    var height: CGFloat = Palette.tileHeight
 
     @State private var isHovering = false
 
@@ -182,7 +182,7 @@ private struct SmartTile: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: Palette.tileHeight)
+            .frame(height: height)
             .background(color, in: RoundedRectangle(cornerRadius: 12))
             .overlay(
                 // 2px white inset ring on the active view's tile.

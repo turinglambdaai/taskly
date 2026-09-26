@@ -167,11 +167,18 @@ struct TaskRowView: View {
         return Calendar.current.startOfDay(for: date)
     }
 
-    private func strictDate(from dateOnly: String) -> Date? {
+    /// "yyyy-MM-dd" parse, cached: this sits on the body evaluation path of
+    /// every row (DateFormatter construction is expensive; AppState keeps the
+    /// same cached-formatter precedent). MainActor-confined like the view.
+    @MainActor private static let dayFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.date(from: dateOnly)
+        return formatter
+    }()
+
+    private func strictDate(from dateOnly: String) -> Date? {
+        Self.dayFormatter.date(from: dateOnly)
     }
 
     // MARK: - Edit mode

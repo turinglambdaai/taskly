@@ -1,4 +1,4 @@
-<UserControl
+﻿<UserControl
     x:Class="Taskly.Views.ListPane"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -7,15 +7,35 @@
     <UserControl.Resources>
         <!-- 0.7.0-style smart tile: colored fill, glyph top-left, bold count
              top-right, semibold label bottom-left. -->
-        <!-- Smart tiles are plain surfaces (no button chrome): the default
-             WinUI button hover/pressed states gray out colored fills. -->
-        <Style x:Key="SmartTile" TargetType="Border">
+        <!-- Smart tiles: chrome-free buttons. A plain Border+Tapped would
+             lose keyboard focus and UIA Invoke; a stock WinUI button grays
+             colored fills on hover. A bare ControlTemplate keeps both. -->
+        <Style x:Key="SmartTile" TargetType="Button">
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Height" Value="68" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="12,10" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="UseSystemFocusVisuals" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="{TemplateBinding CornerRadius}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <!-- Full-width calendar tile (PRODUCT-SPEC §4b): 56px, no count. -->
-        <Style x:Key="CalendarTile" TargetType="Border" BasedOn="{StaticResource SmartTile}">
+        <Style x:Key="CalendarTile" TargetType="Button" BasedOn="{StaticResource SmartTile}">
             <Setter Property="Height" Value="56" />
             <Setter Property="Padding" Value="12,8" />
         </Style>
@@ -56,8 +76,8 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Grid.Column="0" x:Name="TileToday" Style="{StaticResource SmartTile}"
-                        Background="{StaticResource SmartListTodayBrush}" Tapped="OnTileToday">
+                <Button Grid.Row="0" Grid.Column="0" x:Name="TileToday" Style="{StaticResource SmartTile}"
+                        Background="{StaticResource SmartListTodayBrush}" Click="OnTileToday">
                     <Grid RowSpacing="0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" />
@@ -69,10 +89,10 @@
                         </Grid>
                         <TextBlock x:Name="TileTodayLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
                     </Grid>
-                </Border>
+                </Button>
 
-                <Border Grid.Row="0" Grid.Column="2" x:Name="TilePlanned" Style="{StaticResource SmartTile}"
-                        Background="{StaticResource SmartListScheduledBrush}" Tapped="OnTilePlanned">
+                <Button Grid.Row="0" Grid.Column="2" x:Name="TilePlanned" Style="{StaticResource SmartTile}"
+                        Background="{StaticResource SmartListScheduledBrush}" Click="OnTilePlanned">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" />
@@ -84,10 +104,10 @@
                         </Grid>
                         <TextBlock x:Name="TilePlannedLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
                     </Grid>
-                </Border>
+                </Button>
 
-                <Border Grid.Row="2" Grid.Column="0" x:Name="TileAll" Style="{StaticResource SmartTile}"
-                        Background="{StaticResource SmartListAllBrush}" Tapped="OnTileAll">
+                <Button Grid.Row="2" Grid.Column="0" x:Name="TileAll" Style="{StaticResource SmartTile}"
+                        Background="{StaticResource SmartListAllBrush}" Click="OnTileAll">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" />
@@ -99,10 +119,10 @@
                         </Grid>
                         <TextBlock x:Name="TileAllLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
                     </Grid>
-                </Border>
+                </Button>
 
-                <Border Grid.Row="2" Grid.Column="2" x:Name="TileCompleted" Style="{StaticResource SmartTile}"
-                        Background="{StaticResource SmartListCompletedBrush}" Tapped="OnTileCompleted">
+                <Button Grid.Row="2" Grid.Column="2" x:Name="TileCompleted" Style="{StaticResource SmartTile}"
+                        Background="{StaticResource SmartListCompletedBrush}" Click="OnTileCompleted">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" />
@@ -114,12 +134,12 @@
                         </Grid>
                         <TextBlock x:Name="TileCompletedLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
                     </Grid>
-                </Border>
+                </Button>
             </Grid>
 
             <!-- Calendar tile (PRODUCT-SPEC §4b): full-width, no count badge -->
-            <Border x:Name="TileCalendar" Style="{StaticResource CalendarTile}"
-                    Background="{StaticResource SmartListCalendarBrush}" Tapped="OnTileCalendar">
+            <Button x:Name="TileCalendar" Style="{StaticResource CalendarTile}"
+                    Background="{StaticResource SmartListCalendarBrush}" Click="OnTileCalendar">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
@@ -128,7 +148,7 @@
                     <TextBlock x:Name="TileCalendarIcon" Grid.Row="0" Style="{StaticResource TileGlyph}" HorizontalAlignment="Left" />
                     <TextBlock x:Name="TileCalendarLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
                 </Grid>
-            </Border>
+            </Button>
 
             <!-- My Lists header + add button (0.7.0 layout) -->
             <Grid Margin="4,0,4,0">

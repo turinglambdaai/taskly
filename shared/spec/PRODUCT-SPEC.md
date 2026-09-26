@@ -115,7 +115,9 @@ Data-layer contract (all platforms, names may follow platform style):
   its semantic color (overdue incomplete `#FF3B30`, due today accent,
   otherwise text/secondary; completed always secondary), and a
   single-line-ellipsized notes preview. The checkbox ring takes the task's
-  list color (accent fallback).
+  list color (accent fallback); Linux, whose stock CheckButton carries no
+  recolorable ring, renders an 8px list-color dot before the row instead
+  (platform-native idiom, same information).
 - `ⓘ` button (always visible) opens the detail dialog.
 - Edit mode (double-click row): text field focused+selected; Enter=save,
   Esc=cancel, click-outside=save; date/time buttons open pickers and write
