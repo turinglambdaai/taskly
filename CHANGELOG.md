@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-09-26
+
+### Added
+- **Calendar view (all platforms)** — a fifth, full-width sidebar tile opens
+  a Things-style "Upcoming" pane: a compact month grid on top (adjacent-month
+  cells clickable, up to three accent dots per day for incomplete tasks,
+  week start follows the language: Monday for zh, Sunday for en) and a
+  day-grouped time line below (an Overdue group first, then one group per
+  day with tasks; today's header in the accent color; clicking a day cell
+  scrolls to that group). Task rows, quick add, search and the Show
+  Completed toggle behave exactly as in the other views.
+  Contract: `PRODUCT-SPEC.md` §4b; data layer `get_tasks_in_range` +
+  `get_due_day_counts`, covered by contract tests on all three platforms.
+- 30 new bilingual strings (calendar titles, month and weekday names) shared
+  via `shared/i18n` and verified byte-identical in CI.
+- Linux About window (libadwaita `AboutWindow`, PRODUCT-SPEC §8 parity).
+- Windows crash telemetry floor: unhandled XAML-thread exceptions append to
+  `~/.taskly/crash.log` (opt-in Sentry remains the commercial plan).
+
+### Changed
+- License finalized: desktop core AGPL-3.0 (was Apache-2.0), open-core model.
+- Release engineering: canonical root `VERSION` file with a release
+  preflight that fails the pipeline on cross-platform version drift;
+  reproducible native tag builds.
+
+### Fixed
+- **Windows: crash on entering the calendar view** — a synchronous
+  PropertyChanged between the year and month assignments let the month grid
+  render with month `0` and `DateTime` threw inside XAML layout (native
+  fail-fast, no managed trace). Guarded in the pane and the view-model.
+- Windows day cells / weekday header read theme colors from the static
+  `UiTheme` projection instead of `Application.Resources` indexer lookups,
+  which cannot see `ThemeDictionaries`.
+- Windows calendar day groups now regenerate on a runtime language switch
+  (their headers are pre-formatted strings).
+- macOS: deterministic release packaging arguments; `.app` version wired to
+  the canonical VERSION file.
+
 ## [0.7.0] - 2026-08-24
 
 ### Changed

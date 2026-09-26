@@ -299,6 +299,20 @@ window.taskly-root { background-color: #FFFFFF; }
         });
         win.add_action(uninstall_action);
 
+        var about_action = new GLib.SimpleAction("about", null);
+        about_action.activate.connect(() => {
+            var about = new Adw.AboutWindow();
+            about.set_transient_for(win);
+            about.set_modal(true);
+            about.set_application_name("Taskly");
+            about.set_application_icon("app.taskly.Taskly");
+            about.set_version("v%s".printf(APP_VERSION));
+            about.set_comments(ctx.t("aboutContent"));
+            about.set_copyright("© 2026 Taskly Team");
+            about.present(win);
+        });
+        win.add_action(about_action);
+
         var menu = new GLib.Menu();
         var lang_section = new GLib.Menu();
         lang_section.append("简体中文", "win.lang-zh");
@@ -306,6 +320,7 @@ window.taskly-root { background-color: #FFFFFF; }
         menu.append_section(ctx.t("menuLanguage"), lang_section);
         menu.append(ctx.t("menuInstallCli"), "win.install-cli");
         menu.append(ctx.t("menuUninstallCli"), "win.uninstall-cli");
+        menu.append(ctx.t("menuAbout"), "win.about");
         return menu;
     }
 

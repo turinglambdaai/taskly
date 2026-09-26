@@ -2,6 +2,10 @@
 
 namespace Taskly {
 
+// App version: kept in sync with the root VERSION file (checked by
+// scripts/check-release-version.sh).
+public const string APP_VERSION = "1.0.0";
+
 public const string DEFAULT_LIST_ICON = "📋";
 // ARGB 0xFF007AFF (system blue) as a signed 32-bit int.
 public const int32 DEFAULT_LIST_COLOR = (int32) 0xFF007AFF;
