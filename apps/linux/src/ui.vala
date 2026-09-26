@@ -309,7 +309,7 @@ window.taskly-root { background-color: #FFFFFF; }
             about.set_version("v%s".printf(APP_VERSION));
             about.set_comments(ctx.t("aboutContent"));
             about.set_copyright("© 2026 Taskly Team");
-            about.present(win);
+            about.present();
         });
         win.add_action(about_action);
 
