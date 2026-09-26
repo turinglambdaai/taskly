@@ -72,7 +72,7 @@ public class TasklyUi : Object {
     private Gtk.Box lists_box;
     private Gtk.Box tasks_box;
     private Gtk.Entry quick_add;
-    private Gtk.Entry search;
+    private Gtk.SearchEntry search;
     private Gtk.Box input_area;
     private Gtk.Label subtitle_label;
     private GLib.HashTable<TaskViewType, Gtk.Label> tile_counts;
