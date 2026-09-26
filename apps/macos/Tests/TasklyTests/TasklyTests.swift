@@ -209,7 +209,7 @@ final class DatabaseTests: XCTestCase {
 
         // Completed tasks excluded unless requested
         let mid15 = try db.getTasksInRange(startDate: "2026-09-15", endDate: "2026-09-15")
-        _ = try db.setTaskCompleted(mid15[0].id, true)
+        _ = try db.setTaskCompleted(mid15[1].id, true)
         XCTAssertEqual(try db.getTasksInRange(startDate: "2026-09-15", endDate: "2026-09-15").count, 1)
         let withCompleted = try db.getTasksInRange(startDate: "2026-09-15", endDate: "2026-09-15", includeCompleted: true)
         XCTAssertEqual(withCompleted.count, 2)

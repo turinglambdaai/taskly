@@ -126,7 +126,7 @@ public class CalendarView : Object {
 
     private string[] weekday_names() {
         string[] ordered = {};
-        if (ctx.config.language == "zh") {
+        if (ctx.config.language() == "zh") {
             for (var i = 1; i <= 7; i++) {
                 ordered += ctx.t("calWeekdayShort%d".printf(i));
             }
@@ -148,7 +148,7 @@ public class CalendarView : Object {
         var first = new DateTime.local(ctx.calendar_year, ctx.calendar_month, 1, 0, 0, 0.0);
         // GLib day_of_week: 1=Monday … 7=Sunday. Week start follows the
         // language (4b): zh Monday-first, en Sunday-first.
-        var monday_first = ctx.config.language == "zh";
+        var monday_first = ctx.config.language() == "zh";
         var dow = first.get_day_of_week();
         var col = monday_first ? dow - 1 : dow % 7;
         var start = first.add_days(-col);
@@ -166,8 +166,8 @@ public class CalendarView : Object {
         return grid;
     }
 
-    private GLib.HashTable<string, int64> load_day_dots() {
-        var dots = new GLib.HashTable<string, int64>(str_hash, str_equal);
+    private GLib.HashTable<string, int64?> load_day_dots() {
+        var dots = new GLib.HashTable<string, int64?>(str_hash, str_equal);
         try {
             var last = month_end_key();
             foreach (var item in ctx.db.get_due_day_counts(month_start_key(), last)) {
