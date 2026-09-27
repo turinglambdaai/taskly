@@ -193,6 +193,7 @@ private struct SmartTile: View {
         .buttonStyle(.plain)
         .disabled(!state.isConnected)
         .opacity(tileOpacity)
+        .animation(.easeOut(duration: 0.12), value: tileOpacity)
         .onHover { hovering in
             isHovering = hovering
         }

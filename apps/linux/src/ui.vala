@@ -92,7 +92,7 @@ public class TasklyUi : Object {
     public const string APP_CSS = """
 window.taskly-root { background-color: #FFFFFF; }
 .sidebar { background-color: #F2F2F2; border-right: 1px solid #E3E3E8; }
-.smart-tile { color: white; border-radius: 12px; padding: 8px 10px; border: 2px solid transparent; opacity: 0.72; }
+.smart-tile { color: white; border-radius: 12px; padding: 8px 10px; border: 2px solid transparent; opacity: 0.72;  transition: opacity 120ms ease-out; }
 .smart-tile.today { background-color: #007AFF; }
 .smart-tile.planned { background-color: #FF3B30; }
 .smart-tile.all { background-color: #8E8E93; }

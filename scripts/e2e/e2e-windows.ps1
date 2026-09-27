@@ -133,13 +133,13 @@ foreach ($tileName in @('Today', 'Planned', 'All', 'Completed', 'Calendar')) {
 }
 # Verify where we ended: the Calendar status line must be present.
 Test-Check "tile tour ends on calendar" ($null -ne (
-    Find-Element $Win 'Browsing tasks on the calendar' 'Text' 4))
+    Find-Element $Win 'Calendar view' 'Text' 4))
 
 # We ended on Calendar. Check calendar specifics.
 $calToday = Find-Element $Win 'Today' 'Button' 3
 Test-Check "calendar has a Today button" ($null -ne $calToday)
 Test-Check "calendar status line" ($null -ne (
-    Find-Element $Win 'Browsing tasks on the calendar' 'Text' 3))
+    Find-Element $Win 'Calendar view' 'Text' 3))
 
 # --- 7. Calendar interactions: go back a month, then Today
 $prev = Find-Element $Win 'Previous month' 'Button' 2

@@ -60,6 +60,7 @@ namespace Taskly.Views;
                 tile.Opacity = tile.BorderThickness.Left > 0 ? 1.0 : 0.72;
         }
 
+
         private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(MainViewModel.CurrentView))
