@@ -14,6 +14,14 @@ public static class UiTheme
         ? Windows.UI.Color.FromArgb(0xFF, 0x0A, 0x84, 0xFF)
         : Windows.UI.Color.FromArgb(0xFF, 0x00, 0x7A, 0xFF);
 
+    public static Windows.UI.Color SelectionColor => IsDark
+        ? Windows.UI.Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF)
+        : Windows.UI.Color.FromArgb(0x14, 0x00, 0x00, 0x00);
+
+    public static Windows.UI.Color SurfaceColor => IsDark
+        ? Windows.UI.Color.FromArgb(0xFF, 0x32, 0x32, 0x34)
+        : Windows.UI.Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF);
+
     public static Windows.UI.Color Secondary => IsDark
         ? Windows.UI.Color.FromArgb(0xFF, 0x98, 0x98, 0x9E)
         : Windows.UI.Color.FromArgb(0xFF, 0x8E, 0x8E, 0x93);
@@ -247,6 +255,19 @@ public partial class TodoList : ObservableObject
     /// <summary>Unfinished count, UI-only.</summary>
     [ObservableProperty]
     private int _pendingCount;
+
+    /// <summary>Sidebar selection highlight, UI-only (set by the pane from
+    /// the view-model state).</summary>
+    [ObservableProperty]
+    private bool _isSelected;
+
+    partial void OnIsSelectedChanged(bool value) => OnPropertyChanged(nameof(CardBrush));
+
+    /// <summary>Row card fill: quiet selection when active, surface else.
+    /// Static projection because WinUI data templates lack style triggers.</summary>
+    public Microsoft.UI.Xaml.Media.Brush CardBrush =>
+        new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            IsSelected ? UiTheme.SelectionColor : UiTheme.SurfaceColor);
 
     public TodoList(int id, string name, string? icon = null, int? color = null)
     {

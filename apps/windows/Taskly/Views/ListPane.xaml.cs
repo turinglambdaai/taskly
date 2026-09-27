@@ -64,11 +64,29 @@ namespace Taskly.Views;
         }
 
 
+        /// <summary>Marks the active list's row so switching lists shows a
+        /// quiet highlight (mirrors the smart-tile selection language).</summary>
+        private void SyncListSelection()
+        {
+            if (Vm is null)
+            {
+                return;
+            }
+
+            foreach (var list in Vm.ListCollection)
+            {
+                list.IsSelected = Vm.CurrentView == TaskViewType.List
+                    && list.Id == Vm.CurrentListId;
+            }
+        }
+
         private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(MainViewModel.CurrentView))
+            if (e.PropertyName == nameof(MainViewModel.CurrentView)
+                || e.PropertyName == nameof(MainViewModel.CurrentListId))
             {
                 RefreshTileSelection();
+                SyncListSelection();
             }
             else if (e.PropertyName == nameof(MainViewModel.IsConnected))
             {
@@ -170,6 +188,7 @@ namespace Taskly.Views;
         TilePlannedCount.Text = Vm.PlannedCount > 0 ? Vm.PlannedCount.ToString() : "";
         TileAllCount.Text = Vm.AllCount > 0 ? Vm.AllCount.ToString() : "";
         TileCompletedCount.Text = Vm.CompletedCount > 0 ? Vm.CompletedCount.ToString() : "";
+        SyncListSelection();
     }
 
     private async void OnTileToday(object sender, RoutedEventArgs e) =>

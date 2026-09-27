@@ -96,6 +96,8 @@ window.taskly-root { background-color: #FFFFFF; }
 .smart-tile:hover { opacity: 0.88; background-image: none; }
 .smart-tile.selected { border-color: white; opacity: 1.0; }
 .cal-weekday { color: #8E8E93; font-size: 12px; }
+.list-row { border-radius: 8px; }
+.list-row.selected { background-color: rgba(0, 0, 0, 0.08); }
 .cal-title { font-weight: 600; }
 .cal-cell { padding: 2px 4px; border-radius: 8px; border: 1px solid transparent; }
 .cal-cell.selected { border-color: #007AFF; }
@@ -643,11 +645,16 @@ window.taskly-root { background-color: #FFFFFF; }
             } catch (GLib.Error e) {
                 list.pending_count = 0;
             }
-            append_list_row(list);
+            var row_button = append_list_row(list);
+            bool selected = ctx.current_view == TaskViewType.LIST && list.id == ctx.current_list_id;
+            row_button.add_css_class("list-row");
+            if (selected) {
+                row_button.add_css_class("selected");
+            }
         }
     }
 
-    private void append_list_row(TodoList list) {
+    private Gtk.Button append_list_row(TodoList list) {
         var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8);
         row.margin_top = 4;
         row.margin_bottom = 4;
@@ -691,6 +698,7 @@ window.taskly-root { background-color: #FFFFFF; }
         });
 
         lists_box.append(row_button);
+        return row_button;
     }
 
     private void select_list(int64 list_id) {
