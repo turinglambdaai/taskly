@@ -154,9 +154,9 @@ function applyLanguage(lang, persist) {
 // Falls back gracefully to the releases page if the API is unreachable.
 async function initReleaseLinks() {
     const assetMatchers = {
-        'dl-macos': name => /macos-arm64\.dmg$/i.test(name),
-        'dl-windows': name => /windows.*\.exe$/i.test(name),
-        'dl-linux': name => /\.appimage$/i.test(name),
+        'dl-macos': name => /macos\.dmg$/i.test(name),
+        'dl-windows': name => /windows-x64\.zip$/i.test(name),
+        'dl-linux': name => /linux-x64\.tar\.gz$/i.test(name),
     };
 
     const versionBadge = document.getElementById('ver-badge');
