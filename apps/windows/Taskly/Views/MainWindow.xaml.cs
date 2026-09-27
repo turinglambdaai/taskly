@@ -33,6 +33,17 @@ public sealed partial class MainWindow : Window
         Closed += (_, _) => Vm.Reminder.Dispose();
         Activated += async (_, args) =>
         {
+            // One silent online-update check per session, after first paint.
+            if (_databaseOpened
+                && args.WindowActivationState != WindowActivationState.Deactivated
+                && !_updateChecked)
+            {
+                _updateChecked = true;
+                await RunUpdateCheckAsync(silent: true);
+            }
+        };
+        Activated += async (_, args) =>
+        {
             // Open the default DB once, after the window is live (XamlRoot ready).
             if (!_databaseOpened
                 && args.WindowActivationState != WindowActivationState.Deactivated)
@@ -41,6 +52,100 @@ public sealed partial class MainWindow : Window
                 await Vm.OpenDefaultDatabaseAsync();
             }
         };
+    }
+
+    // ---------------- online updates (Velopack over GitHub Releases) ----------------
+
+    private bool _updateChecked;
+
+    private async void OnCheckUpdates(object sender, RoutedEventArgs e) =>
+        await RunUpdateCheckAsync(silent: false);
+
+    /// <summary>Checks GitHub Releases via Velopack. Silent mode swallows all
+    /// failures (offline, portable copy, rate limit); manual mode reports.
+    /// Only a Velopack-managed install can update — portable zips get a
+    /// re-download hint.</summary>
+    private async Task RunUpdateCheckAsync(bool silent)
+    {
+        Microsoft.UI.Xaml.Controls.ContentDialog? dialog;
+        try
+        {
+            var source = new Velopack.Sources.GithubSource(
+                "https://github.com/turinglambdaai/taskly", null, false);
+            Velopack.UpdateManager? mgr = null;
+            try
+            {
+                mgr = new Velopack.UpdateManager(source);
+            }
+            catch
+            {
+                // Not a Velopack-managed install (portable zip extract).
+            }
+
+            if (mgr is null || !mgr.IsInstalled)
+            {
+                if (!silent)
+                {
+                    dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                    {
+                        Title = Vm.T("menuCheckUpdates"),
+                        Content = Vm.T("updatePortable"),
+                        CloseButtonText = Vm.T("dialogConfirm"),
+                        XamlRoot = RootGrid.XamlRoot,
+                    };
+                    await dialog.ShowAsync();
+                }
+
+                return;
+            }
+
+            var info = await mgr.CheckForUpdatesAsync();
+            if (info is not null && !info.IsDowngrade
+                && info.TargetFullRelease.Version > mgr.CurrentVersion)
+            {
+                dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                {
+                    Title = Vm.T("updateAvailableTitle"),
+                    Content = string.Format(
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        Vm.T("updateAvailableBody"), info.TargetFullRelease.Version),
+                    PrimaryButtonText = Vm.T("updateRestart"),
+                    CloseButtonText = Vm.T("dialogCancel"),
+                    XamlRoot = RootGrid.XamlRoot,
+                };
+                if (await dialog.ShowAsync() == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
+                {
+                    mgr.ApplyUpdatesAndRestart(info.TargetFullRelease);
+                }
+            }
+            else if (!silent)
+            {
+                dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                {
+                    Title = Vm.T("menuCheckUpdates"),
+                    Content = Vm.T("updateUpToDate"),
+                    CloseButtonText = Vm.T("dialogConfirm"),
+                    XamlRoot = RootGrid.XamlRoot,
+                };
+                await dialog.ShowAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!silent)
+            {
+                dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                {
+                    Title = Vm.T("menuCheckUpdates"),
+                    Content = string.Format(
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        Vm.T("updateCheckFailed"), ex.Message),
+                    CloseButtonText = Vm.T("dialogConfirm"),
+                    XamlRoot = RootGrid.XamlRoot,
+                };
+                await dialog.ShowAsync();
+            }
+        }
     }
 
     private void OnSidebarToggleRequested()

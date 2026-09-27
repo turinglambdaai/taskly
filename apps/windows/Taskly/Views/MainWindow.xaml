@@ -48,6 +48,8 @@
                 <MenuFlyoutItem x:Name="MenuLangEn" Click="OnLangEn" />
                 <MenuFlyoutSeparator />
                 <ToggleMenuFlyoutItem x:Name="MenuDarkMode" Click="OnToggleDarkMode" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="MenuCheckUpdates" Click="OnCheckUpdates" />
             </MenuBarItem>
             <MenuBarItem Title="Help" x:Name="MenuHelp">
                 <MenuFlyoutItem x:Name="MenuAbout" Click="OnAbout" />

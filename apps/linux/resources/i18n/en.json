@@ -102,5 +102,12 @@
   "subtitleToday": "{3}, {1} {2}, {0}",
   "subtitleOpenTasks": "{0} open",
   "subtitleCompleted": "{0} completed",
-  "menuView": "View"
+  "menuView": "View",
+  "menuCheckUpdates": "Check for Updates…",
+  "updateUpToDate": "You're up to date",
+  "updateAvailableTitle": "Update available",
+  "updateAvailableBody": "Version {0} is available. Install and restart now?",
+  "updateRestart": "Update and restart",
+  "updateCheckFailed": "Update check failed: {0}",
+  "updatePortable": "This portable copy can't auto-update — please re-download from the releases page."
 }
