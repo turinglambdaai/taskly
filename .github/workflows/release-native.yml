@@ -83,7 +83,7 @@ jobs:
       - name: Pack Velopack release (online updates)
         shell: bash
         run: |
-          dotnet tool install -g vpk
+          dotnet tool install -g vpk --version 1.0.1
           VER="${GITHUB_REF_NAME#v}"
           vpk pack --packId Taskly --packVersion "$VER" \
             --packDir publish/win-x64 --mainExe Taskly.exe --packTitle Taskly
