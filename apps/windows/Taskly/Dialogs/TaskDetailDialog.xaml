@@ -6,30 +6,32 @@
     PrimaryButtonText="Save"
     CloseButtonText="Cancel">
 
-    <StackPanel Width="420" Spacing="12">
-        <TextBlock x:Name="TaskLabel" FontSize="12" Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
-        <TextBox x:Name="TaskTextBox" AutomationProperties.Name="Task text" AcceptsReturn="True" Height="64" TextWrapping="Wrap" />
-        <TextBlock x:Name="NotesLabel" FontSize="12" Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
-        <TextBox x:Name="NotesBox" AutomationProperties.Name="Task notes" AcceptsReturn="True" Height="72" TextWrapping="Wrap" />
-        <Grid ColumnSpacing="12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0" Spacing="4">
-                <TextBlock x:Name="DateLabel" FontSize="12" Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <DatePicker x:Name="DatePicker" DateChanged="OnDateChanged" />
-                    <Button x:Name="ClearDateButton" Click="OnClearDate" Padding="4" Background="Transparent" BorderThickness="0" />
-                </StackPanel>
-            </StackPanel>
-            <StackPanel Grid.Column="1" Spacing="4">
-                <TextBlock x:Name="TimeLabel" FontSize="12" Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TimePicker x:Name="TimePicker" TimeChanged="OnTimeChanged" />
-                    <Button x:Name="ClearTimeButton" Click="OnClearTime" Padding="4" Background="Transparent" BorderThickness="0" />
-                </StackPanel>
-            </StackPanel>
-        </Grid>
+    <StackPanel Width="440" Spacing="10">
+        <!-- Immersive editor: the task text IS the title — borderless,
+             18px semibold (spec: Task detail dialog). -->
+        <TextBox x:Name="TaskTextBox" AutomationProperties.Name="Task text"
+                 AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" MaxLength="1000"
+                 FontSize="18" FontWeight="SemiBold"
+                 BorderThickness="0" Background="Transparent" />
+        <TextBox x:Name="NotesBox" AutomationProperties.Name="Task notes"
+                 AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" MaxLength="1000"
+                 FontSize="13" PlaceholderText=""
+                 BorderThickness="0" Background="Transparent" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <DatePicker x:Name="DatePicker" DateChanged="OnDateChanged"
+                        AutomationProperties.Name="Task date" />
+            <Button x:Name="ClearDateButton" Click="OnClearDate" Padding="6,2"
+                    Background="Transparent" BorderThickness="0"
+                    Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
+            <TimePicker x:Name="TimePicker" TimeChanged="OnTimeChanged" Margin="8,0,0,0"
+                        AutomationProperties.Name="Task time" />
+            <Button x:Name="ClearTimeButton" Click="OnClearTime" Padding="6,2"
+                    Background="Transparent" BorderThickness="0"
+                    Foreground="{ThemeResource ThemeSecondaryTextBrush}" />
+        </StackPanel>
+        <Button x:Name="DeleteButton" Click="OnDeleteClicked" Padding="8,4"
+                Background="Transparent" BorderThickness="0"
+                Foreground="{ThemeResource DangerBrush}"
+                AutomationProperties.Name="Delete task" />
     </StackPanel>
 </ContentDialog>

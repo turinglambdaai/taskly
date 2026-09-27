@@ -10,7 +10,8 @@
              time line must stay visually identical (PRODUCT-SPEC §4b). -->
         <DataTemplate x:Key="TaskRowTemplate">
             <Grid Padding="16,12" CornerRadius="10" Background="Transparent"
-                  PointerEntered="OnTaskPointerEntered" PointerExited="OnTaskPointerExited">
+                  PointerEntered="OnTaskPointerEntered" PointerExited="OnTaskPointerExited"
+                  ContextRequested="OnTaskContextRequested">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -117,6 +118,11 @@
                       IsDoubleTapEnabled="True"
                       DoubleTapped="OnTaskDoubleTapped"
                       ItemTemplate="{StaticResource TaskRowTemplate}">
+                    <ListView.ItemContainerTransitions>
+                        <TransitionCollection>
+                            <AddDeleteThemeTransition />
+                        </TransitionCollection>
+                    </ListView.ItemContainerTransitions>
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />

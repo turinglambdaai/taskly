@@ -90,7 +90,7 @@ window.taskly-root { background-color: #FFFFFF; }
 .smart-tile.today { background-color: #007AFF; }
 .smart-tile.planned { background-color: #FF3B30; }
 .smart-tile.all { background-color: #8E8E93; }
-.smart-tile.completed { background-color: #8E8E93; }
+.smart-tile.completed { background-color: #34C759; }
 .smart-tile .title { font-weight: 600; }
 .smart-tile .count { opacity: 0.85; font-size: 11px; }
 .smart-tile:hover { opacity: 0.88; background-image: none; }

@@ -160,6 +160,43 @@ public sealed partial class TaskPane : UserControl
         }
     }
 
+    // Right-click row menu (spec §5): toggle completed, delete (no confirm
+    // from the row), move to list ▸.
+    private void OnTaskContextRequested(object sender, RoutedEventArgs e)
+    {
+        if (Vm is null || TaskFromElement(sender) is not { } task)
+        {
+            return;
+        }
+
+        var menu = new MenuFlyout();
+
+        var toggle = new MenuFlyoutItem { Text = Vm.T("menuToggleCompleted") };
+        toggle.Click += async (_, _) => await Vm.ToggleCompletedAsync(task);
+        menu.Items.Add(toggle);
+
+        var delete = new MenuFlyoutItem { Text = Vm.T("taskDelete") };
+        delete.Click += async (_, _) => await Vm.DeleteTaskAsync(task);
+        menu.Items.Add(delete);
+
+        var others = Vm.ListCollection.Where(l => l.Id != task.ListId).ToList();
+        if (others.Count > 0)
+        {
+            var move = new MenuFlyoutSubItem { Text = Vm.T("menuMoveToList") };
+            foreach (var list in others)
+            {
+                var item = new MenuFlyoutItem { Text = $"{list.Icon ?? Models.TodoList.DefaultIcon} {list.Name}" };
+                var target = list;
+                item.Click += async (_, _) => await Vm.MoveTaskToListAsync(task, target);
+                move.Items.Add(item);
+            }
+
+            menu.Items.Add(move);
+        }
+
+        menu.ShowAt((FrameworkElement)sender);
+    }
+
     private void OnToggleSidebar(object sender, RoutedEventArgs e)
     {
         if (Vm is null)
