@@ -152,6 +152,7 @@ jobs:
         run: |
           # Flatten artifact subdirectories (vpk-dist) before uploading.
           find dist -mindepth 2 -type f -exec mv {} dist/ \; 2>/dev/null || true
+          find dist -mindepth 1 -type d -empty -delete
           PREV_TAG="$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo "")"
           if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
             gh release upload "${{ github.ref_name }}" --clobber dist/*
