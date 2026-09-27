@@ -98,6 +98,12 @@ public final class AppState {
     // UI state
     var searchText = ""
     var quickAddText = ""
+    /// Incremented by View menu → New Task; TaskPaneView focuses the
+    /// quick-add field on change.
+    var quickAddFocusToken = 0
+    /// Incremented by View menu → Find; TaskPaneView focuses the search
+    /// field on change.
+    var searchFocusToken = 0
     var isSidebarVisible = true
     var statusMessage: String = ""
     @ObservationIgnored private var transientDeadline: Task<Void, Never>?

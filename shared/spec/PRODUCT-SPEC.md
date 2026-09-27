@@ -144,13 +144,17 @@ pickers. Save (blank text silently ignored), Delete (confirm first), Cancel
 
 ## 8. Menus / app-level
 
-- File: New Database (save panel, default name `tasks`), Open Database
-  (*.db), Close Database (confirm), Quit/Exit.
+- File: New Database (Ctrl+Shift+N, save panel, default name `tasks`),
+  Open Database (Ctrl+O, *.db), Close Database (confirm), Quit/Exit.
+- View: Today / Planned / All / Completed / Calendar (Ctrl+1…5), New Task
+  (Ctrl+N, focuses quick add), Search (Ctrl+F, focuses search), Show
+  Completed toggle (Ctrl+Shift+C).
+- Tools: Install / Uninstall Command Line Tool.
 - Settings: Language (简体中文 / English, runtime switch, persisted in
   config `language`), Dark Mode toggle (**not persisted** — always starts
   light; native apps may follow the OS but the manual toggle stays).
-- Tools: Install / Uninstall Command Line Tool.
 - Help: About — `Taskly v<version>` + `© 2026 Taskly Team` + `aboutContent`.
+- All accelerators work window-wide without opening the menu.
 
 ## 9. Reminders (all platforms)
 

@@ -18,6 +18,26 @@ public sealed partial class TaskPane : UserControl
     public TaskPane()
     {
         InitializeComponent();
+
+        // Narrow windows cannot fit the month rail beside the time line:
+        // below ~420 logical px of pane width the rail yields and the
+        // day-group time line (same information, linear) takes over.
+        CalendarArea.SizeChanged += (_, _) => UpdateRailVisibility();
+    }
+
+    /// <summary>Width-based rail visibility; skipped while the pane is not
+    /// laid out yet (a zero width would latch the rail off forever).</summary>
+    private void UpdateRailVisibility()
+    {
+        var width = CalendarArea.ActualWidth;
+        if (width <= 0)
+        {
+            return;
+        }
+
+        var narrow = width < 420;
+        MonthRail.Visibility = narrow ? Visibility.Collapsed : Visibility.Visible;
+        RailDivider.Visibility = narrow ? Visibility.Collapsed : Visibility.Visible;
     }
 
     public void SetViewModel(MainViewModel vm)
@@ -135,6 +155,7 @@ public sealed partial class TaskPane : UserControl
             UpdateCalendarHeader();
             RefreshWeekdayHeader();
             RenderMonthGrid();
+            UpdateRailVisibility();
         }
         else if (Vm.TaskItems.Count == 0)
         {
@@ -402,6 +423,29 @@ public sealed partial class TaskPane : UserControl
         if (header is not null)
         {
             CalendarList.ScrollIntoView(header);
+        }
+    }
+
+    /// <summary>Ctrl+F / Ctrl+N landing spots (menu accelerators).</summary>
+    public void FocusSearch()
+    {
+        SearchBox.Focus(FocusState.Keyboard);
+    }
+
+    public void FocusQuickAdd()
+    {
+        QuickAddBox.Focus(FocusState.Keyboard);
+    }
+
+    /// <summary>Keeps the pane's toggle label in step with the View-menu
+    /// toggle (either can flip the state).</summary>
+    public void SyncShowCompletedLabel()
+    {
+        if (Vm is not null)
+        {
+            ShowCompletedToggle.Content = Vm.ShowCompletedTasks
+                ? Vm.T("hideCompletedToggle")
+                : Vm.T("showCompletedToggle");
         }
     }
 

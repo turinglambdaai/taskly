@@ -1,4 +1,4 @@
-<Window
+﻿<Window
     x:Class="Taskly.Views.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -16,19 +16,69 @@
         <!-- Menu bar -->
         <MenuBar Grid.Row="0">
             <MenuBarItem Title="File" x:Name="MenuFile">
-                <MenuFlyoutItem x:Name="MenuNewDatabase" Click="OnNewDatabase" />
-                <MenuFlyoutItem x:Name="MenuOpenDatabase" Click="OnOpenDatabase" />
+                <MenuFlyoutItem x:Name="MenuNewDatabase" Click="OnNewDatabase">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control,Shift" Key="N" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="MenuOpenDatabase" Click="OnOpenDatabase">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="O" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
                 <MenuFlyoutItem x:Name="MenuCloseDatabase" Click="OnCloseDatabase" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="MenuExit" Click="OnExit" />
             </MenuBarItem>
+            <MenuBarItem Title="View" x:Name="MenuView">
+                <MenuFlyoutItem x:Name="MenuViewToday" Click="OnViewToday">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="Number1" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="MenuViewPlanned" Click="OnViewPlanned">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="Number2" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="MenuViewAll" Click="OnViewAll">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="Number3" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="MenuViewCompleted" Click="OnViewCompleted">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="Number4" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="MenuViewCalendar" Click="OnViewCalendar">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="Number5" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="MenuNewTask" Click="OnNewTaskFocus">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="N" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="MenuFind" Click="OnFindFocus">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="F" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator />
+                <ToggleMenuFlyoutItem x:Name="MenuShowCompleted" Click="OnToggleShowCompletedMenu" />
+            </MenuBarItem>
+            <MenuBarItem Title="Tools" x:Name="MenuTools">
+                <MenuFlyoutItem x:Name="MenuInstallCli" Click="OnInstallCli" />
+                <MenuFlyoutItem x:Name="MenuUninstallCli" Click="OnUninstallCli" />
+            </MenuBarItem>
             <MenuBarItem Title="Settings" x:Name="MenuSettings">
                 <MenuFlyoutItem x:Name="MenuLangZh" Click="OnLangZh" />
                 <MenuFlyoutItem x:Name="MenuLangEn" Click="OnLangEn" />
-                <ToggleMenuFlyoutItem x:Name="MenuDarkMode" Click="OnToggleDarkMode" />
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem x:Name="MenuInstallCli" Click="OnInstallCli" />
-                <MenuFlyoutItem x:Name="MenuUninstallCli" Click="OnUninstallCli" />
+                <ToggleMenuFlyoutItem x:Name="MenuDarkMode" Click="OnToggleDarkMode" />
             </MenuBarItem>
             <MenuBarItem Title="Help" x:Name="MenuHelp">
                 <MenuFlyoutItem x:Name="MenuAbout" Click="OnAbout" />

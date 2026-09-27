@@ -1,4 +1,4 @@
-// Taskly — GTK4/libadwaita UI: header bar + paned (sidebar | task pane) +
+﻿// Taskly — GTK4/libadwaita UI: header bar + paned (sidebar | task pane) +
 // status bar, warm palette via CSS. All state on the main loop; DB access
 // is synchronous (local SQLite).
 
@@ -336,15 +336,75 @@ window.taskly-root { background-color: #FFFFFF; }
         });
         win.add_action(about_action);
 
+        add_view_action(win, "view-today", TaskViewType.TODAY);
+        add_view_action(win, "view-planned", TaskViewType.PLANNED);
+        add_view_action(win, "view-all", TaskViewType.ALL);
+        add_view_action(win, "view-completed", TaskViewType.COMPLETED);
+        add_view_action(win, "view-calendar", TaskViewType.CALENDAR);
+
+        var focus_add_action = new GLib.SimpleAction("focus-quick-add", null);
+        focus_add_action.activate.connect(() => quick_add.grab_focus());
+        win.add_action(focus_add_action);
+
+        var focus_search_action = new GLib.SimpleAction("focus-search", null);
+        focus_search_action.activate.connect(() => search.grab_focus());
+        win.add_action(focus_search_action);
+
+        var show_completed_action = new GLib.SimpleAction("toggle-show-completed", null);
+        show_completed_action.activate.connect(() => {
+            ctx.show_completed = !ctx.show_completed;
+            refresh_all();
+        });
+        win.add_action(show_completed_action);
+
+        // ---- accelerators (window-scoped actions register on the app) ----
+        var app = win.application as Adw.Application;
+        if (app != null) {
+            app.set_accels_for_action("win.view-today", { "<Control>1" });
+            app.set_accels_for_action("win.view-planned", { "<Control>2" });
+            app.set_accels_for_action("win.view-all", { "<Control>3" });
+            app.set_accels_for_action("win.view-completed", { "<Control>4" });
+            app.set_accels_for_action("win.view-calendar", { "<Control>5" });
+            app.set_accels_for_action("win.focus-quick-add", { "<Control>n" });
+            app.set_accels_for_action("win.focus-search", { "<Control>f" });
+            app.set_accels_for_action("win.toggle-show-completed", { "<Control><Shift>c" });
+        }
+
+        // ---- menu model ----
         var menu = new GLib.Menu();
+
+        var view_section = new GLib.Menu();
+        view_section.append(ctx.t("navToday"), "win.view-today");
+        view_section.append(ctx.t("navPlanned"), "win.view-planned");
+        view_section.append(ctx.t("navAll"), "win.view-all");
+        view_section.append(ctx.t("navCompleted"), "win.view-completed");
+        view_section.append(ctx.t("navCalendar"), "win.view-calendar");
+        menu.append_section(null, view_section);
+
+        var find_section = new GLib.Menu();
+        find_section.append(ctx.t("taskListInputHint").replace("+ ", ""), "win.focus-quick-add");
+        find_section.append(ctx.t("searchHint"), "win.focus-search");
+        find_section.append(ctx.t("showCompletedToggle"), "win.toggle-show-completed");
+        menu.append_section(null, find_section);
+
+        var tools_section = new GLib.Menu();
+        tools_section.append(ctx.t("menuInstallCli"), "win.install-cli");
+        tools_section.append(ctx.t("menuUninstallCli"), "win.uninstall-cli");
+        menu.append_section(ctx.t("menuTools"), tools_section);
+
         var lang_section = new GLib.Menu();
-        lang_section.append("简体中文", "win.lang-zh");
-        lang_section.append("English", "win.lang-en");
+        lang_section.append(ctx.t("menuLangZh"), "win.lang-zh");
+        lang_section.append(ctx.t("menuLangEn"), "win.lang-en");
         menu.append_section(ctx.t("menuLanguage"), lang_section);
-        menu.append(ctx.t("menuInstallCli"), "win.install-cli");
-        menu.append(ctx.t("menuUninstallCli"), "win.uninstall-cli");
+
         menu.append(ctx.t("menuAbout"), "win.about");
         return menu;
+    }
+
+    private void add_view_action(Gtk.ApplicationWindow win, string name, TaskViewType view) {
+        var action = new GLib.SimpleAction(name, null);
+        action.activate.connect(() => select_view(view));
+        win.add_action(action);
     }
 
     private void set_language(string lang) {

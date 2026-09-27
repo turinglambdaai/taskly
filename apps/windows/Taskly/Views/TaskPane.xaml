@@ -166,7 +166,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Month rail: navigation + weekday row + 6×7 grid -->
-                <Grid Grid.Column="0" Width="322" Margin="12,0,4,0"
+                <Grid x:Name="MonthRail" Grid.Column="0" Width="322" Margin="12,0,4,0"
                       VerticalAlignment="Stretch">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -229,7 +229,7 @@
                 </Grid>
 
                 <!-- Hairline divider between the rail and the time line -->
-                <Border Grid.Column="1" Width="1" HorizontalAlignment="Left"
+                <Border x:Name="RailDivider" Grid.Column="1" Width="1" HorizontalAlignment="Left"
                         VerticalAlignment="Stretch" Margin="0,4"
                         Background="{ThemeResource ThemeDividerBrush}" />
 

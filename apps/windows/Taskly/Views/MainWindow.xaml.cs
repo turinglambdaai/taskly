@@ -1,4 +1,4 @@
-using Microsoft.UI.Windowing;
+﻿using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Taskly.Models;
@@ -58,18 +58,61 @@ public sealed partial class MainWindow : Window
         MenuCloseDatabase.Text = Vm.T("menuCloseDatabase");
         MenuExit.Text = Vm.T("menuExit");
 
+        MenuView.Title = Vm.T("menuView");
+        MenuViewToday.Text = Vm.T("navToday");
+        MenuViewPlanned.Text = Vm.T("navPlanned");
+        MenuViewAll.Text = Vm.T("navAll");
+        MenuViewCompleted.Text = Vm.T("navCompleted");
+        MenuViewCalendar.Text = Vm.T("navCalendar");
+        MenuNewTask.Text = Vm.T("taskListInputHint").TrimStart('+', ' ');
+        MenuFind.Text = Vm.T("searchHint");
+        MenuShowCompleted.Text = Vm.ShowCompletedTasks
+            ? Vm.T("hideCompletedToggle")
+            : Vm.T("showCompletedToggle");
+        MenuShowCompleted.IsChecked = Vm.ShowCompletedTasks;
+
+        MenuTools.Title = Vm.T("menuTools");
+        MenuInstallCli.Text = Vm.T("menuInstallCli");
+        MenuUninstallCli.Text = Vm.T("menuUninstallCli");
+
         MenuSettings.Title = Vm.T("menuSettings");
         MenuLangZh.Text = Vm.T("menuLangZh");
         MenuLangEn.Text = Vm.T("menuLangEn");
         MenuDarkMode.Text = Vm.T("menuDarkMode");
-        MenuInstallCli.Text = Vm.T("menuInstallCli");
-        MenuUninstallCli.Text = Vm.T("menuUninstallCli");
 
         MenuHelp.Title = Vm.T("menuHelp");
         MenuAbout.Text = Vm.T("menuAbout");
 
         Sidebar.ApplyLanguage();
         Pane.ApplyLanguage();
+    }
+
+    // ---------------- view menu / accelerators ----------------
+
+    private async void OnViewToday(object sender, RoutedEventArgs e) =>
+        await Vm.SelectViewAsync(TaskViewType.Today);
+
+    private async void OnViewPlanned(object sender, RoutedEventArgs e) =>
+        await Vm.SelectViewAsync(TaskViewType.Planned);
+
+    private async void OnViewAll(object sender, RoutedEventArgs e) =>
+        await Vm.SelectViewAsync(TaskViewType.All);
+
+    private async void OnViewCompleted(object sender, RoutedEventArgs e) =>
+        await Vm.SelectViewAsync(TaskViewType.Completed);
+
+    private async void OnViewCalendar(object sender, RoutedEventArgs e) =>
+        await Vm.SelectViewAsync(TaskViewType.Calendar);
+
+    private void OnNewTaskFocus(object sender, RoutedEventArgs e) => Pane.FocusQuickAdd();
+
+    private void OnFindFocus(object sender, RoutedEventArgs e) => Pane.FocusSearch();
+
+    private async void OnToggleShowCompletedMenu(object sender, RoutedEventArgs e)
+    {
+        await Vm.ToggleShowCompletedAsync();
+        MenuShowCompleted.IsChecked = Vm.ShowCompletedTasks;
+        Pane.SyncShowCompletedLabel();
     }
 
     // ---------------- file menu ----------------
