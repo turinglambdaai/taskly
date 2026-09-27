@@ -51,11 +51,6 @@
                         <KeyboardAccelerator Modifiers="Control" Key="Number4" />
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
-                <MenuFlyoutItem x:Name="MenuViewCalendar" Click="OnViewCalendar">
-                    <MenuFlyoutItem.KeyboardAccelerators>
-                        <KeyboardAccelerator Modifiers="Control" Key="Number5" />
-                    </MenuFlyoutItem.KeyboardAccelerators>
-                </MenuFlyoutItem>
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="MenuNewTask" Click="OnNewTaskFocus">
                     <MenuFlyoutItem.KeyboardAccelerators>

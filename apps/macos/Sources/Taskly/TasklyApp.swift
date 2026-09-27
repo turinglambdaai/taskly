@@ -45,8 +45,6 @@ struct TasklyCommands: Commands {
                 .keyboardShortcut("3", modifiers: [.command])
             Button(state.t("navCompleted")) { state.select(.completed) }
                 .keyboardShortcut("4", modifiers: [.command])
-            Button(state.t("navCalendar")) { state.select(.calendar) }
-                .keyboardShortcut("5", modifiers: [.command])
             Divider()
             Button(newTaskMenuTitle) { state.quickAddFocusToken += 1 }
                 .keyboardShortcut("n", modifiers: [.command])

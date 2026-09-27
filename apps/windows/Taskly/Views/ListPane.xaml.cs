@@ -44,7 +44,6 @@ namespace Taskly.Views;
             WireTileHover(TilePlanned);
             WireTileHover(TileAll);
             WireTileHover(TileCompleted);
-            WireTileHover(TileCalendar);
 
             ApplyLanguage();
         }
@@ -81,7 +80,6 @@ namespace Taskly.Views;
             SetSelected(TilePlanned, Vm.CurrentView == TaskViewType.Planned);
             SetSelected(TileAll, Vm.CurrentView == TaskViewType.All);
             SetSelected(TileCompleted, Vm.CurrentView == TaskViewType.Completed);
-            SetSelected(TileCalendar, Vm.CurrentView == TaskViewType.Calendar);
         }
 
         private static void SetSelected(Button tile, bool selected)
@@ -113,8 +111,6 @@ namespace Taskly.Views;
             TileAllLabel.Text = Vm.T("navAll");
             TileCompletedIcon.Text = "\uE73E";
             TileCompletedLabel.Text = Vm.T("navCompleted");
-            TileCalendarIcon.Text = "\uE8BF";
-            TileCalendarLabel.Text = Vm.T("navCalendar");
             MyListsHeader.Text = Vm.T("sectionMyLists");
             RefreshTileSelection();
             RefreshCounts();
@@ -146,9 +142,6 @@ namespace Taskly.Views;
 
     private async void OnTileCompleted(object sender, RoutedEventArgs e) =>
         await Vm.SelectViewAsync(TaskViewType.Completed);
-
-    private async void OnTileCalendar(object sender, RoutedEventArgs e) =>
-        await Vm.SelectViewAsync(TaskViewType.Calendar);
 
     private async void OnListItemClick(object sender, ItemClickEventArgs e)
     {

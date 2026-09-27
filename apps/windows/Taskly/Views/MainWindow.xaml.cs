@@ -63,7 +63,6 @@ public sealed partial class MainWindow : Window
         MenuViewPlanned.Text = Vm.T("navPlanned");
         MenuViewAll.Text = Vm.T("navAll");
         MenuViewCompleted.Text = Vm.T("navCompleted");
-        MenuViewCalendar.Text = Vm.T("navCalendar");
         MenuNewTask.Text = Vm.T("taskListInputHint").TrimStart('+', ' ');
         MenuFind.Text = Vm.T("searchHint");
         MenuShowCompleted.Text = Vm.ShowCompletedTasks
@@ -101,9 +100,6 @@ public sealed partial class MainWindow : Window
     private async void OnViewCompleted(object sender, RoutedEventArgs e) =>
         await Vm.SelectViewAsync(TaskViewType.Completed);
 
-    private async void OnViewCalendar(object sender, RoutedEventArgs e) =>
-        await Vm.SelectViewAsync(TaskViewType.Calendar);
-
     private void OnNewTaskFocus(object sender, RoutedEventArgs e) => Pane.FocusQuickAdd();
 
     private void OnFindFocus(object sender, RoutedEventArgs e) => Pane.FocusSearch();
@@ -112,7 +108,6 @@ public sealed partial class MainWindow : Window
     {
         await Vm.ToggleShowCompletedAsync();
         MenuShowCompleted.IsChecked = Vm.ShowCompletedTasks;
-        Pane.SyncShowCompletedLabel();
     }
 
     // ---------------- file menu ----------------

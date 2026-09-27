@@ -55,60 +55,6 @@ place in a cloud-synced folder; agent-facing CLI in the same binary.
 - Deleting a task from the row context menu has **no** confirmation;
   deletion from the detail dialog **does**.
 
-## 4b. Calendar view
-
-A time-line view of dated tasks in the spirit of Things 3 "Upcoming": a
-compact month grid on top, tasks grouped by day below. Not a drag-and-drop
-day planner — the calendar is for *seeing* when work lands and jumping to it;
-editing stays in the row/dialog (§5, §6).
-
-- Entry: a fifth, full-width sidebar tile under the 2×2 grid (8 px gap,
-  56 px tall, radius 12, fill `tile/calendar` `#5856D6`, platform monochrome
-  calendar-day glyph, white label `navCalendar`, no count badge).
-- Clicking the tile (or otherwise selecting the calendar view) sets the
-  displayed month to the current month and the selected date to today.
-- Month grid: 7 columns, weekday short names from `calWeekdayShort1..7`;
-  week starts Monday for zh, Sunday for en (index 1 = Monday in both key
-  sets; en rendering reorders Sunday to the front). Render only as many
-  week rows as the month needs (5 or 6); leading and trailing days from
-  adjacent months render in the tertiary text color and stay clickable.
-- Pane layout: the month rail (navigation + grid) sits beside the time
-  line, separated by a hairline divider, so a 6-row grid never crowds the
-  day groups out of the viewport.
-- Day dots: a day cell with N incomplete dated tasks (any lists) shows
-  min(N, 3) accent dots under the day number; completed tasks do not count.
-- Month navigation: `‹` / `›` step one month; the `calTodayButton` returns
-  to the current month and today. Changing months selects that month's 1st.
-- Time line below the grid, in one scrollable list:
-  1. An **overdue** group first (title `calOverdue`) — incomplete tasks with
-     a due date before today, any month (with Show Completed on, completed
-     tasks from before today appear here too).
-  2. Then one group per day of the displayed month that has tasks (per the
-     same show-completed toggle): the month is queried as one range and
-     grouped client-side.
-- Group header: `calDayHeader` formatted with short month names
-  (`9月26日 · 周五` / `Wednesday, Sep 30`); the weekday slot shows the
-  relative word (navToday / dateTomorrow / dateYesterday) when the date is
-  today/tomorrow/yesterday; today's header renders in the accent color and
-  the overdue header in `#FF3B30`. Each header shows the group's task
-  count.
-- Clicking a day cell (adjacent-month cells included) selects that date and
-  scrolls the time line to that group; selection itself never re-queries.
-- Task rows inside groups are the §5 rows with all their interactions
-  (toggle, detail, inline edit, context menu). Quick add, search (flat
-  results, as in every view), and the Show Completed toggle behave as in
-  the other views. Empty month (no overdue, no month tasks) → `taskListEmpty`.
-- Status bar: `statusShowCalendar`.
-
-Data-layer contract (all platforms, names may follow platform style):
-
-- `get_tasks_in_range(start_date, end_date, include_completed)` — tasks
-  with `due_date` between the bounds inclusive, `completed = 0` unless
-  `include_completed`, ordered `due_date ASC, id DESC`. The overdue group
-  reuses this with bounds `1900-01-01` … `day-before-today`.
-- `get_due_day_counts(start_date, end_date)` — `(due_date, count)` rows for
-  incomplete dated tasks in the range, `GROUP BY due_date`.
-
 ## 5. Task row
 
 - 18px circular checkbox: incomplete = hollow ring; complete = ring +
@@ -146,7 +92,7 @@ pickers. Save (blank text silently ignored), Delete (confirm first), Cancel
 
 - File: New Database (Ctrl+Shift+N, save panel, default name `tasks`),
   Open Database (Ctrl+O, *.db), Close Database (confirm), Quit/Exit.
-- View: Today / Planned / All / Completed / Calendar (Ctrl+1…5), New Task
+- View: Today / Planned / All / Completed (Ctrl+1…4), New Task
   (Ctrl+N, focuses quick add), Search (Ctrl+F, focuses search), Show
   Completed toggle (Ctrl+Shift+C).
 - Tools: Install / Uninstall Command Line Tool.
@@ -181,7 +127,8 @@ Task text non-empty ≤1000 chars; list name non-empty ≤100; date year
 All user-facing strings come from `shared/i18n/{zh,en}.json` (copied into
 each app; CI verifies byte-identity). `T(key)`: current language → zh
 fallback → key itself. `{0}` placeholders formatted positionally. Default
-zh; persisted in config.
+zh; persisted in config. **Date shapes are not copy**: they follow the app
+language through the platform culture/locale formatter (zh-CN / en-US).
 
 ## 12. Known v0.6.4 quirks — resolved in native apps
 

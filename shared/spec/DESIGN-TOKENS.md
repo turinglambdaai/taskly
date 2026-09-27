@@ -14,7 +14,6 @@
 | `tile/planned` | `#FF3B30` | Planned tile |
 | `tile/all` | `#8E8E93` | All tile |
 | `tile/completed` | `#8E8E93` | Completed tile |
-| `tile/calendar` | `#5856D6` | Calendar tile (PRODUCT-SPEC §4b) |
 | `flag` (reserved) | `#FF9500` | Flagged (unused) |
 | `danger` | `#FF3B30` | Destructive buttons |
 
@@ -73,13 +72,11 @@
 | window default | 1280×880 (min 760×520 logical) |
 | sidebar width | 280 (200…420) |
 | menu bar / status bar height | 32 / 28 |
-| smart view tile | 2×2 grid of 68px color fills (radius 12), laid out as two rows: top row = white glyph left (18px) + bold white count right (16px), bottom row = semibold white label left (14px); the tile is a plain surface (no default button chrome) so hover darkens the fill ~8% and never grays it; the active view's tile gets a 2px white inset ring |
-| calendar tile | full-width 56px fill (radius 12), same two-row geometry without a count, same active/hover treatment |
-| calendar month grid | 7 columns × 6 rows of 40px cells (2px gap); day number 13px, adjacent-month days in text/tertiary; today = accent-filled circle with a white number; selected day gets a 1px accent border ring (radius 8) plus an accent-tinted fill; up to three 4px accent dots (3px apart) under the number |
-| calendar time line | group header 13px semibold on background (today's header accent, overdue header `#FF3B30`), count in text/secondary 12px; hairline divider between the month grid and the time line; rows are standard task rows |
+| smart view tile | 2×2 grid of 68px color fills (radius 12), two rows: top row = white glyph left (20px) + bold white count right (16px), bottom row = semibold white label left (14px); tiles carry a subtle top-light gradient (white @ 10% → transparent) for depth; plain surface (no button chrome), hover lifts to 88% opacity, active view = full saturation + 2px white inset ring |
 | list row | card: surface fill + 1px divider border, radius 8, padding 10,8; 32px round color dot with the emoji inside (17px), name 13px, gray count right |
 | list icon size | 32 (round) |
 | checkbox size | 20px ring in the task's list color (accent fallback); completed = list-color fill with a white check |
+| task row | 48px min height, padding 16,14; text 14px; meta 12px with the owning list name (list-colored dot + name) shown in multi-list views; info button at 45% opacity, full on row hover |
 | corner radius (rows/cards) | 8 / 10 / 12 |
 | content padding | 16, 8; sidebar item 12, 10 |
 | task text | 14px; list name 13px |
@@ -91,6 +88,15 @@
 Tile glyphs are monochrome platform icon fonts (Windows: Segoe Fluent Icons;
 macOS: SF Symbols; Linux: symbolic icons), not emoji — mixed emoji/text runs
 render fallback debris on some stacks.
+
+## Task detail dialog (immersive editor, Things-style)
+
+480px wide, radius 12. No dialog title — the task text *is* the title:
+18px semibold borderless multiline input. Notes: 13px borderless multiline
+with tertiary placeholder. Date and time render as rounded chips (accent
+border when set, hollow "Add" chips when empty). Bottom row: Delete as a
+red text button on the left, spacer, Cancel as plain text, Save as an
+accent-filled white-text rounded button. No chrome field borders anywhere.
 
 ## App icon
 

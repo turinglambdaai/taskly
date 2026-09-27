@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Taskly.Models;
 
@@ -148,10 +148,18 @@ public partial class TaskItem : ObservableObject
                 }
                 else if (date.Year == today.Year)
                 {
-                    var monthName = i18n.T($"calMonthShort{date.Month}");
-                    dateText = i18n.Current == "zh"
-                        ? $"{monthName}{date.Day}日"
-                        : $"{monthName} {date.Day}";
+                    // Date formatting follows the app language via the
+                    // platform culture (spec §11: i18n carries copy, culture
+                    // carries date/number shapes).
+                    if (i18n.Current == "zh")
+                    {
+                        dateText = $"{date.Month}月{date.Day}日";
+                    }
+                    else
+                    {
+                        var culture = new System.Globalization.CultureInfo("en-US");
+                        dateText = date.ToString("MMM d", culture);
+                    }
                 }
             }
 
@@ -275,31 +283,6 @@ public enum TaskViewType
     Planned,
     Completed,
     List,
-    Calendar,
-}
-
-/// <summary>Incomplete-task count per due date, for calendar day dots
-/// (PRODUCT-SPEC §4b).</summary>
-public record DueDayCount(string Date, int Count);
-
-/// <summary>Group header row inside the calendar time line; intermixed with
-/// TaskItem rows in the calendar list (PRODUCT-SPEC §4b).</summary>
-public sealed record CalendarSectionHeader(
-    string HeaderText,
-    int Count,
-    bool IsToday,
-    bool IsOverdue,
-    string? DateKey)
-{
-    public string CountText => Count > 0 ? Count.ToString() : "";
-
-    /// <summary>Today's header in accent, overdue in danger red (§4b); WinUI
-    /// has no data triggers, so the brush is a projected property.</summary>
-    public Microsoft.UI.Xaml.Media.Brush HeaderBrush =>
-        new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            IsOverdue ? Windows.UI.Color.FromArgb(0xFF, 0xFF, 0x3B, 0x30)
-            : IsToday ? UiTheme.Accent
-            : UiTheme.OnSurface);
 }
 
 /// <summary>Error with a user-facing message and a category; the category

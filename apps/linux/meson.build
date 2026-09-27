@@ -24,7 +24,6 @@ sources = files(
   'src/cliinstaller.vala',
   'src/reminder.vala',
   'src/ui.vala',
-  'src/calendarview.vala',
   'src/dialogs.vala',
   'src/taskly.vala',
 )

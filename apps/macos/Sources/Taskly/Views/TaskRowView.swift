@@ -113,9 +113,14 @@ struct TaskRowView: View {
         guard cal.component(.year, from: date) == cal.component(.year, from: Date()) else {
             return dateOnly
         }
-        let monthName = state.t("calMonthShort\(cal.component(.month, from: date))")
         let day = cal.component(.day, from: date)
-        return state.config.language == "zh" ? "\(monthName)\(day)日" : "\(monthName) \(day)"
+        if state.config.language == "zh" {
+            return "\(cal.component(.month, from: date))月\(day)日"
+        }
+        // en: "Sep 27" via a cached locale formatter.
+        let formatter = Self.shortMonthFormatter
+        formatter.locale = Locale(identifier: "en_US")
+        return formatter.string(from: date)
     }
 
     private var checkbox: some View {
@@ -174,6 +179,13 @@ struct TaskRowView: View {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    @MainActor private static let shortMonthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.dateFormat = "MMM d"
         return formatter
     }()
 

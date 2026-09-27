@@ -108,16 +108,14 @@ $search.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Set
 Start-Sleep -Seconds 1
 Test-Check "clearing search restores rows" ($null -ne (Find-Element $Win 'Buy milk' 'Text' 3))
 
-# --- 6. View tiles (physical clicks; tiles are plain surfaces, not buttons)
-# After each click the large title must switch to the view name.
+# --- 6. View tiles (UIA invoke; tiles are chrome-free template buttons)
 $btnCondAll = New-Object System.Windows.Automation.PropertyCondition(
     [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
     [System.Windows.Automation.ControlType]::Button)
-foreach ($tileName in @('Today', 'Planned', 'All', 'Completed', 'Calendar')) {
+foreach ($tileName in @('Today', 'Planned', 'All', 'Completed')) {
     $t = Find-Element $Win $tileName 'Text' 3
     Test-Check "tile exists: $tileName" ($null -ne $t)
     if ($t) {
-        # Walk up from the tile label to the tile button and invoke it.
         $node = $t; $tileBtn = $null
         while ($node -ne $null) {
             $node = $walker.GetParent($node)
@@ -131,47 +129,38 @@ foreach ($tileName in @('Today', 'Planned', 'All', 'Completed', 'Calendar')) {
         }
     }
 }
-# Verify where we ended: the Calendar status line must be present.
-Test-Check "tile tour ends on calendar" ($null -ne (
-    Find-Element $Win 'Calendar view' 'Text' 4))
 
-# We ended on Calendar. Check calendar specifics.
-$calToday = Find-Element $Win 'Today' 'Button' 3
-Test-Check "calendar has a Today button" ($null -ne $calToday)
-Test-Check "calendar status line" ($null -ne (
-    Find-Element $Win 'Calendar view' 'Text' 3))
-
-# --- 7. Calendar interactions: go back a month, then Today
-$prev = Find-Element $Win 'Previous month' 'Button' 2
-if ($prev) { Invoke-Element $prev; Start-Sleep -Milliseconds 700 }
-$next = Find-Element $Win 'Next month' 'Button' 2
-if ($next) { Invoke-Element $next; Start-Sleep -Milliseconds 700 }
-Invoke-Element $calToday
-Start-Sleep -Milliseconds 700
-Test-Check "calendar Today navigation alive" ($null -ne (Get-TasklyWindow))
-
-# --- 8. All view: verify counts + open-completed toggle
+# --- 7. All view: verify counts + open-completed toggle
 $allTile = Find-Element $Win 'All' 'Text' 3
 Click-Center $allTile
 Start-Sleep -Milliseconds 800
-$toggle = Find-Element $Win 'Show Completed' 'Button' 3
-Test-Check "show-completed toggle present" ($null -ne $toggle)
-if ($toggle) {
-    Invoke-Element $toggle
+# Show Completed lives in the View menu now (Reminders keeps the toolbar
+# minimal); toggle it through the menu item.
+$menuSettings = Find-Element $Win 'View' 'MenuItem' 3
+Test-Check "View menu present" ($null -ne $menuSettings)
+if ($menuSettings) {
+    ($menuSettings.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern)).Expand()
     Start-Sleep -Milliseconds 700
-    Test-Check "completed tasks visible after toggle" (
-        $null -ne (Find-Element $Win 'Buy milk' 'Text' 3) -or
-        $null -ne (Find-Element $Win 'Tomorrow' 'Text' 3))
-    Invoke-Element $toggle
-    Start-Sleep -Milliseconds 500
+    $toggle = Find-Element $Win 'Show Completed' 'MenuItem' 3
+    Test-Check "show-completed menu item present" ($null -ne $toggle)
+    if ($toggle) {
+        Invoke-Element $toggle
+        Start-Sleep -Milliseconds 700
+        Test-Check "completed tasks visible after toggle" (
+            $null -ne (Find-Element $Win 'Buy milk' 'Text' 3) -or
+            $null -ne (Find-Element $Win 'Tomorrow' 'Text' 3))
+        Invoke-Element $toggle
+    }
+    ($menuSettings.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern)).Collapse()
+    Start-Sleep -Milliseconds 400
 }
 
-# --- 9. CLI cross-check on the same DB
+# --- 8. CLI cross-check on the same DB
 $cliTasks = & $exe --db $testDb list --json 2>&1 | ConvertFrom-Json
 $cliTexts = ($cliTasks | ForEach-Object { $_.text }) -join "|"
 Test-Check "CLI sees the GUI tasks" ($cliTexts -match "Buy milk") ("saw: " + $cliTexts)
 
-# --- 10. CLI add -> GUI reflects after a view refresh
+# --- 9. CLI add -> GUI reflects after a view refresh
 & $exe --db $testDb add "CLI inserted task" | Out-Null
 function Invoke-Tile([string]$Name) {
     $t = Find-Element $Win $Name 'Text' 3
@@ -190,7 +179,7 @@ Start-Sleep -Seconds 1
 Test-Check "GUI reflects CLI-inserted task after refresh" (
     $null -ne (Find-Element $Win 'CLI inserted task' 'Text' 3))
 
-# --- 11. List management: create a list via the + button
+# --- 10. List management: create a list via the + button
 $plus = Find-Element $Win ([string][char]0x271A) 'Button' 3   # heavy plus sign
 Test-Check "add-list button present" ($null -ne $plus)
 if ($plus) {
@@ -208,7 +197,7 @@ if ($plus) {
     }
 }
 
-# --- 12. Language switch zh (menu Settings -> Simplified Chinese)
+# --- 11. Language switch zh (menu Settings -> Simplified Chinese)
 $settingsMenu = Find-Element $Win 'Settings' 'MenuItem' 3
 if ($settingsMenu) {
     ($settingsMenu.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern)).Expand()
@@ -220,7 +209,7 @@ if ($settingsMenu) {
 $todayZh = [string]([char]0x4ECA) + [string]([char]0x5929)
 Test-Check "tiles re-render in Chinese" ($null -ne (Find-Element $Win $todayZh 'Text' 3))
 
-# --- 13. App still alive at the end
+# --- 12. App still alive at the end
 Test-Check "app survived the whole flow" ($null -ne (Get-TasklyWindow))
 
 # Cleanup: restore user config, kill app, remove test DB

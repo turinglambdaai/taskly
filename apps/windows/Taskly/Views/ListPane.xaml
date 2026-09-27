@@ -34,11 +34,6 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <!-- Full-width calendar tile (PRODUCT-SPEC §4b): 56px, no count. -->
-        <Style x:Key="CalendarTile" TargetType="Button" BasedOn="{StaticResource SmartTile}">
-            <Setter Property="Height" Value="56" />
-            <Setter Property="Padding" Value="12,8" />
-        </Style>
         <Style x:Key="TileGlyph" TargetType="TextBlock">
             <Setter Property="Foreground" Value="White" />
             <Setter Property="FontSize" Value="18" />
@@ -136,19 +131,6 @@
                     </Grid>
                 </Button>
             </Grid>
-
-            <!-- Calendar tile (PRODUCT-SPEC §4b): full-width, no count badge -->
-            <Button x:Name="TileCalendar" Style="{StaticResource CalendarTile}"
-                    Background="{StaticResource SmartListCalendarBrush}" Click="OnTileCalendar">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <TextBlock x:Name="TileCalendarIcon" Grid.Row="0" Style="{StaticResource TileGlyph}" HorizontalAlignment="Left" />
-                    <TextBlock x:Name="TileCalendarLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
-                </Grid>
-            </Button>
 
             <!-- My Lists header + add button (0.7.0 layout) -->
             <Grid Margin="4,0,4,0">

@@ -63,9 +63,26 @@ function Find-ByCodes {
 }
 
 function Invoke-Element {
+    # Menu items expose Toggle/SelectionItem instead of Invoke; try in order.
     param($Element)
-    $pattern = $Element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
-    $pattern.Invoke()
+    foreach ($pt in @([System.Windows.Automation.InvokePattern]::Pattern,
+                      [System.Windows.Automation.TogglePattern]::Pattern,
+                      [System.Windows.Automation.SelectionItemPattern]::Pattern)) {
+        try {
+            $pattern = $Element.GetCurrentPattern($pt)
+            if ($pattern -is [System.Windows.Automation.TogglePattern]) {
+                $pattern.Toggle()
+            } elseif ($pattern -is [System.Windows.Automation.SelectionItemPattern]) {
+                $pattern.Select()
+            } else {
+                $pattern.Invoke()
+            }
+            return
+        } catch {
+            continue
+        }
+    }
+    throw "no supported pattern on element"
 }
 
 function Set-EditValue {
