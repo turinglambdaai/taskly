@@ -59,18 +59,6 @@ public sealed partial class MainWindow : Window
         MenuCloseDatabase.Text = Vm.T("menuCloseDatabase");
         MenuExit.Text = Vm.T("menuExit");
 
-        MenuView.Title = Vm.T("menuView");
-        MenuViewToday.Text = Vm.T("navToday");
-        MenuViewPlanned.Text = Vm.T("navPlanned");
-        MenuViewAll.Text = Vm.T("navAll");
-        MenuViewCompleted.Text = Vm.T("navCompleted");
-        MenuNewTask.Text = Vm.T("taskListInputHint").TrimStart('+', ' ');
-        MenuFind.Text = Vm.T("searchHint");
-        MenuShowCompleted.Text = Vm.ShowCompletedTasks
-            ? Vm.T("hideCompletedToggle")
-            : Vm.T("showCompletedToggle");
-        MenuShowCompleted.IsChecked = Vm.ShowCompletedTasks;
-
         MenuTools.Title = Vm.T("menuTools");
         MenuInstallCli.Text = Vm.T("menuInstallCli");
         MenuUninstallCli.Text = Vm.T("menuUninstallCli");
@@ -87,28 +75,56 @@ public sealed partial class MainWindow : Window
         Pane.ApplyLanguage();
     }
 
-    // ---------------- view menu / accelerators ----------------
+    // ---------------- window accelerators (no menu items needed) ----------------
 
-    private async void OnViewToday(object sender, RoutedEventArgs e) =>
-        await Vm.SelectViewAsync(TaskViewType.Today);
-
-    private async void OnViewPlanned(object sender, RoutedEventArgs e) =>
-        await Vm.SelectViewAsync(TaskViewType.Planned);
-
-    private async void OnViewAll(object sender, RoutedEventArgs e) =>
-        await Vm.SelectViewAsync(TaskViewType.All);
-
-    private async void OnViewCompleted(object sender, RoutedEventArgs e) =>
-        await Vm.SelectViewAsync(TaskViewType.Completed);
-
-    private void OnNewTaskFocus(object sender, RoutedEventArgs e) => Pane.FocusQuickAdd();
-
-    private void OnFindFocus(object sender, RoutedEventArgs e) => Sidebar.FocusSearch();
-
-    private async void OnToggleShowCompletedMenu(object sender, RoutedEventArgs e)
+    private async void OnAccViewToday(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
     {
+        args.Handled = true;
+        await Vm.SelectViewAsync(TaskViewType.Today);
+    }
+
+    private async void OnAccViewPlanned(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        await Vm.SelectViewAsync(TaskViewType.Planned);
+    }
+
+    private async void OnAccViewAll(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        await Vm.SelectViewAsync(TaskViewType.All);
+    }
+
+    private async void OnAccViewCompleted(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        await Vm.SelectViewAsync(TaskViewType.Completed);
+    }
+
+    private void OnAccNewTask(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        Pane.FocusQuickAdd();
+    }
+
+    private void OnAccFind(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        Sidebar.FocusSearch();
+    }
+
+    private async void OnAccToggleCompleted(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
         await Vm.ToggleShowCompletedAsync();
-        MenuShowCompleted.IsChecked = Vm.ShowCompletedTasks;
+        Pane.SyncShowCompletedLabel();
     }
 
     // ---------------- file menu ----------------

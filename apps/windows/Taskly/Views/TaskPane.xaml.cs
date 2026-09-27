@@ -54,6 +54,9 @@ public sealed partial class TaskPane : UserControl
 
         ToolTipService.SetToolTip(SidebarToggle,
             Vm.IsSidebarVisible ? Vm.T("sidebarHide") : Vm.T("sidebarShow"));
+        ShowCompletedToggle.Content = Vm.ShowCompletedTasks
+            ? Vm.T("hideCompletedToggle")
+            : Vm.T("showCompletedToggle");
         QuickAddBox.PlaceholderText = Vm.IsConnected
             ? Vm.T("taskListInputHint")
             : Vm.T("taskListInputHintNoDb");
@@ -130,6 +133,18 @@ public sealed partial class TaskPane : UserControl
     public void FocusQuickAdd()
     {
         QuickAddBox.Focus(FocusState.Keyboard);
+    }
+
+    /// <summary>Keeps the header toggle label in step with the accelerator
+    /// and the button itself (either can flip the state).</summary>
+    public void SyncShowCompletedLabel()
+    {
+        if (Vm is not null)
+        {
+            ShowCompletedToggle.Content = Vm.ShowCompletedTasks
+                ? Vm.T("hideCompletedToggle")
+                : Vm.T("showCompletedToggle");
+        }
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -273,6 +288,9 @@ public sealed partial class TaskPane : UserControl
         }
 
         await Vm.ToggleShowCompletedAsync();
+        ShowCompletedToggle.Content = Vm.ShowCompletedTasks
+            ? Vm.T("hideCompletedToggle")
+            : Vm.T("showCompletedToggle");
     }
 
     private async void OnQuickAddKeyDown(object sender, KeyRoutedEventArgs e)

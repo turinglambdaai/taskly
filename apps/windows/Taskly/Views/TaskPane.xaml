@@ -74,6 +74,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <Button x:Name="SidebarToggle" Grid.Column="0" Click="OnToggleSidebar"
@@ -93,6 +94,11 @@
                            Foreground="{ThemeResource ThemeSecondaryTextBrush}"
                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
             </StackPanel>
+
+            <Button x:Name="ShowCompletedToggle" Grid.Column="2" Click="OnToggleShowCompleted"
+                    Background="Transparent" BorderThickness="0" Padding="4"
+                    FontSize="13" Foreground="{ThemeResource AccentBrush}"
+                    VerticalAlignment="Center" />
         </Grid>
 
         <!-- Quick add: the pane's single, prominent input -->

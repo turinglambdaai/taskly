@@ -145,24 +145,27 @@ foreach ($tileName in @('Today', 'Planned', 'All', 'Completed')) {
 $allTile = Find-Element $Win 'All' 'Text' 3
 Click-Center $allTile
 Start-Sleep -Milliseconds 800
-# Show Completed lives in the View menu now (Reminders keeps the toolbar
-# minimal); toggle it through the menu item.
-$menuSettings = Find-Element $Win 'View' 'MenuItem' 3
-Test-Check "View menu present" ($null -ne $menuSettings)
-if ($menuSettings) {
-    ($menuSettings.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern)).Expand()
-    Start-Sleep -Milliseconds 700
-    $toggle = Find-Element $Win 'Show Completed' 'MenuItem' 3
-    Test-Check "show-completed menu item present" ($null -ne $toggle)
-    if ($toggle) {
-        Invoke-Element $toggle
-        Start-Sleep -Milliseconds 700
-        Test-Check "completed tasks visible after toggle" (
-            $null -ne (Find-Element $Win 'Buy milk' 'Text' 3) -or
-            $null -ne (Find-Element $Win 'Tomorrow' 'Text' 3))
-        Invoke-Element $toggle
+# Show Completed toggle sits in the header row (right end). The tour left
+# us on Completed; switch to All first so an open task is visible.
+$allTile = Find-Element $Win 'All' 'Text' 3
+if ($allTile) {
+    $n0 = $allTile
+    while ($n0 -ne $null) {
+        $n0 = $walker.GetParent($n0)
+        if ($n0 -eq $null) { break }
+        if ($n0.Current.ControlType.ProgrammaticName -eq 'ControlType.Button') { break }
     }
-    ($menuSettings.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern)).Collapse()
+    if ($n0) { Invoke-Element $n0; Start-Sleep -Milliseconds 700 }
+}
+$toggle = Find-Element $Win 'Show Completed' 'Button' 3
+Test-Check "show-completed toggle present" ($null -ne $toggle)
+if ($toggle) {
+    Invoke-Element $toggle
+    Start-Sleep -Milliseconds 700
+    Test-Check "completed tasks visible after toggle" (
+        $null -ne (Find-Element $Win 'Buy milk' 'Text' 3) -or
+        $null -ne (Find-Element $Win 'Tomorrow' 'Text' 3))
+    Invoke-Element $toggle
     Start-Sleep -Milliseconds 400
 }
 
