@@ -1,4 +1,4 @@
-﻿// Taskly — GTK4/libadwaita UI: header bar + paned (sidebar | task pane) +
+// Taskly — GTK4/libadwaita UI: header bar + paned (sidebar | task pane) +
 // status bar, warm palette via CSS. All state on the main loop; DB access
 // is synchronous (local SQLite).
 
