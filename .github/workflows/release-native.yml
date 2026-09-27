@@ -1,4 +1,4 @@
-﻿name: Native Release
+name: Native Release
 
 # Tag-triggered release pipeline for the native apps. Tag `vX.Y.Z` to build
 # and attach artifacts to a GitHub Release.
@@ -150,6 +150,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Flatten artifact subdirectories (vpk-dist) before uploading.
+          find dist -mindepth 2 -type f -exec mv {} dist/ \; 2>/dev/null || true
           PREV_TAG="$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo "")"
           if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
             gh release upload "${{ github.ref_name }}" --clobber dist/*
