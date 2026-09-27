@@ -8,94 +8,80 @@ using Taskly.ViewModels;
 
 namespace Taskly.Views;
 
-    public sealed partial class ListPane : UserControl
+/// <summary>Sidebar: search, smart-list chips (2×2, Reminders style), and
+/// My Lists. Chips are ToggleButtons — checked = the active view, with
+/// hover/checked visuals VSM-driven so keyboard and UIA work.</summary>
+public sealed partial class ListPane : UserControl
+{
+    public MainViewModel? Vm { get; set; }
+
+    public ListPane()
     {
-        public MainViewModel? Vm { get; set; }
+        InitializeComponent();
+    }
 
-        public ListPane()
+    private MainViewModel? _subscribedVm;
+
+    public void SetViewModel(MainViewModel vm)
+    {
+        if (_subscribedVm is not null)
         {
-            InitializeComponent();
+            _subscribedVm.CountsChanged -= RefreshCounts;
+            _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
+            ListsList.ItemClick -= OnListItemClick;
+            ListsList.RightTapped -= OnListRightTapped;
+            SearchBox.KeyDown -= OnSearchKeyDown;
+            SearchBox.TextChanged -= OnSearchTextChanged;
         }
 
-        private MainViewModel? _subscribedVm;
-
-        public void SetViewModel(MainViewModel vm)
+        Vm = vm;
+        ListsList.ItemsSource = vm?.ListCollection;
+        _subscribedVm = vm;
+        if (vm is not null)
         {
-            if (_subscribedVm is not null)
-            {
-                _subscribedVm.CountsChanged -= RefreshCounts;
-                _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
-                ListsList.ItemClick -= OnListItemClick;
-                ListsList.RightTapped -= OnListRightTapped;
-                SearchBox.KeyDown -= OnSearchKeyDown;
-                SearchBox.TextChanged -= OnSearchTextChanged;
-            }
-
-            Vm = vm;
-            ListsList.ItemsSource = vm?.ListCollection;
-            _subscribedVm = vm;
-            if (vm is not null)
-            {
-                vm.CountsChanged += RefreshCounts;
-                vm.PropertyChanged += OnViewModelPropertyChanged;
-                ListsList.ItemClick += OnListItemClick;
-                ListsList.RightTapped += OnListRightTapped;
-                SearchBox.KeyDown += OnSearchKeyDown;
-                SearchBox.TextChanged += OnSearchTextChanged;
-            }
-
-            WireTileHover(TileToday);
-            WireTileHover(TilePlanned);
-            WireTileHover(TileAll);
-            WireTileHover(TileCompleted);
-
-            ApplyLanguage();
+            vm.CountsChanged += RefreshCounts;
+            vm.PropertyChanged += OnViewModelPropertyChanged;
+            ListsList.ItemClick += OnListItemClick;
+            ListsList.RightTapped += OnListRightTapped;
+            SearchBox.KeyDown += OnSearchKeyDown;
+            SearchBox.TextChanged += OnSearchTextChanged;
         }
 
-        // Hover = a slight lift (never gray): plain surfaces keep the fill.
-        private void WireTileHover(Button tile)
+        ApplyLanguage();
+    }
+
+    /// <summary>Quiet highlight on the active list's row (mirrors the chip
+    /// selection language).</summary>
+    private void SyncListSelection()
+    {
+        if (Vm is null)
         {
-            // Hover eases an unselected tile toward full saturation; the
-            // selected tile stays at full.
-            tile.PointerEntered += (_, _) =>
-                tile.Opacity = tile.BorderThickness.Left > 0 ? 1.0 : 0.88;
-            tile.PointerExited += (_, _) =>
-                tile.Opacity = tile.BorderThickness.Left > 0 ? 1.0 : 0.72;
+            return;
         }
 
-
-        /// <summary>Marks the active list's row so switching lists shows a
-        /// quiet highlight (mirrors the smart-tile selection language).</summary>
-        private void SyncListSelection()
+        foreach (var list in Vm.ListCollection)
         {
-            if (Vm is null)
-            {
-                return;
-            }
-
-            foreach (var list in Vm.ListCollection)
-            {
-                list.IsSelected = Vm.CurrentView == TaskViewType.List
-                    && list.Id == Vm.CurrentListId;
-            }
+            list.IsSelected = Vm.CurrentView == TaskViewType.List
+                && list.Id == Vm.CurrentListId;
         }
+    }
 
-        private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainViewModel.CurrentView)
+            || e.PropertyName == nameof(MainViewModel.CurrentListId))
         {
-            if (e.PropertyName == nameof(MainViewModel.CurrentView)
-                || e.PropertyName == nameof(MainViewModel.CurrentListId))
-            {
-                RefreshTileSelection();
-                SyncListSelection();
-            }
-            else if (e.PropertyName == nameof(MainViewModel.IsConnected))
-            {
-                // Search lives in the sidebar; only meaningful when connected.
-                SearchArea.Visibility = Vm is not null && Vm.IsConnected
-                    ? Visibility.Visible
-                    : Visibility.Collapsed;
-            }
+            SyncChipSelection();
+            SyncListSelection();
         }
+        else if (e.PropertyName == nameof(MainViewModel.IsConnected))
+        {
+            // Search lives in the sidebar; only meaningful when connected.
+            SearchArea.Visibility = Vm is not null && Vm.IsConnected
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+    }
 
     // ---------------- search (sidebar, Reminders placement) ----------------
 
@@ -125,55 +111,23 @@ namespace Taskly.Views;
         await Vm.SetSearchAsync(SearchBox.Text);
     }
 
-        /// <summary>Active view's tile gets a white inset ring (DESIGN-TOKENS).</summary>
-        private void RefreshTileSelection()
+    public void ApplyLanguage()
+    {
+        if (Vm is null)
         {
-            if (Vm is null)
-            {
-                return;
-            }
-
-            SetSelected(TileToday, Vm.CurrentView == TaskViewType.Today);
-            SetSelected(TilePlanned, Vm.CurrentView == TaskViewType.Planned);
-            SetSelected(TileAll, Vm.CurrentView == TaskViewType.All);
-            SetSelected(TileCompleted, Vm.CurrentView == TaskViewType.Completed);
+            return;
         }
 
-        private static void SetSelected(Button tile, bool selected)
-        {
-            tile.BorderThickness = selected ? new Thickness(2) : new Thickness(0);
-            tile.BorderBrush = selected
-                ? new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.White)
-                : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
-            tile.Padding = selected ? new Thickness(10, 8, 10, 8) : new Thickness(12, 10, 12, 10);
-            // The active view pops to full saturation; the rest recede.
-            tile.Opacity = selected ? 1.0 : 0.72;
-        }
-
-        public void ApplyLanguage()
-        {
-            if (Vm is null)
-            {
-                return;
-            }
-
-            // Monochrome Segoe Fluent glyphs (E787 calendar, E823 clock,
-            // E8FD list, E73E checkmark) — quieter than emoji, matches the
-            // Reminders-style sidebar.
-            TileTodayIcon.Text = "\uE787";
-            TileTodayLabel.Text = Vm.T("navToday");
-            TilePlannedIcon.Text = "\uE823";
-            TilePlannedLabel.Text = Vm.T("navPlanned");
-            TileAllIcon.Text = "\uE8FD";
-            TileAllLabel.Text = Vm.T("navAll");
-            TileCompletedIcon.Text = "\uE73E";
-            TileCompletedLabel.Text = Vm.T("navCompleted");
-            MyListsHeader.Text = Vm.T("sectionMyLists");
-            SearchBox.PlaceholderText = Vm.T("searchHint");
-            SearchArea.Visibility = Vm.IsConnected ? Visibility.Visible : Visibility.Collapsed;
-            RefreshTileSelection();
-            RefreshCounts();
-        }
+        ChipTodayLabel.Text = Vm.T("navToday");
+        ChipPlannedLabel.Text = Vm.T("navPlanned");
+        ChipAllLabel.Text = Vm.T("navAll");
+        ChipCompletedLabel.Text = Vm.T("navCompleted");
+        MyListsHeader.Text = Vm.T("sectionMyLists");
+        SearchBox.PlaceholderText = Vm.T("searchHint");
+        SearchArea.Visibility = Vm.IsConnected ? Visibility.Visible : Visibility.Collapsed;
+        SyncChipSelection();
+        RefreshCounts();
+    }
 
     public void ShowStatus(string message) => Vm?.ShowTransientStatus(message);
 
@@ -184,24 +138,53 @@ namespace Taskly.Views;
             return;
         }
 
-        TileTodayCount.Text = Vm.TodayCount > 0 ? Vm.TodayCount.ToString() : "";
-        TilePlannedCount.Text = Vm.PlannedCount > 0 ? Vm.PlannedCount.ToString() : "";
-        TileAllCount.Text = Vm.AllCount > 0 ? Vm.AllCount.ToString() : "";
-        TileCompletedCount.Text = Vm.CompletedCount > 0 ? Vm.CompletedCount.ToString() : "";
+        ChipTodayCount.Text = Vm.TodayCount > 0 ? Vm.TodayCount.ToString() : "";
+        ChipPlannedCount.Text = Vm.PlannedCount > 0 ? Vm.PlannedCount.ToString() : "";
+        ChipAllCount.Text = Vm.AllCount > 0 ? Vm.AllCount.ToString() : "";
+        ChipCompletedCount.Text = Vm.CompletedCount > 0 ? Vm.CompletedCount.ToString() : "";
         SyncListSelection();
     }
 
-    private async void OnTileToday(object sender, RoutedEventArgs e) =>
-        await Vm.SelectViewAsync(TaskViewType.Today);
+    /// <summary>Checked chip = the active view (quiet fill via the VSM
+    /// Checked state).</summary>
+    private void SyncChipSelection()
+    {
+        if (Vm is null)
+        {
+            return;
+        }
 
-    private async void OnTilePlanned(object sender, RoutedEventArgs e) =>
-        await Vm.SelectViewAsync(TaskViewType.Planned);
+        ChipToday.IsChecked = Vm.CurrentView == TaskViewType.Today;
+        ChipPlanned.IsChecked = Vm.CurrentView == TaskViewType.Planned;
+        ChipAll.IsChecked = Vm.CurrentView == TaskViewType.All;
+        ChipCompleted.IsChecked = Vm.CurrentView == TaskViewType.Completed;
+    }
 
-    private async void OnTileAll(object sender, RoutedEventArgs e) =>
-        await Vm.SelectViewAsync(TaskViewType.All);
+    private async void OnChipToday(object sender, RoutedEventArgs e) =>
+        await ChipSelected(TaskViewType.Today, ChipToday);
 
-    private async void OnTileCompleted(object sender, RoutedEventArgs e) =>
-        await Vm.SelectViewAsync(TaskViewType.Completed);
+    private async void OnChipPlanned(object sender, RoutedEventArgs e) =>
+        await ChipSelected(TaskViewType.Planned, ChipPlanned);
+
+    private async void OnChipAll(object sender, RoutedEventArgs e) =>
+        await ChipSelected(TaskViewType.All, ChipAll);
+
+    private async void OnChipCompleted(object sender, RoutedEventArgs e) =>
+        await ChipSelected(TaskViewType.Completed, ChipCompleted);
+
+    private async Task ChipSelected(TaskViewType view, ToggleButton chip)
+    {
+        if (Vm is null)
+        {
+            chip.IsChecked = false;
+            return;
+        }
+
+        await Vm.SelectViewAsync(view);
+        // Clicking the active chip unchecks it visually; the view is still
+        // active, so restore the check.
+        chip.IsChecked = true;
+    }
 
     private async void OnListItemClick(object sender, ItemClickEventArgs e)
     {
@@ -211,7 +194,7 @@ namespace Taskly.Views;
         }
     }
 
-    // Right-tap → edit list (double-tap opens the editor as well).
+    // Right-tap → edit list.
     private async void OnListRightTapped(object sender, RightTappedRoutedEventArgs e)
     {
         if (FrameworkElementAncestor(e.OriginalSource) is not { } container)

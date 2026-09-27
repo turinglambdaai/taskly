@@ -73,7 +73,7 @@
 | sidebar collapse | toggle sets the column width to 0 (releasing MinWidth) — a fixed MinWidth must not clamp the collapsed state |
 | sidebar width | 280 (200…420) |
 | menu bar / status bar height | 32 / 28 |
-| smart view tile | 2×2 grid of 64px color fills (radius 12), two rows: top row = white glyph left (20px) + bold white count right (16px), bottom row = semibold white label left (14px); tiles carry a subtle top-light gradient (white @ 10% → transparent) for depth; plain surface (no button chrome), hover lifts to 88% opacity, active view = full saturation + 2px white inset ring |
+| smart-list chip | 2×2 grid of 34px chips (radius 8, 8px gaps): neutral surface fill + 1px divider, horizontal content = colored glyph (14px, view semantic color) + 13px label + quiet 12px count right; checked = quiet selection fill (VSM), hover = hover fill; saturated color never fills the chip — color lives on the glyph (macOS Reminders language) |
 | list row | card: surface fill + 1px divider border, radius 8, padding 8,5; 20px round color dot with the emoji inside (11px), name 13px, gray count right — compact, aligned with the sidebar icon column |
 | list icon size | 32 (round) |
 | checkbox size | 20px ring in the task's list color (accent fallback); completed = list-color fill with a white check |

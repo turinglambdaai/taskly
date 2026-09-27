@@ -50,11 +50,12 @@
             </ResourceDictionary.ThemeDictionaries>
 
             <!-- Fixed semantic colors (theme-independent, Reminders semantics) -->
-            <SolidColorBrush x:Key="SmartListTodayBrush" Color="#007AFF" />
-            <SolidColorBrush x:Key="SmartListScheduledBrush" Color="#FF3B30" />
-            <SolidColorBrush x:Key="SmartListAllBrush" Color="#8E8E93" />
-            <SolidColorBrush x:Key="SmartListCompletedBrush" Color="#34C759" />
-            <SolidColorBrush x:Key="SmartListCalendarBrush" Color="#5856D6" />
+            <!-- Smart-list chips: neutral surface, color lives on the glyph
+                 (macOS Reminders language) -->
+            <SolidColorBrush x:Key="ChipTodayGlyph" Color="#007AFF" />
+            <SolidColorBrush x:Key="ChipPlannedGlyph" Color="#FF3B30" />
+            <SolidColorBrush x:Key="ChipAllGlyph" Color="#8E8E93" />
+            <SolidColorBrush x:Key="ChipCompletedGlyph" Color="#34C759" />
             <SolidColorBrush x:Key="DangerBrush" Color="#FF3B30" />
             <!-- List-palette presets live in C# (Repositories.ListPalette.Colors);
                  WinUI 3 has no x:Array markup extension. -->

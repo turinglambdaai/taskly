@@ -5,61 +5,84 @@
     Background="{ThemeResource ThemeSidebarBrush}">
 
     <UserControl.Resources>
-        <!-- 0.7.0-style smart tile: colored fill, glyph top-left, bold count
-             top-right, semibold label bottom-left. -->
-        <!-- Smart tiles: chrome-free buttons. A plain Border+Tapped would
-             lose keyboard focus and UIA Invoke; a stock WinUI button grays
-             colored fills on hover. A bare ControlTemplate keeps both. -->
-        <Style x:Key="SmartTile" TargetType="Button">
-            <Setter Property="CornerRadius" Value="12" />
-            <Setter Property="Height" Value="64" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="12,10" />
+        <!-- Smart-list chip (macOS Reminders language): neutral surface,
+             colored glyph, quiet count. Chrome-free ToggleButton so hover
+             and checked states are VSM-driven and keyboard/UIA work. -->
+        <Style x:Key="SmartChip" TargetType="ToggleButton">
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="10,0" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="UseSystemFocusVisuals" Value="False" />
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border CornerRadius="{TemplateBinding CornerRadius}"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter Content="{TemplateBinding Content}"
-                                              ContentTemplate="{TemplateBinding ContentTemplate}" />
-                        </Border>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid>
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="MouseOver">
+                                        <Storyboard>
+                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ChipSurface" Storyboard.TargetProperty="Background">
+                                                <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ThemeHoverBackgroundBrush}" />
+                                            </ObjectAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="Checked">
+                                        <Storyboard>
+                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ChipSurface" Storyboard.TargetProperty="Background">
+                                                <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ThemeSelectionBackgroundBrush}" />
+                                            </ObjectAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="MouseOverChecked">
+                                        <Storyboard>
+                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ChipSurface" Storyboard.TargetProperty="Background">
+                                                <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ThemeSelectionBackgroundBrush}" />
+                                            </ObjectAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                            <Border x:Name="ChipSurface"
+                                    CornerRadius="8"
+                                    Background="{ThemeResource ThemeSurfaceBrush}"
+                                    BorderBrush="{ThemeResource ThemeDividerBrush}"
+                                    BorderThickness="1" />
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              VerticalAlignment="Center" />
+                        </Grid>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style x:Key="TileGlyph" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontSize" Value="18" />
-            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
-            <Setter Property="VerticalAlignment" Value="Top" />
-        </Style>
-        <Style x:Key="TileCount" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontSize" Value="16" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="VerticalAlignment" Value="Top" />
-        </Style>
-        <Style x:Key="TileLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="White" />
+        <Style x:Key="ChipGlyph" TargetType="FontIcon">
             <Setter Property="FontSize" Value="14" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="ChipLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{ThemeResource ThemeOnSurfaceBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style x:Key="ChipCount" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Setter Property="Foreground" Value="{ThemeResource ThemeSecondaryTextBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Padding="12" Spacing="12">
 
-            <!-- Search sits inside the sidebar, above the four filter
-                 tiles — macOS Reminders placement. -->
-            <Grid x:Name="SearchArea" Height="32" CornerRadius="8"
+            <!-- Search sits inside the sidebar, above the smart-list chips
+                 (macOS Reminders placement). -->
+            <Grid x:Name="SearchArea" Height="30" CornerRadius="8"
                   Background="{ThemeResource ThemeSurfaceBrush}"
                   BorderBrush="{ThemeResource ThemeInputBorderBrush}" BorderThickness="1"
                   Visibility="Collapsed">
@@ -75,82 +98,65 @@
                          KeyDown="OnSearchKeyDown" TextChanged="OnSearchTextChanged" />
             </Grid>
 
-            <!-- Smart view tiles (2×2, 0.7.0 layout): two-row geometry —
-                 glyph + count on top, label at the bottom. -->
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="8" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+            <!-- Smart-list chips: 2 per row, one-line content
+                 (glyph + name + count) — Reminders placement. Two explicit
+                 rows sidestep any Grid attached-property ambiguity. -->
+            <StackPanel Spacing="8">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ToggleButton x:Name="ChipToday" Grid.Column="0" Click="OnChipToday"
+                                  Style="{StaticResource SmartChip}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Style="{StaticResource ChipGlyph}"
+                                      Foreground="{StaticResource ChipTodayGlyph}"
+                                      Glyph="&#xE787;" />
+                            <TextBlock x:Name="ChipTodayLabel" Style="{StaticResource ChipLabel}" />
+                            <TextBlock x:Name="ChipTodayCount" Style="{StaticResource ChipCount}" />
+                        </StackPanel>
+                    </ToggleButton>
+                    <ToggleButton x:Name="ChipPlanned" Grid.Column="1" Click="OnChipPlanned"
+                                  Style="{StaticResource SmartChip}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Style="{StaticResource ChipGlyph}"
+                                      Foreground="{StaticResource ChipPlannedGlyph}"
+                                      Glyph="&#xE823;" />
+                            <TextBlock x:Name="ChipPlannedLabel" Style="{StaticResource ChipLabel}" />
+                            <TextBlock x:Name="ChipPlannedCount" Style="{StaticResource ChipCount}" />
+                        </StackPanel>
+                    </ToggleButton>
+                </Grid>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ToggleButton x:Name="ChipAll" Grid.Column="0" Click="OnChipAll"
+                                  Style="{StaticResource SmartChip}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Style="{StaticResource ChipGlyph}"
+                                      Foreground="{StaticResource ChipAllGlyph}"
+                                      Glyph="&#xE8FD;" />
+                            <TextBlock x:Name="ChipAllLabel" Style="{StaticResource ChipLabel}" />
+                            <TextBlock x:Name="ChipAllCount" Style="{StaticResource ChipCount}" />
+                        </StackPanel>
+                    </ToggleButton>
+                    <ToggleButton x:Name="ChipCompleted" Grid.Column="1" Click="OnChipCompleted"
+                                  Style="{StaticResource SmartChip}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Style="{StaticResource ChipGlyph}"
+                                      Foreground="{StaticResource ChipCompletedGlyph}"
+                                      Glyph="&#xE73E;" />
+                            <TextBlock x:Name="ChipCompletedLabel" Style="{StaticResource ChipLabel}" />
+                            <TextBlock x:Name="ChipCompletedCount" Style="{StaticResource ChipCount}" />
+                        </StackPanel>
+                    </ToggleButton>
+                </Grid>
+            </StackPanel>
 
-                <Button Grid.Row="0" Grid.Column="0" x:Name="TileToday" Style="{StaticResource SmartTile}"
-                        Background="{StaticResource SmartListTodayBrush}" Click="OnTileToday">
-                    <Grid RowSpacing="0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Grid Grid.Row="0">
-                            <TextBlock x:Name="TileTodayIcon" Style="{StaticResource TileGlyph}" HorizontalAlignment="Left" />
-                            <TextBlock x:Name="TileTodayCount" Style="{StaticResource TileCount}" HorizontalAlignment="Right" />
-                        </Grid>
-                        <TextBlock x:Name="TileTodayLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
-                    </Grid>
-                </Button>
-
-                <Button Grid.Row="0" Grid.Column="2" x:Name="TilePlanned" Style="{StaticResource SmartTile}"
-                        Background="{StaticResource SmartListScheduledBrush}" Click="OnTilePlanned">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Grid Grid.Row="0">
-                            <TextBlock x:Name="TilePlannedIcon" Style="{StaticResource TileGlyph}" HorizontalAlignment="Left" />
-                            <TextBlock x:Name="TilePlannedCount" Style="{StaticResource TileCount}" HorizontalAlignment="Right" />
-                        </Grid>
-                        <TextBlock x:Name="TilePlannedLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
-                    </Grid>
-                </Button>
-
-                <Button Grid.Row="2" Grid.Column="0" x:Name="TileAll" Style="{StaticResource SmartTile}"
-                        Background="{StaticResource SmartListAllBrush}" Click="OnTileAll">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Grid Grid.Row="0">
-                            <TextBlock x:Name="TileAllIcon" Style="{StaticResource TileGlyph}" HorizontalAlignment="Left" />
-                            <TextBlock x:Name="TileAllCount" Style="{StaticResource TileCount}" HorizontalAlignment="Right" />
-                        </Grid>
-                        <TextBlock x:Name="TileAllLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
-                    </Grid>
-                </Button>
-
-                <Button Grid.Row="2" Grid.Column="2" x:Name="TileCompleted" Style="{StaticResource SmartTile}"
-                        Background="{StaticResource SmartListCompletedBrush}" Click="OnTileCompleted">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Grid Grid.Row="0">
-                            <TextBlock x:Name="TileCompletedIcon" Style="{StaticResource TileGlyph}" HorizontalAlignment="Left" />
-                            <TextBlock x:Name="TileCompletedCount" Style="{StaticResource TileCount}" HorizontalAlignment="Right" />
-                        </Grid>
-                        <TextBlock x:Name="TileCompletedLabel" Grid.Row="1" Style="{StaticResource TileLabel}" />
-                    </Grid>
-                </Button>
-            </Grid>
-
-            <!-- My Lists header + add button (0.7.0 layout) -->
+            <!-- My Lists header + add button -->
             <Grid Margin="4,0,4,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -179,8 +185,7 @@
                 </ListView.ItemContainerStyle>
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                        <!-- 0.7.0 card row: surface fill + hairline border so rows
-                             read as containers; emoji sits inside the color dot. -->
+                        <!-- Compact list card: small color dot + name + count -->
                         <Border CornerRadius="8" Padding="8,5"
                                 Background="{Binding CardBrush}"
                                 BorderBrush="{ThemeResource ThemeDividerBrush}"
@@ -188,20 +193,21 @@
                             <Grid ColumnSpacing="8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <Border Grid.Column="0" Width="20" Height="20" CornerRadius="10"
-                                        VerticalAlignment="Center">
-                                    <Border.Background>
+                                <Ellipse Grid.Column="0" Width="10" Height="10"
+                                         VerticalAlignment="Center">
+                                    <Ellipse.Fill>
                                         <SolidColorBrush Color="{Binding RowColor}" />
-                                    </Border.Background>
-                                    <TextBlock Text="{Binding IconText}" FontSize="11"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13"
+                                    </Ellipse.Fill>
+                                </Ellipse>
+                                <TextBlock Grid.Column="1" Text="{Binding IconText}" FontSize="11"
+                                           VerticalAlignment="Center" Margin="0,0,-2,0" />
+                                <TextBlock Grid.Column="2" Text="{Binding Name}" FontSize="13"
                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Grid.Column="2" Text="{Binding PendingText}" FontSize="12"
+                                <TextBlock Grid.Column="3" Text="{Binding PendingText}" FontSize="12"
                                            Foreground="{ThemeResource ThemeSecondaryTextBrush}"
                                            VerticalAlignment="Center" Margin="0,0,2,0" />
                             </Grid>
