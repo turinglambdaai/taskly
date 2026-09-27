@@ -1,4 +1,4 @@
-name: Native Release
+﻿name: Native Release
 
 # Tag-triggered release pipeline for the native apps. Tag `vX.Y.Z` to build
 # and attach artifacts to a GitHub Release.
@@ -87,15 +87,16 @@ jobs:
           VER="${GITHUB_REF_NAME#v}"
           vpk pack --packId Taskly --packVersion "$VER" \
             --packDir publish/win-x64 --mainExe Taskly.exe --packTitle Taskly
-          cp Releases/* .
+          mkdir -p vpk-dist
+          find Releases -type f \( -name "*.nupkg" -o -name "RELEASES" -o -name "*Setup.exe" \) \
+            -exec cp {} vpk-dist/ \;
+          ls -la vpk-dist
       - uses: actions/upload-artifact@v4
         with:
           name: windows-zip
           path: |
             Taskly-*.zip
-            RELEASES
-            *.nupkg
-            *Setup.exe
+            vpk-dist/*
 
   linux:
     name: Linux (tarball)
