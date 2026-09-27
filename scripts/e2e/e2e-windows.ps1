@@ -48,10 +48,21 @@ Test-Check "task appears after quick add" ($null -ne (Find-Element $Win 'Buy mil
 Test-Check "relative due label (Tomorrow)" ($null -ne (Find-Element $Win 'Tomorrow' 'Text' 3))
 
 # --- 3. Quick add with a time command
+# @time rolls to tomorrow once the time has passed (CLI contract), so the
+# expected relative label depends on the wall clock at run time.
+$nowT = Get-Date
+$target = $nowT.AddHours(2)
+if ($target.Date -eq $nowT.Date) {
+    $timeArg = '@' + $target.ToString('HH:mm')
+    $expectedMeta = "Today  " + $target.ToString('HH:mm')
+} else {
+    $timeArg = '@12:00'
+    $expectedMeta = "Tomorrow  12:00"
+}
 $quickAdd2 = Find-Element $Win '+ Add Task' 'Edit' 3
-Set-EditValue $quickAdd2 "Call dentist @15:00"
+Set-EditValue $quickAdd2 "Call dentist $timeArg"
 Start-Sleep -Seconds 1
-Test-Check "time-only task meta rendered" ($null -ne (Find-Element $Win 'Today  15:00' 'Text' 3))
+Test-Check "time-only task meta rendered" ($null -ne (Find-Element $Win $expectedMeta 'Text' 6)) $expectedMeta
 
 # --- 4. Toggle completed (row's first button = checkbox)
 $meta = Find-Element $Win 'Call dentist' 'Text' 3
