@@ -54,7 +54,6 @@ public sealed partial class TaskPane : UserControl
 
         ToolTipService.SetToolTip(SidebarToggle,
             Vm.IsSidebarVisible ? Vm.T("sidebarHide") : Vm.T("sidebarShow"));
-        SearchBox.PlaceholderText = Vm.T("searchHint");
         QuickAddBox.PlaceholderText = Vm.IsConnected
             ? Vm.T("taskListInputHint")
             : Vm.T("taskListInputHintNoDb");
@@ -102,9 +101,6 @@ public sealed partial class TaskPane : UserControl
         TitleText.Text = Vm.CurrentTitle;
         SubtitleText.Text = Vm.CurrentSubtitle;
 
-        // Search lives in the header toolbar; only show it when connected.
-        SearchArea.Visibility = Vm.IsConnected ? Visibility.Visible : Visibility.Collapsed;
-
         if (!Vm.IsConnected)
         {
             EmptyIcon.Text = "📂";
@@ -129,12 +125,8 @@ public sealed partial class TaskPane : UserControl
         }
     }
 
-    /// <summary>Ctrl+F / Ctrl+N landing spots (menu accelerators).</summary>
-    public void FocusSearch()
-    {
-        SearchBox.Focus(FocusState.Keyboard);
-    }
-
+    /// <summary>Ctrl+N landing spot (menu accelerator); Ctrl+F focuses the
+    /// sidebar search.</summary>
     public void FocusQuickAdd()
     {
         QuickAddBox.Focus(FocusState.Keyboard);
@@ -236,21 +228,4 @@ public sealed partial class TaskPane : UserControl
         }
     }
 
-    private async void OnSearchKeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key == Windows.System.VirtualKey.Enter && Vm is not null)
-        {
-            await Vm.SetSearchAsync(SearchBox.Text);
-        }
-    }
-
-    private async void OnSearchTextChanged(object sender, TextChangedEventArgs args)
-    {
-        if (_searchChangedByProgram || Vm is null)
-        {
-            return;
-        }
-
-        await Vm.SetSearchAsync(SearchBox.Text);
-    }
 }

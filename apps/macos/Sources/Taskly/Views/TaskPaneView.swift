@@ -4,7 +4,6 @@ import SwiftUI
 struct TaskPaneView: View {
     @Environment(AppState.self) private var state
     @FocusState private var quickAddFocused: Bool
-    @FocusState private var searchFocused: Bool
 
     var body: some View {
         @Bindable var state = state
@@ -32,9 +31,6 @@ struct TaskPaneView: View {
         // View menu focus requests (New Task ⌘N / Find ⌘F).
         .onChange(of: state.quickAddFocusToken) { _, _ in
             quickAddFocused = true
-        }
-        .onChange(of: state.searchFocusToken) { _, _ in
-            searchFocused = true
         }
     }
 
@@ -71,7 +67,6 @@ struct TaskPaneView: View {
             Spacer()
 
             if state.isConnected {
-                searchField
                 Button(state.showCompleted ? state.t("hideCompletedToggle") : state.t("showCompletedToggle")) {
                     state.showCompleted.toggle()
                     state.refresh()
@@ -83,30 +78,6 @@ struct TaskPaneView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-    }
-
-    /// Header search field (Windows "search in header toolbar" layout);
-    /// results refresh as the user types.
-    private var searchField: some View {
-        @Bindable var state = state
-        return HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 12))
-                .foregroundStyle(state.theme.tertiaryText)
-            TextField(state.t("searchHint"), text: $state.searchText)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                .focused($searchFocused)
-        }
-        .padding(.horizontal, 10)
-        .frame(width: 200, height: 28)
-        .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(state.theme.inputBorder, lineWidth: 1))
-        .onChange(of: state.searchText) { _, _ in
-            state.refresh()
-        }
     }
 
     private var inputArea: some View {

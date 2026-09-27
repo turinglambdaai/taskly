@@ -27,6 +27,8 @@ namespace Taskly.Views;
                 _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
                 ListsList.ItemClick -= OnListItemClick;
                 ListsList.RightTapped -= OnListRightTapped;
+                SearchBox.KeyDown -= OnSearchKeyDown;
+                SearchBox.TextChanged -= OnSearchTextChanged;
             }
 
             Vm = vm;
@@ -38,6 +40,8 @@ namespace Taskly.Views;
                 vm.PropertyChanged += OnViewModelPropertyChanged;
                 ListsList.ItemClick += OnListItemClick;
                 ListsList.RightTapped += OnListRightTapped;
+                SearchBox.KeyDown += OnSearchKeyDown;
+                SearchBox.TextChanged += OnSearchTextChanged;
             }
 
             WireTileHover(TileToday);
@@ -66,7 +70,42 @@ namespace Taskly.Views;
             {
                 RefreshTileSelection();
             }
+            else if (e.PropertyName == nameof(MainViewModel.IsConnected))
+            {
+                // Search lives in the sidebar; only meaningful when connected.
+                SearchArea.Visibility = Vm is not null && Vm.IsConnected
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
         }
+
+    // ---------------- search (sidebar, Reminders placement) ----------------
+
+    private bool _searchChangedByProgram;
+
+    /// <summary>Ctrl+F landing spot.</summary>
+    public void FocusSearch()
+    {
+        SearchBox.Focus(FocusState.Keyboard);
+    }
+
+    private async void OnSearchKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter && Vm is not null)
+        {
+            await Vm.SetSearchAsync(SearchBox.Text);
+        }
+    }
+
+    private async void OnSearchTextChanged(object sender, Microsoft.UI.Xaml.Controls.TextChangedEventArgs args)
+    {
+        if (_searchChangedByProgram || Vm is null)
+        {
+            return;
+        }
+
+        await Vm.SetSearchAsync(SearchBox.Text);
+    }
 
         /// <summary>Active view's tile gets a white inset ring (DESIGN-TOKENS).</summary>
         private void RefreshTileSelection()
@@ -112,6 +151,8 @@ namespace Taskly.Views;
             TileCompletedIcon.Text = "\uE73E";
             TileCompletedLabel.Text = Vm.T("navCompleted");
             MyListsHeader.Text = Vm.T("sectionMyLists");
+            SearchBox.PlaceholderText = Vm.T("searchHint");
+            SearchArea.Visibility = Vm.IsConnected ? Visibility.Visible : Visibility.Collapsed;
             RefreshTileSelection();
             RefreshCounts();
         }

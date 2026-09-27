@@ -102,7 +102,7 @@ public sealed partial class MainWindow : Window
 
     private void OnNewTaskFocus(object sender, RoutedEventArgs e) => Pane.FocusQuickAdd();
 
-    private void OnFindFocus(object sender, RoutedEventArgs e) => Pane.FocusSearch();
+    private void OnFindFocus(object sender, RoutedEventArgs e) => Sidebar.FocusSearch();
 
     private async void OnToggleShowCompletedMenu(object sender, RoutedEventArgs e)
     {

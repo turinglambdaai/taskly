@@ -82,6 +82,9 @@ struct SidebarView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                // Search sits inside the sidebar, above the four filter
+                // tiles — macOS Reminders placement.
+                SidebarSearchField()
                 smartTiles
                 myLists
             }
@@ -126,6 +129,39 @@ struct SidebarView: View {
             ForEach(state.lists) { list in
                 ListRowView(list: list)
             }
+        }
+    }
+}
+
+/// Sidebar search bound to the global searchText (Reminders placement:
+/// above the smart-list tiles). The View menu's Ctrl+F focuses it via the
+/// searchFocusToken.
+private struct SidebarSearchField: View {
+    @Environment(AppState.self) private var state
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        @Bindable var state = state
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(state.theme.tertiaryText)
+                .font(.system(size: 12))
+            TextField(state.t("searchHint"), text: $state.searchText)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .focused($isFocused)
+                .onChange(of: state.searchText) { _, _ in
+                    state.refresh()
+                }
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 30)
+        .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(state.theme.inputBorder, lineWidth: 1))
+        .onChange(of: state.searchFocusToken) { _, _ in
+            isFocused = true
         }
     }
 }

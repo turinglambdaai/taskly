@@ -82,21 +82,6 @@
                     Content="&#xE700;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
                     VerticalAlignment="Center" />
 
-            <Grid x:Name="SearchArea" Grid.Column="2" Height="32" Width="200" CornerRadius="8"
-                  Background="{ThemeResource ThemeSurfaceBrush}"
-                  BorderBrush="{ThemeResource ThemeInputBorderBrush}" BorderThickness="1"
-                  Visibility="Collapsed">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <FontIcon Grid.Column="0" Glyph="&#xE721;" FontSize="12" Margin="8,0,0,0"
-                          Foreground="{ThemeResource ThemeTertiaryTextBrush}" />
-                <TextBox x:Name="SearchBox" Grid.Column="1" Margin="4,0,4,0"
-                         BorderThickness="0" Background="Transparent" FontSize="13"
-                         VerticalAlignment="Center" MinHeight="0"
-                         KeyDown="OnSearchKeyDown" TextChanged="OnSearchTextChanged" />
-            </Grid>
         </Grid>
 
         <!-- Row 1: large view title + subtitle (Reminders puts the title in

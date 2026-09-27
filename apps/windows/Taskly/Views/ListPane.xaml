@@ -57,6 +57,24 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Padding="12" Spacing="16">
 
+            <!-- Search sits inside the sidebar, above the four filter
+                 tiles — macOS Reminders placement. -->
+            <Grid x:Name="SearchArea" Height="32" CornerRadius="8"
+                  Background="{ThemeResource ThemeSurfaceBrush}"
+                  BorderBrush="{ThemeResource ThemeInputBorderBrush}" BorderThickness="1"
+                  Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <FontIcon Grid.Column="0" Glyph="&#xE721;" FontSize="12" Margin="8,0,0,0"
+                          Foreground="{ThemeResource ThemeTertiaryTextBrush}" />
+                <TextBox x:Name="SearchBox" Grid.Column="1" Margin="4,0,4,0"
+                         BorderThickness="0" Background="Transparent" FontSize="13"
+                         VerticalAlignment="Center" MinHeight="0"
+                         KeyDown="OnSearchKeyDown" TextChanged="OnSearchTextChanged" />
+            </Grid>
+
             <!-- Smart view tiles (2×2, 0.7.0 layout): two-row geometry —
                  glyph + count on top, label at the bottom. -->
             <Grid>
