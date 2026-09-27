@@ -80,6 +80,24 @@ public partial class TaskItem : ObservableObject
     [ObservableProperty]
     private int? _listColor;
 
+    /// <summary>Inline row edit mode (double-click), UI-only.</summary>
+    [ObservableProperty]
+    private bool _isEditing;
+
+    partial void OnIsEditingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsEditVisibility));
+        OnPropertyChanged(nameof(IsReadVisibility));
+    }
+
+    public Microsoft.UI.Xaml.Visibility IsEditVisibility => IsEditing
+        ? Microsoft.UI.Xaml.Visibility.Visible
+        : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    public Microsoft.UI.Xaml.Visibility IsReadVisibility => IsEditing
+        ? Microsoft.UI.Xaml.Visibility.Collapsed
+        : Microsoft.UI.Xaml.Visibility.Visible;
+
     public TaskItem() { }
 
     public TaskItem(int id, int listId, string text, string createdAt,
@@ -171,7 +189,7 @@ public partial class TaskItem : ObservableObject
                 }
             }
 
-            return string.IsNullOrEmpty(DueTime) ? dateText : $"{dateText}  {DueTime}";
+            return string.IsNullOrEmpty(DueTime) ? dateText : $"{dateText} · {DueTime}";
         }
     }
 

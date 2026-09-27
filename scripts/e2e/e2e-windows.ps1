@@ -54,10 +54,10 @@ $nowT = Get-Date
 $target = $nowT.AddHours(2)
 if ($target.Date -eq $nowT.Date) {
     $timeArg = '@' + $target.ToString('HH:mm')
-    $expectedMeta = "Today  " + $target.ToString('HH:mm')
+    $expectedMeta = "Today · " + $target.ToString('HH:mm')
 } else {
     $timeArg = '@12:00'
-    $expectedMeta = "Tomorrow  12:00"
+    $expectedMeta = "Tomorrow · 12:00"
 }
 $quickAdd2 = Find-Element $Win '+ Add Task' 'Edit' 3
 Set-EditValue $quickAdd2 "Call dentist $timeArg"

@@ -196,6 +196,12 @@ struct TaskRowView: View {
         return formatter
     }()
 
+    private func setDue(_ date: Date?) {
+        var updated = task
+        updated.dueDate = date.map { DateParser.string(from: $0, format: "yyyy-MM-dd") }
+        state.saveTask(updated)
+    }
+
     private func strictDate(from dateOnly: String) -> Date? {
         Self.dayFormatter.date(from: dateOnly)
     }
@@ -346,6 +352,23 @@ struct TaskRowView: View {
         Button(state.t("menuToggleCompleted")) {
             state.toggleCompleted(task)
         }
+
+        // Date quick actions: reschedule in one click.
+        Button(state.t("navToday")) {
+            setDue(Date())
+        }
+        Button(state.t("dateTomorrow")) {
+            setDue(Calendar.current.date(byAdding: .day, value: 1, to: Date()))
+        }
+        Button(state.t("dialogClear")) {
+            var cleared = task
+            cleared.dueDate = nil
+            cleared.dueTime = nil
+            state.saveTask(cleared)
+        }
+
+        Divider()
+
         Button(state.t("taskDelete"), role: .destructive) {
             state.deleteTask(task)
         }

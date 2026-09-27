@@ -186,9 +186,51 @@ public sealed partial class TaskPane : UserControl
 
         var menu = new MenuFlyout();
 
+        var detail = new MenuFlyoutItem { Text = Vm.T("tooltipTaskEdit") };
+        detail.Click += async (_, _) =>
+        {
+            var fresh = await Vm.Tasks.GetTaskByIdAsync(task.Id);
+            if (fresh is not null)
+            {
+                var dialog = new Dialogs.TaskDetailDialog(Vm, fresh);
+                dialog.XamlRoot = XamlRoot;
+                await dialog.ShowAsync();
+            }
+        };
+        menu.Items.Add(detail);
+
+        menu.Items.Add(new MenuFlyoutSeparator());
+
         var toggle = new MenuFlyoutItem { Text = Vm.T("menuToggleCompleted") };
         toggle.Click += async (_, _) => await Vm.ToggleCompletedAsync(task);
         menu.Items.Add(toggle);
+
+        // Date quick actions: reschedule in one click (the most frequent
+        // task operation after completion).
+        var todayItem = new MenuFlyoutItem { Text = Vm.RelativeDueLabel(0) };
+        todayItem.Click += async (_, _) =>
+        {
+            await Vm.UpdateTaskAsync(task.With(
+                dueDate: DateTime.Now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)));
+        };
+        menu.Items.Add(todayItem);
+
+        var tomorrowItem = new MenuFlyoutItem { Text = Vm.RelativeDueLabel(1) };
+        tomorrowItem.Click += async (_, _) =>
+        {
+            await Vm.UpdateTaskAsync(task.With(
+                dueDate: DateTime.Now.AddDays(1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)));
+        };
+        menu.Items.Add(tomorrowItem);
+
+        var clearItem = new MenuFlyoutItem { Text = Vm.T("dialogClear") };
+        clearItem.Click += async (_, _) =>
+        {
+            await Vm.UpdateTaskAsync(task.With(clearDueDate: true, clearDueTime: true));
+        };
+        menu.Items.Add(clearItem);
+
+        menu.Items.Add(new MenuFlyoutSeparator());
 
         var delete = new MenuFlyoutItem { Text = Vm.T("taskDelete") };
         delete.Click += async (_, _) => await Vm.DeleteTaskAsync(task);
@@ -245,9 +287,152 @@ public sealed partial class TaskPane : UserControl
 
     private async void OnToggleCompleted(object sender, RoutedEventArgs e)
     {
-        if (Vm is not null && TaskFromElement(sender) is { } task)
+        if (Vm is null)
+        {
+            return;
+        }
+
+        if ((sender as Button)?.Content is Grid checkbox)
+        {
+            AnimateCheckPop(checkbox);
+        }
+
+        if (TaskFromElement(sender) is { } task)
         {
             await Vm.ToggleCompletedAsync(task);
+        }
+    }
+
+    /// <summary>200 ms pop on the checkbox — the completion micro-interaction.
+    /// Pure XAML storyboard (composition animations race XAML state here).</summary>
+    private static void AnimateCheckPop(Grid checkbox)
+    {
+        if (checkbox.RenderTransform is not ScaleTransform scale)
+        {
+            return;
+        }
+
+        var easing = new Microsoft.UI.Xaml.Media.Animation.CircleEase { EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseOut };
+        var growX = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation { From = 1, To = 1.28, AutoReverse = true,
+            Duration = new Duration(TimeSpan.FromMilliseconds(200)), EasingFunction = easing };
+        var growY = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation { From = 1, To = 1.28, AutoReverse = true,
+            Duration = new Duration(TimeSpan.FromMilliseconds(200)), EasingFunction = easing };
+        Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(growX, checkbox);
+        Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(growY, checkbox);
+        Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(growX, "(UIElement.RenderTransform).(ScaleTransform.ScaleX)");
+        Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(growY, "(UIElement.RenderTransform).(ScaleTransform.ScaleY)");
+        var board = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
+        board.Children.Add(growX);
+        board.Children.Add(growY);
+        board.Begin();
+    }
+
+    // ---------------- inline edit (double-click, spec §5) ----------------
+
+    private string? _inlineOriginal;
+
+    private async void OnTaskDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (Vm is null || TaskFromElement(e.OriginalSource) is not { } task)
+        {
+            return;
+        }
+
+        if (task.IsEditing)
+        {
+            return;
+        }
+
+        _inlineOriginal = task.Text;
+        task.IsEditing = true;
+
+        // Focus once the template swap has materialized.
+        await Task.Delay(30);
+        var row = RowFromElement(e.OriginalSource);
+        if (row is not null)
+        {
+            var box = FindDescendants(row).OfType<TextBox>().FirstOrDefault();
+            if (box is not null)
+            {
+                box.Focus(FocusState.Keyboard);
+                box.SelectAll();
+            }
+        }
+    }
+
+    /// <summary>The row root (the template Grid carrying the TaskItem).</summary>
+    private static FrameworkElement? RowFromElement(object? source)
+    {
+        var dep = source as DependencyObject;
+        while (dep is not null)
+        {
+            if (dep is FrameworkElement { DataContext: TaskItem } fe)
+            {
+                return fe;
+            }
+
+            dep = VisualTreeHelper.GetParent(dep);
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<DependencyObject> FindDescendants(DependencyObject root)
+    {
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            yield return child;
+            foreach (var nested in FindDescendants(child))
+            {
+                yield return nested;
+            }
+        }
+    }
+
+    private async void OnInlineEditKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (sender is not TextBox box || box.DataContext is not TaskItem task)
+        {
+            return;
+        }
+
+        if (e.Key == Windows.System.VirtualKey.Enter)
+        {
+            e.Handled = true;
+            await CommitInlineEdit(task, box);
+        }
+        else if (e.Key == Windows.System.VirtualKey.Escape)
+        {
+            e.Handled = true;
+            task.Text = _inlineOriginal ?? task.Text;
+            task.IsEditing = false;
+        }
+    }
+
+    private async void OnInlineEditLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox box && box.DataContext is TaskItem { IsEditing: true } task)
+        {
+            await CommitInlineEdit(task, box);
+        }
+    }
+
+    private async Task CommitInlineEdit(TaskItem task, TextBox box)
+    {
+        var trimmed = box.Text.Trim();
+        if (trimmed.Length == 0)
+        {
+            task.Text = _inlineOriginal ?? task.Text; // blank silently reverts
+            task.IsEditing = false;
+            return;
+        }
+
+        task.IsEditing = false;
+        if (Vm is not null && trimmed != task.Text)
+        {
+            await Vm.UpdateTaskAsync(task.With(text: trimmed));
         }
     }
 
@@ -273,11 +458,6 @@ public sealed partial class TaskPane : UserControl
         var dialog = new Dialogs.TaskDetailDialog(Vm, task);
         dialog.XamlRoot = XamlRoot;
         await dialog.ShowAsync();
-    }
-
-    private async void OnTaskDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
-    {
-        await OpenDetailFor(TaskFromElement(e.OriginalSource));
     }
 
     private async void OnToggleShowCompleted(object sender, RoutedEventArgs e)

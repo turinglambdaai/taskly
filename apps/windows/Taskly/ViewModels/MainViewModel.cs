@@ -508,6 +508,16 @@ public partial class MainViewModel : ObservableObject
 
     // ---------------- display formatting ----------------
 
+    /// <summary>Relative label for a day offset from today (今天/明天 for
+    /// the row context menu; offset 0 → 今天, 1 → 明天).</summary>
+    public string RelativeDueLabel(int dayOffset)
+    {
+        var date = DateTime.Now.Date.AddDays(dayOffset);
+        return dayOffset == 0 ? T("navToday")
+            : dayOffset == 1 ? T("dateTomorrow")
+            : date.ToString("M", new CultureInfo(_i18n.Current == "zh" ? "zh-CN" : "en-US"));
+    }
+
     public string FormatDateOnly(string? dueDate)
     {
         return DateParser.FormatDateOnlyForDisplay(
