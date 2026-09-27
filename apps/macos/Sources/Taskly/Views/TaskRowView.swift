@@ -18,6 +18,9 @@ struct TaskRowView: View {
                 displayContent
             }
         }
+        // Completion transition: strikethrough/color crossfade with the
+        // checkbox pop (parity with the Windows AddDelete/pop pair).
+        .animation(.easeOut(duration: 0.15), value: task.completed)
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(
@@ -138,6 +141,7 @@ struct TaskRowView: View {
                 Circle()
                     .fill(task.completed ? state.theme.tertiaryText : Color.clear)
                     .frame(width: 18, height: 18)
+                    .animation(.easeOut(duration: 0.15), value: task.completed)
                 Circle()
                     .strokeBorder(
                         task.completed ? state.theme.tertiaryText : task.listAccentColor,
@@ -147,6 +151,8 @@ struct TaskRowView: View {
                     Image(systemName: "checkmark")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.white)
+                        // Bounce pops on completion (macOS 14 symbol effect).
+                        .symbolEffect(.bounce, value: task.completed)
                 }
             }
         }

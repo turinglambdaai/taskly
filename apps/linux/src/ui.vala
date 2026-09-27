@@ -96,7 +96,9 @@ window.taskly-root { background-color: #FFFFFF; }
 .smart-tile:hover { opacity: 0.88; background-image: none; }
 .smart-tile.selected { border-color: white; opacity: 1.0; }
 .cal-weekday { color: #8E8E93; font-size: 12px; }
-.list-row { border-radius: 8px; }
+.list-row { border-radius: 8px; transition: background-color 120ms ease-out; }
+@keyframes checkpop { 0% { opacity: 1.0; } 40% { opacity: 0.15; } 100% { opacity: 1.0; } }
+.check-pop { animation: checkpop 240ms ease-out; }
 .list-row.selected { background-color: rgba(0, 0, 0, 0.08); }
 .cal-title { font-weight: 600; }
 .cal-cell { padding: 2px 4px; border-radius: 8px; border: 1px solid transparent; }
@@ -813,7 +815,18 @@ window.taskly-root { background-color: #FFFFFF; }
         checkbox.toggled.connect(() => {
             try {
                 ctx.db.set_task_completed(task_id, checkbox.active);
-                refresh_all();
+                if (checkbox.active) {
+                    // Completion pop: pulse the check, then rebuild the list
+                    // once the animation has played (parity with the Windows
+                    // checkbox scale + macOS symbol bounce).
+                    checkbox.add_css_class("check-pop");
+                    Timeout.add(260, () => {
+                        refresh_all();
+                        return Source.REMOVE;
+                    });
+                } else {
+                    refresh_all();
+                }
             } catch (GLib.Error e) {
                 flash(e.message);
             }

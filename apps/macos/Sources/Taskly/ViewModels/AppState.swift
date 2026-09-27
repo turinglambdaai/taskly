@@ -279,11 +279,15 @@ public final class AppState {
             return
         }
         do {
-            if !searchText.isEmpty {
-                tasks = try tasksRepository.searchTasks(searchText)
-            } else {
-                tasks = try tasksRepository.getTasksByView(
-                    currentView.taskView, showCompleted: showCompleted)
+            // Row insertions/removals animate (parity with the Windows
+            // AddDeleteThemeTransition).
+            try withAnimation(.easeOut(duration: 0.15)) {
+                if !searchText.isEmpty {
+                    tasks = try tasksRepository.searchTasks(searchText)
+                } else {
+                    tasks = try tasksRepository.getTasksByView(
+                        currentView.taskView, showCompleted: showCompleted)
+                }
             }
         } catch {
             tasks = []
