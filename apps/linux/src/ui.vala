@@ -360,18 +360,9 @@ window.taskly-root { background-color: #FFFFFF; }
         // ---- menu model ----
         var menu = new GLib.Menu();
 
-        var view_section = new GLib.Menu();
-        view_section.append(ctx.t("navToday"), "win.view-today");
-        view_section.append(ctx.t("navPlanned"), "win.view-planned");
-        view_section.append(ctx.t("navAll"), "win.view-all");
-        view_section.append(ctx.t("navCompleted"), "win.view-completed");
-        menu.append_section(null, view_section);
-
-        var find_section = new GLib.Menu();
-        find_section.append(ctx.t("taskListInputHint").replace("+ ", ""), "win.focus-quick-add");
-        find_section.append(ctx.t("searchHint"), "win.focus-search");
-        find_section.append(ctx.t("showCompletedToggle"), "win.toggle-show-completed");
-        menu.append_section(null, find_section);
+        // View switching lives in the sidebar tiles (Reminders); the
+        // accelerators (Ctrl+1..4/N/F/Shift+C) stay registered on the
+        // actions above without menu items.
 
         var tools_section = new GLib.Menu();
         tools_section.append(ctx.t("menuInstallCli"), "win.install-cli");
