@@ -65,17 +65,15 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Row 1: toolbar (sidebar toggle | search) — Reminders layout.
-             Show Completed lives in the View menu. -->
-        <Grid Grid.Row="0" Padding="10,6,14,0" Height="40">
+        <!-- Single header row: toggle + large title + subtitle inline —
+             the toolbar icon never occupies a dead row. -->
+        <Grid Grid.Row="0" Padding="10,8,14,6" Height="44">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <Button x:Name="SidebarToggle" Grid.Column="0" Click="OnToggleSidebar"
@@ -84,23 +82,21 @@
                     Content="&#xE700;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
                     VerticalAlignment="Center" />
 
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0"
+                        VerticalAlignment="Center">
+                <TextBlock x:Name="TitleText"
+                           FontSize="22" FontWeight="SemiBold"
+                           Foreground="{ThemeResource ThemeOnSurfaceBrush}"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <TextBlock x:Name="SubtitleText"
+                           FontSize="12" Margin="12,1,0,0"
+                           Foreground="{ThemeResource ThemeSecondaryTextBrush}"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </StackPanel>
         </Grid>
 
-        <!-- Row 1: large view title + subtitle (Reminders puts the title in
-             its own block under the toolbar). -->
-        <StackPanel Grid.Row="1" Margin="20,2,16,6">
-            <TextBlock x:Name="TitleText"
-                       FontSize="22" FontWeight="SemiBold"
-                       Foreground="{ThemeResource ThemeOnSurfaceBrush}"
-                       TextTrimming="CharacterEllipsis" />
-            <TextBlock x:Name="SubtitleText"
-                       FontSize="12" Margin="0,2,0,0"
-                       Foreground="{ThemeResource ThemeSecondaryTextBrush}"
-                       TextTrimming="CharacterEllipsis" />
-        </StackPanel>
-
         <!-- Quick add: the pane's single, prominent input -->
-        <StackPanel x:Name="InputArea" Grid.Row="2" Padding="16,2,16,8">
+        <StackPanel x:Name="InputArea" Grid.Row="1" Padding="16,2,16,8">
             <Grid x:Name="QuickAddArea" Padding="12,0" Height="36" CornerRadius="10"
                   Background="{ThemeResource ThemeSurfaceBrush}"
                   BorderBrush="{ThemeResource ThemeInputBorderBrush}" BorderThickness="1">
@@ -112,7 +108,7 @@
         </StackPanel>
 
         <!-- Task list / empty states -->
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="2">
             <ListView x:Name="TasksList" SelectionMode="Single"
                       Background="Transparent"
                       IsDoubleTapEnabled="True"
