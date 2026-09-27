@@ -20,8 +20,15 @@ struct TaskRowView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color.clear))
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(state.selectedTaskID == task.id
+                    ? state.theme.selection
+                    : Color.clear))
         .contentShape(RoundedRectangle(cornerRadius: 10))
+        .onTapGesture {
+            state.selectedTaskID = task.id
+        }
         .contextMenu { contextMenu }
     }
 

@@ -9,7 +9,8 @@
         <!-- Shared §5 task-row template: the flat list and the calendar
              time line must stay visually identical (PRODUCT-SPEC §4b). -->
         <DataTemplate x:Key="TaskRowTemplate">
-            <Grid Padding="16,12" CornerRadius="10" Background="Transparent">
+            <Grid Padding="16,12" CornerRadius="10" Background="Transparent"
+                  PointerEntered="OnTaskPointerEntered" PointerExited="OnTaskPointerExited">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -111,11 +112,62 @@
 
         <!-- Task list / empty states -->
         <Grid Grid.Row="3">
-            <ListView x:Name="TasksList" SelectionMode="None"
+            <ListView x:Name="TasksList" SelectionMode="Single"
                       Background="Transparent"
                       IsDoubleTapEnabled="True"
                       DoubleTapped="OnTaskDoubleTapped"
                       ItemTemplate="{StaticResource TaskRowTemplate}">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0,1" />
+                        <Setter Property="CornerRadius" Value="10" />
+                        <Setter Property="UseSystemFocusVisuals" Value="False" />
+                        <Setter Property="MinHeight" Value="0" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListViewItem">
+                                    <!-- Reminders-style selection: quiet fill,
+                                         never the default accent block. WinUI
+                                         templates use VSM, not WPF triggers. -->
+                                    <Grid x:Name="Root">
+                                        <VisualStateManager.VisualStateGroups>
+                                            <VisualStateGroup x:Name="CommonStates">
+                                                <VisualState x:Name="Normal" />
+                                                <VisualState x:Name="PointerOver">
+                                                    <Storyboard>
+                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="RowBackground" Storyboard.TargetProperty="Background">
+                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ThemeHoverBackgroundBrush}" />
+                                                        </ObjectAnimationUsingKeyFrames>
+                                                    </Storyboard>
+                                                </VisualState>
+                                                <VisualState x:Name="Selected">
+                                                    <Storyboard>
+                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="RowBackground" Storyboard.TargetProperty="Background">
+                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ThemeSelectionBackgroundBrush}" />
+                                                        </ObjectAnimationUsingKeyFrames>
+                                                    </Storyboard>
+                                                </VisualState>
+                                                <VisualState x:Name="PointerOverSelected">
+                                                    <Storyboard>
+                                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="RowBackground" Storyboard.TargetProperty="Background">
+                                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ThemeSelectionBackgroundBrush}" />
+                                                        </ObjectAnimationUsingKeyFrames>
+                                                    </Storyboard>
+                                                </VisualState>
+                                            </VisualStateGroup>
+                                        </VisualStateManager.VisualStateGroups>
+                                        <Border x:Name="RowBackground"
+                                                CornerRadius="10"
+                                                Background="Transparent" />
+                                        <ContentPresenter />
+                                    </Grid>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListView.ItemContainerStyle>
             </ListView>
 
             <StackPanel x:Name="EmptyState" Visibility="Collapsed"

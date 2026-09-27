@@ -140,6 +140,26 @@ public sealed partial class TaskPane : UserControl
         }
     }
 
+    // Row hover lifts the info button to full opacity (it rests at 45%
+    // so the list stays quiet; Reminders reveals row actions on hover).
+    private void OnTaskPointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        SetInfoOpacity(sender, 1.0);
+    }
+
+    private void OnTaskPointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        SetInfoOpacity(sender, 0.45);
+    }
+
+    private static void SetInfoOpacity(object sender, double opacity)
+    {
+        if ((sender as Grid)?.Children.OfType<Button>().LastOrDefault() is { } button)
+        {
+            button.Opacity = opacity;
+        }
+    }
+
     private void OnToggleSidebar(object sender, RoutedEventArgs e)
     {
         if (Vm is null)

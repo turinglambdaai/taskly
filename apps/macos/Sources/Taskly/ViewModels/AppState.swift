@@ -53,6 +53,8 @@ public final class AppState {
     var isConnected = false
 
     // UI state
+    /// Row the user clicked (Reminders-style quiet selection highlight).
+    var selectedTaskID: Int?
     var searchText = ""
     var quickAddText = ""
     /// Incremented by View menu → New Task; TaskPaneView focuses the
