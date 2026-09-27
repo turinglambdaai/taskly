@@ -137,7 +137,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          PREV_TAG="$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo v0.7.0)"
-          gh release view "${{ github.ref_name }}" >/dev/null 2>&1 &&             gh release upload "${{ github.ref_name }}" --clobber dist/* ||           gh release create "${{ github.ref_name }}" dist/* \
-            --title "${{ github.ref_name }}" \
-            --generate-notes --notes-start-tag "$PREV_TAG"
+          PREV_TAG="$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo "")"
+          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            gh release upload "${{ github.ref_name }}" --clobber dist/*
+          elif [ -n "$PREV_TAG" ]; then
+            gh release create "${{ github.ref_name }}" dist/* \
+              --title "${{ github.ref_name }}" \
+              --generate-notes --notes-start-tag "$PREV_TAG"
+          else
+            # First release in the repository: no previous tag exists.
+            gh release create "${{ github.ref_name }}" dist/* \
+              --title "${{ github.ref_name }}" --generate-notes
+          fi
