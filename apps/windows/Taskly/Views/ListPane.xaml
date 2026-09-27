@@ -12,7 +12,7 @@
              colored fills on hover. A bare ControlTemplate keeps both. -->
         <Style x:Key="SmartTile" TargetType="Button">
             <Setter Property="CornerRadius" Value="12" />
-            <Setter Property="Height" Value="68" />
+            <Setter Property="Height" Value="64" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="12,10" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
@@ -55,7 +55,7 @@
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Padding="12" Spacing="16">
+        <StackPanel Padding="12" Spacing="12">
 
             <!-- Search sits inside the sidebar, above the four filter
                  tiles — macOS Reminders placement. -->
@@ -181,29 +181,29 @@
                     <DataTemplate>
                         <!-- 0.7.0 card row: surface fill + hairline border so rows
                              read as containers; emoji sits inside the color dot. -->
-                        <Border CornerRadius="8" Padding="10,8"
+                        <Border CornerRadius="8" Padding="8,5"
                                 Background="{ThemeResource ThemeSurfaceBrush}"
                                 BorderBrush="{ThemeResource ThemeDividerBrush}"
                                 BorderThickness="1">
-                            <Grid ColumnSpacing="10">
+                            <Grid ColumnSpacing="8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16"
+                                <Border Grid.Column="0" Width="20" Height="20" CornerRadius="10"
                                         VerticalAlignment="Center">
                                     <Border.Background>
                                         <SolidColorBrush Color="{Binding RowColor}" />
                                     </Border.Background>
-                                    <TextBlock Text="{Binding IconText}" FontSize="17"
+                                    <TextBlock Text="{Binding IconText}" FontSize="11"
                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13"
                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Grid.Column="2" Text="{Binding PendingText}" FontSize="13"
+                                <TextBlock Grid.Column="2" Text="{Binding PendingText}" FontSize="12"
                                            Foreground="{ThemeResource ThemeSecondaryTextBrush}"
-                                           VerticalAlignment="Center" Margin="0,0,4,0" />
+                                           VerticalAlignment="Center" Margin="0,0,2,0" />
                             </Grid>
                         </Border>
                     </DataTemplate>

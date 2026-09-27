@@ -45,9 +45,10 @@ public sealed partial class MainWindow : Window
 
     private void OnSidebarToggleRequested()
     {
-        SidebarColumn.Width = SidebarColumn.Width.Value == 0
-            ? new GridLength(280)
-            : new GridLength(0);
+        var collapsing = SidebarColumn.Width.Value != 0;
+        // MinWidth would clamp the 0-width collapse; release it while hidden.
+        SidebarColumn.MinWidth = collapsing ? 0 : 200;
+        SidebarColumn.Width = collapsing ? new GridLength(0) : new GridLength(280);
     }
 
     private void ApplyLanguage()

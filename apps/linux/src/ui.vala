@@ -662,6 +662,7 @@ window.taskly-root { background-color: #FFFFFF; }
         row.margin_bottom = 4;
 
         var icon_label = new Gtk.Label(list.icon_or_default());
+        icon_label.width_request = 20;
         var name_label = new Gtk.Label(list.name);
         name_label.halign = Gtk.Align.START;
         name_label.hexpand = true;

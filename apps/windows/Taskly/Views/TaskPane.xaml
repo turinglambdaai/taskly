@@ -9,7 +9,7 @@
         <!-- Shared §5 task-row template: the flat list and the calendar
              time line must stay visually identical (PRODUCT-SPEC §4b). -->
         <DataTemplate x:Key="TaskRowTemplate">
-            <Grid Padding="16,12" CornerRadius="10" Background="Transparent"
+            <Grid Padding="16,9" CornerRadius="10" Background="Transparent"
                   PointerEntered="OnTaskPointerEntered" PointerExited="OnTaskPointerExited"
                   ContextRequested="OnTaskContextRequested">
                 <Grid.ColumnDefinitions>
@@ -71,7 +71,7 @@
 
         <!-- Row 1: toolbar (sidebar toggle | search) — Reminders layout.
              Show Completed lives in the View menu. -->
-        <Grid Grid.Row="0" Padding="10,6,14,0" Height="44">
+        <Grid Grid.Row="0" Padding="10,6,14,0" Height="40">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -90,18 +90,18 @@
              its own block under the toolbar). -->
         <StackPanel Grid.Row="1" Margin="20,2,16,6">
             <TextBlock x:Name="TitleText"
-                       FontSize="26" FontWeight="SemiBold"
+                       FontSize="22" FontWeight="SemiBold"
                        Foreground="{ThemeResource ThemeOnSurfaceBrush}"
                        TextTrimming="CharacterEllipsis" />
             <TextBlock x:Name="SubtitleText"
-                       FontSize="13" Margin="0,2,0,0"
+                       FontSize="12" Margin="0,2,0,0"
                        Foreground="{ThemeResource ThemeSecondaryTextBrush}"
                        TextTrimming="CharacterEllipsis" />
         </StackPanel>
 
         <!-- Quick add: the pane's single, prominent input -->
-        <StackPanel x:Name="InputArea" Grid.Row="2" Padding="16,4,16,10">
-            <Grid x:Name="QuickAddArea" Padding="12,0" Height="40" CornerRadius="10"
+        <StackPanel x:Name="InputArea" Grid.Row="2" Padding="16,2,16,8">
+            <Grid x:Name="QuickAddArea" Padding="12,0" Height="36" CornerRadius="10"
                   Background="{ThemeResource ThemeSurfaceBrush}"
                   BorderBrush="{ThemeResource ThemeInputBorderBrush}" BorderThickness="1">
                 <TextBox x:Name="QuickAddBox"

@@ -19,7 +19,7 @@ struct TaskRowView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(state.selectedTaskID == task.id

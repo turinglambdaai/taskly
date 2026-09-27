@@ -246,10 +246,10 @@ private struct ListRowView: View {
         HStack(spacing: 8) {
             Circle()
                 .fill(Color(argb: list.color))
-                .frame(width: 32, height: 32)
+                .frame(width: 20, height: 20)
                 .overlay(
                     Text(list.icon ?? TodoList.defaultIcon)
-                        .font(.system(size: 14))
+                        .font(.system(size: 11))
                         .clipShape(Circle())
                 )
             Text(list.name)
@@ -264,7 +264,7 @@ private struct ListRowView: View {
             }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.vertical, 5)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(isSelected ? state.theme.selection : Color.clear)

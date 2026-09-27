@@ -52,7 +52,7 @@ struct TaskPaneView: View {
             // Large title + secondary subtitle line (DESIGN-TOKENS view header).
             VStack(alignment: .leading, spacing: 2) {
                 Text(state.currentTitle)
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(state.theme.onSurface)
                     .lineLimit(1)
                 let subtitle = state.currentSubtitle

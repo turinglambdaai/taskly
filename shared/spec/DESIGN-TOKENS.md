@@ -70,19 +70,20 @@
 | Token | Value |
 |---|---|
 | window default | 1280×880 (min 760×520 logical) |
+| sidebar collapse | toggle sets the column width to 0 (releasing MinWidth) — a fixed MinWidth must not clamp the collapsed state |
 | sidebar width | 280 (200…420) |
 | menu bar / status bar height | 32 / 28 |
-| smart view tile | 2×2 grid of 68px color fills (radius 12), two rows: top row = white glyph left (20px) + bold white count right (16px), bottom row = semibold white label left (14px); tiles carry a subtle top-light gradient (white @ 10% → transparent) for depth; plain surface (no button chrome), hover lifts to 88% opacity, active view = full saturation + 2px white inset ring |
-| list row | card: surface fill + 1px divider border, radius 8, padding 10,8; 32px round color dot with the emoji inside (17px), name 13px, gray count right |
+| smart view tile | 2×2 grid of 64px color fills (radius 12), two rows: top row = white glyph left (20px) + bold white count right (16px), bottom row = semibold white label left (14px); tiles carry a subtle top-light gradient (white @ 10% → transparent) for depth; plain surface (no button chrome), hover lifts to 88% opacity, active view = full saturation + 2px white inset ring |
+| list row | card: surface fill + 1px divider border, radius 8, padding 8,5; 20px round color dot with the emoji inside (11px), name 13px, gray count right — compact, aligned with the sidebar icon column |
 | list icon size | 32 (round) |
 | checkbox size | 20px ring in the task's list color (accent fallback); completed = list-color fill with a white check |
-| task row | 48px min height, padding 16,14; text 14px; meta 12px with the owning list name (list-colored dot + name) shown in multi-list views; info button at 45% opacity, full on row hover |
+| task row | 44px min height, padding 16,9; text 14px; meta 12px with the owning list name (list-colored dot + name) shown in multi-list views; info button at 45% opacity, full on row hover |
 | corner radius (rows/cards) | 8 / 10 / 12 |
 | content padding | 16, 8; sidebar item 12, 10 |
 | task text | 14px; list name 13px |
-| view header | large title 24px semibold (view name) + 13px secondary subtitle line beneath (today view → full weekday date, calendar → month with task count, list/all → N open tasks); the show-completed toggle stays top-right |
+| view header | large title 22px semibold (view name) + 13px secondary subtitle line beneath (today view → full weekday date, calendar → month with task count, list/all → N open tasks); the show-completed toggle stays top-right |
 | due-date semantics | due dates render localized (今天/明天/昨天/8月31日); overdue incomplete → `#FF3B30`, due today → accent, otherwise text/secondary; a leading clock glyph only when a time is set |
-| input fields | search 36px, quick add 40px, radius 10, 1px input-border |
+| input fields | search 30px, quick add 36px, radius 10, 1px input-border |
 | font stack | system UI font of the platform (`-apple-system` / Segoe UI / GNOME default), CJK fallback PingFang SC / Microsoft YaHei / Noto Sans CJK SC |
 
 Tile glyphs are monochrome platform icon fonts (Windows: Segoe Fluent Icons;
