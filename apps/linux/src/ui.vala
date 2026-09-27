@@ -169,7 +169,10 @@ window.taskly-root { background-color: #FFFFFF; }
         sidebar.width_request = 200;
 
         // Search sits inside the sidebar, above the four filter tiles
-        // (macOS Reminders placement).
+        // (macOS Reminders placement). Created here, before the append.
+        search = new Gtk.SearchEntry();
+        search.placeholder_text = ctx.t("searchHint");
+        search.changed.connect(() => refresh_all());
         search.margin_bottom = 12;
         sidebar.append(search);
 
@@ -208,10 +211,6 @@ window.taskly-root { background-color: #FFFFFF; }
         task_pane.margin_start = 12;
         task_pane.margin_end = 12;
         task_pane.hexpand = true;
-
-        search = new Gtk.SearchEntry();
-        search.placeholder_text = ctx.t("searchHint");
-        search.changed.connect(() => refresh_all());
 
         quick_add = new Gtk.Entry();
         quick_add.placeholder_text = ctx.t("taskListInputHint");
