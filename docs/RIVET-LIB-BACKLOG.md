@@ -5,75 +5,94 @@
 > prioritized library improvement. Items move to the Rivet repo when picked
 > up; the Taskly commit that discovered each item is referenced.
 
+## Status 2026-09-28
+
+- PR #60 (commercial distribution + system services) **merged** — update
+  manifests, WiX MSI packaging, Ed25519 signing, system-service adapters,
+  settings, logging/crash APIs are now part of rivet main.
+- **Direction decision**: Rivet's Windows host is C++/WinRT + in-process
+  Racket CS. A .NET/C# client surface was evaluated (PR #50/#51) and
+  rejected as a parallel runtime — the same decision applies to Taskly's
+  Windows shell: the host is C++/WinRT, not C#.
+
 ## P0 — blocks the Windows product slice
 
-### 1. In-process embedding stability on WinUI hosts
-- Discovered: Sep 21 experiment (commits ea9752d / 03ec8d9 / 833826b on
-  `experiment/taskly-rivet`) — embedding the Racket CS runtime into the
-  WinUI 3 process crashed in phases that were never fully converged.
-- Impact: blocks M3 (Windows runtime/UI parity) — the single remaining gate
-  for the Windows slice.
-- Ask: a reproducible minimal host sample (console + WinUI) plus a
-  root-cause writeup of the crash signature; if fixed, Taskly flips
-  `UseRivetBackend=true` immediately.
+### 1. Taskly Windows host = C++/WinRT (in progress)
+- The old C# WinUI app cannot attach a Rivet backend (no .NET client
+  surface, by design). Taskly's Windows app is being rebuilt on the rivet
+  scaffold: windows/RivetHost.vcxproj (C++/WinRT) + the Racket backend via
+  GeneratedBackend.hpp.
+- Ask: none to rivet yet — the scaffold + `raco rivet build` work as-is.
+- First Taskly need that forces a rivet change becomes a PR.
 
-## P1 — needed by the merged product UI
+## P1 — needed by the Taskly Racket backend
 
-### 2. Single-entity lookup RPC (`get-task-by-id`)
+### 2. Named records / Optional / nested record types in rivet/backend
+- Discovered: 09-28 rebuild — current rivet main's type system has only
+  primitives (Void/Bool/Int64/String/Bytes/List). The Taskly Racket core
+  (racket/taskly/, ported from the Sep 21 pilot) is written against the
+  named-record API: define-record, Optional, nested (List Record), record
+  values in RPC results and State.
+- Ask: port the named-record/Optional schema layer into rivet/backend
+  (RVT1 wire format unchanged: records encode as field-ordered lists;
+  Optional delegates to inner). A reference implementation exists in the
+  Taskly pilot's history (racket/taskly/rivet-schema.rkt era, taskly
+  branch experiment/taskly-rivet ~Sep 21).
+
+### 3. Single-entity lookup RPC (`get-task-by-id`)
 - Discovered: 09-28 merge (RivetTasklyBackend.GetTaskByIdAsync).
 - Current workaround: `LoadSnapshotAsync("all", showCompleted: true)` +
   client-side filter — correct but loads every task for one lookup.
 - Ask: a typed `get-task(id)` RPC in the RVT1 contract (Racket side +
   codegen), following the existing named-record pattern.
 
-### 3. Diagnostics that attribute failures to native host vs Racket
+### 4. Diagnostics that attribute failures to native host vs Racket
 - Discovered: migration doc acceptance gate + the Sep 21 debugging slog
-  (crash phases had to be isolated manually via console hosts).
+  (crash phases isolated manually via console hosts).
 - Ask: crash/exit logs that tag the failing layer (Racket, C ABI bridge,
-  .NET client), so a Taskly crash report answers "which side" without a
+  native client), so a Taskly crash report answers "which side" without a
   repro. Included in the doc's distribution gate.
 
 ## P2 — product quality, next quarter
 
-### 4. Linux host strategy
-- Discovered: migration doc §3 ("Rivet still does not provide a Linux
-  Taskly host strategy"). Taskly's Linux build is GTK4 native today.
+### 5. Linux host strategy
+- Discovered: migration doc §3. Taskly's Linux build is GTK4 native today.
 - Ask: a supported story for in-process embedding (or a declared
   out-of-process daemon contract) on Linux.
 
-### 5. Startup / package size / latency budgets with measurement hooks
+### 6. Startup / package size / latency budgets with measurement hooks
 - Discovered: migration doc §8 stop-rules reference these thresholds but
-  Rivet ships no measurement tooling.
+  rivet ships no measurement tooling.
 - Ask: documented budgets + a `raco rivet measure` style command that
   reports startup time, bundle size, and per-RPC latency for a host app.
 
-### 6. Cross-bridge debugging experience
+### 7. Cross-bridge debugging experience
 - Discovered: migration doc §8 stop-rule — "debugging across the bridge is
   materially worse than duplicated native logic" is a declared stop
   condition, and the Sep 21 slog confirmed it.
 - Ask: structured error propagation across RVT1 (Racket exceptions with
-  stack context surviving to the .NET client) and a verbose-trace mode in
+  stack context surviving to the native client) and a verbose-trace mode in
   the runtime.
 
 ## P3 — long-term
 
-### 7. Cross-platform declarative UI layer
-- Discovered: migration doc §3. Not blocking the Windows slice; would only
-  matter after M5. Keep on the roadmap; no ask yet.
+### 8. Cross-platform declarative UI layer
+- Not blocking the Windows slice; would only matter after M5. Keep on the
+  roadmap; no ask yet.
 
-### 8. Protocol evolution beyond RVT1 v1
-- Discovered: M1 added named Record/DTO schemas without breaking RVT1 v1 —
-  the right pattern. Continue additive evolution; keep the v1 decoder
-  forever for compatibility.
+### 9. Protocol evolution beyond RVT1 v1
+- M1 added named Record/DTO schemas without breaking RVT1 v1 — the right
+  pattern. Continue additive evolution; keep the v1 decoder forever.
 
 ## Already delivered by Taskly (for the changelog)
 
-- Named Record/DTO schema support (no RVT1 v1 change)
-- Swift / C++ / C# typed client generation
-- Managed `IRivetClient`, RVT1 codec, async runtime
+- Named Record/DTO schema support design (pilot; awaiting port to rivet
+  main — see backlog item 2)
+- Swift / C++ typed client generation
+- Managed RVT1 codec, async runtime
 - `ProcessRivetClient` for development/testing
 - Windows C ABI around the embedded Racket CS runtime
-- `EmbeddedRivetClient` for in-process .NET hosts
-- `raco rivet build-dotnet` (API + core.zo + runtime + native bridge)
+- `raco rivet build-dotnet` design (superseded by the C++/WinRT host
+  direction; the dotnet path was evaluated and rejected — PRs #50/#51)
 - Strict stdout/protocol-channel behavior
 - C# codegen that handles domain types named `Task`

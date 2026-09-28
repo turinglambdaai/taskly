@@ -1,4 +1,4 @@
-# Taskly × Rivet Migration Architecture
+﻿# Taskly × Rivet Migration Architecture
 
 > Branch: `experiment/taskly-rivet`
 >
@@ -138,9 +138,18 @@ validate the packaged runtime layout.
 
 ## 6. Repository policy during migration
 
-### `main`
+> **Update 09-28 (owner decision, supersedes the policy below):** the
+> native implementations are deleted and the repository is now a Rivet
+> project outright (rivet.rktd + racket core + native host scaffolds).
+> Taskly is Rivet's official example project and the first commercial
+> product built on it. The native implementations remain recoverable from
+> git history (branch `main`, last native commit `51c9c1c`). Rivet issues
+> found during the rebuild go upstream as PRs to
+> `turinglambdaai/rivet` — see `docs/RIVET-LIB-BACKLOG.md`.
 
-- remains the releasable native implementation
+### `main` (archived)
+
+- was the releasable native implementation
 - bug fixes and release hardening only
 - no deletion of native business logic until a Rivet slice reaches parity
 
