@@ -46,10 +46,6 @@ jobs:
           lipo -archs /tmp/dist/Taskly.app/Contents/MacOS/Taskly | grep -q x86_64
       - name: Create DMG
         run: |
-          # Bundle the double-clickable installer beside the app.
-          mkdir -p /tmp/dist/pkg
-          mv /tmp/dist/Taskly.app /tmp/dist/pkg/Taskly.app
-          mv "/tmp/dist/安装 Taskly.command" "/tmp/dist/pkg/安装 Taskly.command"
           # DMG contents: app + guided installer + guide + drag target.
           mkdir -p /tmp/dist/pkg
           mv /tmp/dist/Taskly.app /tmp/dist/pkg/Taskly.app
