@@ -5,18 +5,6 @@ import AppKit
 /// headless; no arguments opens this scene.
 struct TasklyApp: App {
     @State private var appState = AppState()
-    // Tracks macOS appearance so the app follows system Dark Mode live.
-    @State private var appearanceObserver: NSKeyValueObservation?
-
-    private func observeSystemAppearance() {
-        appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { app, _ in
-            let dark = app.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-            Task { @MainActor in
-                appState.theme.isDark = dark
-                appState.refresh()
-            }
-        }
-    }
 
     var body: some Scene {
         WindowGroup("Taskly") {
@@ -29,11 +17,7 @@ struct TasklyApp: App {
         .commands {
             TasklyCommands(state: appState)
         }
-        .onChange(of: ScenePhase.self) { _, phase in
-            if phase == .active {
-                observeSystemAppearance()
-            }
-        }
+
     }
 }
 

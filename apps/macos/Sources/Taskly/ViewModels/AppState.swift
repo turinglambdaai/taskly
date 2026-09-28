@@ -87,9 +87,16 @@ public final class AppState {
         config.load()
         i18n = I18nService.shared
         i18n.setLanguage(config.language)
-        // Follow the macOS appearance at launch (the manual Settings toggle
-        // remains a per-session override).
+        // Follow the macOS appearance at launch and live (the manual
+        // Settings toggle remains a per-session override).
         theme.isDark = Self.systemAppearanceIsDark
+        appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { [weak self] _, _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                theme.isDark = Self.systemAppearanceIsDark
+                refresh()
+            }
+        }
         statusMessage = i18n.t("statusDatabaseNotConnected")
 
         reminder = ReminderService()
@@ -139,6 +146,8 @@ public final class AppState {
     func refreshStatusPersistent() {
         statusMessage = persistentStatus
     }
+
+    @ObservationIgnored private var appearanceObserver: NSKeyValueObservation?
 
     /// True when macOS is currently in Dark Mode (main-thread read).
     static var systemAppearanceIsDark: Bool {
