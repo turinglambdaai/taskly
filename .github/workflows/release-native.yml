@@ -1,4 +1,4 @@
-﻿name: Native Release
+name: Native Release
 
 # Tag-triggered release pipeline for the native apps. Tag `vX.Y.Z` to build
 # and attach artifacts to a GitHub Release.
@@ -65,7 +65,7 @@ jobs:
     needs: preflight
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
       - name: Publish self-contained
