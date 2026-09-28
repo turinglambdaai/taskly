@@ -87,16 +87,9 @@ public final class AppState {
         config.load()
         i18n = I18nService.shared
         i18n.setLanguage(config.language)
-        // Follow the macOS appearance at launch and live (the manual
-        // Settings toggle remains a per-session override).
+        // Follow the macOS appearance at launch (live tracking registers at
+        // the end of init, once all stored properties are initialized).
         theme.isDark = Self.systemAppearanceIsDark
-        appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { [weak self] _, _ in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.theme.isDark = Self.systemAppearanceIsDark
-                self.refresh()
-            }
-        }
         statusMessage = i18n.t("statusDatabaseNotConnected")
 
         reminder = ReminderService()
@@ -107,6 +100,15 @@ public final class AppState {
             Task { @MainActor [weak self] in
                 self?.languageChangedToken += 1
                 self?.refreshStatusPersistent()
+            }
+        }
+
+        // Live-follow macOS appearance changes (initial fire sets it too).
+        appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { [weak self] _, _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.theme.isDark = Self.systemAppearanceIsDark
+                self.refresh()
             }
         }
     }
