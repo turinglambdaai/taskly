@@ -1,4 +1,4 @@
-name: Native Release
+﻿name: Native Release
 
 # Tag-triggered release pipeline for the native apps. Tag `vX.Y.Z` to build
 # and attach artifacts to a GitHub Release.
@@ -46,7 +46,11 @@ jobs:
           lipo -archs /tmp/dist/Taskly.app/Contents/MacOS/Taskly | grep -q x86_64
       - name: Create DMG
         run: |
-          hdiutil create -volname Taskly -srcfolder /tmp/dist/Taskly.app \
+          # Bundle the double-clickable installer beside the app.
+          mkdir -p /tmp/dist/pkg
+          mv /tmp/dist/Taskly.app /tmp/dist/pkg/Taskly.app
+          mv "/tmp/dist/安装 Taskly.command" "/tmp/dist/pkg/安装 Taskly.command"
+          hdiutil create -volname Taskly -srcfolder /tmp/dist/pkg \
             -ov -format UDZO "Taskly-${{ github.ref_name }}-macos.dmg"
       - uses: actions/upload-artifact@v4
         with:

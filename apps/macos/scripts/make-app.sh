@@ -58,7 +58,11 @@ rm -rf "$APP"
 mkdir -p "$MACOS" "$RES"
 
 cp "$BUILT/Taskly" "$MACOS/Taskly"
-cp -R "$BUILT/Taskly_Taskly.bundle" "$RES/TasklyResources.bundle" 2>/dev/null || true
+# Keep the SwiftPM bundle name: Bundle.module looks up exactly
+# "Taskly_Taskly.bundle" and fatalErrors when it is missing — a rename
+# crashed every launch.
+[[ -d "$BUILT/Taskly_Taskly.bundle" ]] || { echo "Missing $BUILT/Taskly_Taskly.bundle" >&2; exit 1; }
+cp -R "$BUILT/Taskly_Taskly.bundle" "$RES/Taskly_Taskly.bundle"
 
 # Icon: icon_512.png → .icns (via iconset)
 ICONSET="$OUT_DIR/taskly.iconset"
@@ -99,6 +103,26 @@ vtool -set-build-version macos 14.0 14.0 "$MACOS/Taskly" 2>/dev/null || true
 # Development/beta packages are ad-hoc signed here. Commercial stable builds
 # must replace this with Developer ID signing + notarization in release CI.
 codesign --force --deep --sign - "$APP" 2>/dev/null || true
+
+# Double-clickable installer next to the app: clears quarantine on the
+# unsigned build and copies it to /Applications. Softens Gatekeeper friction
+# until Developer ID + notarization land.
+cat > "$OUT_DIR/安装 Taskly.command" <<'INSTALL'
+#!/bin/bash
+cd "$(dirname "$0")"
+xattr -cr Taskly.app 2>/dev/null
+rm -rf /Applications/Taskly.app 2>/dev/null
+cp -R Taskly.app /Applications/ 2>/dev/null
+if [ -d /Applications/Taskly.app ]; then
+  osascript -e 'display notification "已安装到应用程序文件夹" with title "Taskly"'
+  open /Applications/Taskly.app
+else
+  echo "自动安装失败。请手动把 Taskly.app 拖进『应用程序』文件夹，"
+  echo "然后在终端运行:  xattr -cr /Applications/Taskly.app"
+  read -rp "按回车键关闭…"
+fi
+INSTALL
+chmod +x "$OUT_DIR/安装 Taskly.command"
 
 echo "✔ Built $APP (v$VERSION)"
 echo "  Launch: open $APP"
