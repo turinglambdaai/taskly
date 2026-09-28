@@ -88,14 +88,28 @@ jobs:
         run: Compress-Archive -Path publish/win-x64/* -DestinationPath "Taskly-${{ github.ref_name }}-windows-x64.zip"
       - name: Pack Velopack release (online updates)
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           dotnet tool install -g vpk --version 1.0.1
           VER="${GITHUB_REF_NAME#v}"
+          # Borrowed from brainfuel: fetch the previous Velopack feed so pack
+          # can produce a small delta package for existing installations.
+          PREV=0
+          vpk download github \
+            --repoUrl "https://github.com/${GITHUB_REPOSITORY}" \
+            --outputDir Releases --channel win --token "$GH_TOKEN" \
+            && PREV=1 || echo "::warning::no previous Velopack feed; shipping full package only"
           vpk pack --packId Taskly --packVersion "$VER" \
-            --packDir publish/win-x64 --mainExe Taskly.exe --packTitle Taskly
+            --packDir publish/win-x64 --mainExe Taskly.exe --packTitle Taskly \
+            --channel win --outputDir Releases
           mkdir -p vpk-dist
           find Releases -type f \( -name "*.nupkg" -o -name "RELEASES" -o -name "*Setup.exe" \) \
             -exec cp {} vpk-dist/ \;
+          if [ "$PREV" = 1 ] && ! compgen -G "Releases/*delta.nupkg" > /dev/null; then
+            echo "::error::a previous feed was available but pack produced no delta package"
+            exit 1
+          fi
           ls -la vpk-dist
       - uses: actions/upload-artifact@v4
         with:
