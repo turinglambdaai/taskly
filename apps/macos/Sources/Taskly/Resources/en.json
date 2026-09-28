@@ -109,5 +109,9 @@
   "updateAvailableBody": "Version {0} is available. Install and restart now?",
   "updateRestart": "Update and restart",
   "updateCheckFailed": "Update check failed: {0}",
-  "updatePortable": "This portable copy can't auto-update — please re-download from the releases page."
+  "updatePortable": "This portable copy can't auto-update — please re-download from the releases page.",
+  "menuTheme": "Theme",
+  "themeFollowSystem": "Follow system",
+  "themeLight": "Light",
+  "themeDark": "Dark"
 }

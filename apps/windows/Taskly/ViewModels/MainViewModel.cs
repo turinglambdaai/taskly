@@ -78,6 +78,15 @@ public partial class MainViewModel : ObservableObject
 
     public string T(string key) => _i18n.T(key);
 
+    /// <summary>Theme preference passthrough for the window (system/light/dark).</summary>
+    public string ConfigTheme => _config.Theme;
+
+    public void SetConfigTheme(string theme)
+    {
+        _config.Theme = theme;
+        _config.Save();
+    }
+
     public void SaveLanguage(string language)
     {
         _config.Language = language;

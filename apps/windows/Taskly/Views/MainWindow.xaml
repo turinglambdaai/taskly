@@ -46,8 +46,11 @@
             <MenuBarItem Title="Settings" x:Name="MenuSettings">
                 <MenuFlyoutItem x:Name="MenuLangZh" Click="OnLangZh" />
                 <MenuFlyoutItem x:Name="MenuLangEn" Click="OnLangEn" />
-                <MenuFlyoutSeparator />
-                <ToggleMenuFlyoutItem x:Name="MenuDarkMode" Click="OnToggleDarkMode" />
+                <MenuFlyoutSubItem x:Name="MenuTheme">
+                    <RadioMenuFlyoutItem x:Name="MenuThemeSystem" Click="OnThemeSystem" />
+                    <RadioMenuFlyoutItem x:Name="MenuThemeLight" Click="OnThemeLight" />
+                    <RadioMenuFlyoutItem x:Name="MenuThemeDark" Click="OnThemeDark" />
+                </MenuFlyoutSubItem>
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="MenuCheckUpdates" Click="OnCheckUpdates" />
             </MenuBarItem>

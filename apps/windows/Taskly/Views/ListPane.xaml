@@ -189,7 +189,9 @@
                         <Border CornerRadius="8" Padding="8,5"
                                 Background="{Binding CardBrush}"
                                 BorderBrush="{ThemeResource ThemeDividerBrush}"
-                                BorderThickness="1">
+                                BorderThickness="1"
+                                PointerEntered="OnListCardPointerEntered"
+                                PointerExited="OnListCardPointerExited">
                             <Grid ColumnSpacing="8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />

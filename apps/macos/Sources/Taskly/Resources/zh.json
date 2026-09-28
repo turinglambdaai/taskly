@@ -109,5 +109,9 @@
   "updateAvailableBody": "新版本 {0} 可用，是否立即安装并重启？",
   "updateRestart": "立即更新",
   "updateCheckFailed": "检查更新失败：{0}",
-  "updatePortable": "当前为便携版，不支持自动更新，请从发布页重新下载。"
+  "updatePortable": "当前为便携版，不支持自动更新，请从发布页重新下载。",
+  "menuTheme": "主题",
+  "themeFollowSystem": "跟随系统",
+  "themeLight": "浅色",
+  "themeDark": "深色"
 }

@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 
 namespace Taskly.Data;
 
@@ -104,5 +104,16 @@ public sealed class ConfigService
     {
         get => int.TryParse(Get("last-selected-list-id", "0"), CultureInfo.InvariantCulture, out var id) ? id : 0;
         set => Set("last-selected-list-id", value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>"system" | "light" | "dark" (default: system).</summary>
+    public string Theme
+    {
+        get
+        {
+            var v = Get("theme", "system");
+            return v is "light" or "dark" ? v : "system";
+        }
+        set => Set("theme", value is "light" or "dark" ? value : "system");
     }
 }

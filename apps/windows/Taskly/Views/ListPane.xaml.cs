@@ -186,6 +186,26 @@ public sealed partial class ListPane : UserControl
         chip.IsChecked = true;
     }
 
+    // Row hover fills the rounded card itself (the ListViewItem container
+    // renders a square highlight that misses the card's 8px corners).
+    private void OnListCardPointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is Border { DataContext: TodoList } card)
+        {
+            card.Background = Models.UiTheme.IsDark
+                ? new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0x14, 0xFF, 0xFF, 0xFF))
+                : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0x0D, 0x00, 0x00, 0x00));
+        }
+    }
+
+    private void OnListCardPointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is Border { DataContext: TodoList list } card)
+        {
+            card.Background = list.CardBrush;
+        }
+    }
+
     private async void OnListItemClick(object sender, ItemClickEventArgs e)
     {
         if (e.ClickedItem is TodoList list)

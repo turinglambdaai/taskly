@@ -29,6 +29,14 @@ public sealed partial class MainWindow : Window
 
         ApplyLanguage();
         Vm.LanguageChanged += ApplyLanguage;
+        RootGrid.ActualThemeChanged += (_, _) =>
+        {
+            // OS personalization changed while following system.
+            SyncUiThemeFromActual();
+            _ = Vm.RefreshAsync();
+            Sidebar.ApplyLanguage();
+            Pane.ApplyLanguage();
+        };
 
         Closed += (_, _) => Vm.Reminder.Dispose();
         Activated += async (_, args) =>
@@ -171,7 +179,10 @@ public sealed partial class MainWindow : Window
         MenuSettings.Title = Vm.T("menuSettings");
         MenuLangZh.Text = Vm.T("menuLangZh");
         MenuLangEn.Text = Vm.T("menuLangEn");
-        MenuDarkMode.Text = Vm.T("menuDarkMode");
+        MenuTheme.Text = Vm.T("menuTheme");
+        MenuThemeSystem.Text = Vm.T("themeFollowSystem");
+        MenuThemeLight.Text = Vm.T("themeLight");
+        MenuThemeDark.Text = Vm.T("themeDark");
 
         MenuHelp.Title = Vm.T("menuHelp");
         MenuAbout.Text = Vm.T("menuAbout");
@@ -287,14 +298,49 @@ public sealed partial class MainWindow : Window
         Vm.SaveLanguage("en");
     }
 
-    private async void OnToggleDarkMode(object sender, RoutedEventArgs e)
-    {
-        var toggle = (ToggleMenuFlyoutItem)sender;
-        RootGrid.RequestedTheme = toggle.IsChecked ? ElementTheme.Dark : ElementTheme.Light;
+    // ---------------- theme (system / light / dark) ----------------
 
-        // Row projections (brushes per task item) read this flag.
-        Models.UiTheme.IsDark = toggle.IsChecked;
-        await Vm.RefreshAsync();
+    private void ApplyTheme()
+    {
+        RootGrid.RequestedTheme = Vm.ConfigTheme switch
+        {
+            "light" => ElementTheme.Light,
+            "dark" => ElementTheme.Dark,
+            _ => ElementTheme.Default, // follows Windows personalization
+        };
+        SyncUiThemeFromActual();
+        MenuThemeSystem.IsChecked = Vm.ConfigTheme == "system";
+        MenuThemeLight.IsChecked = Vm.ConfigTheme == "light";
+        MenuThemeDark.IsChecked = Vm.ConfigTheme == "dark";
+        _ = Vm.RefreshAsync(); // rebuild per-item projected brushes
+        Sidebar.ApplyLanguage();
+        Pane.ApplyLanguage();
+    }
+
+    /// <summary>Per-item brushes read the static flag; keep it in step with
+    /// the effective theme (RequestedTheme.Default tracks the OS live).</summary>
+    private void SyncUiThemeFromActual()
+    {
+        Models.UiTheme.IsDark = Vm.ConfigTheme == "dark"
+            || (Vm.ConfigTheme == "system" && RootGrid.ActualTheme == ElementTheme.Dark);
+    }
+
+    private void OnThemeSystem(object sender, RoutedEventArgs e)
+    {
+        Vm.SetConfigTheme("system");
+        ApplyTheme();
+    }
+
+    private void OnThemeLight(object sender, RoutedEventArgs e)
+    {
+        Vm.SetConfigTheme("light");
+        ApplyTheme();
+    }
+
+    private void OnThemeDark(object sender, RoutedEventArgs e)
+    {
+        Vm.SetConfigTheme("dark");
+        ApplyTheme();
     }
 
     private void OnInstallCli(object sender, RoutedEventArgs e)

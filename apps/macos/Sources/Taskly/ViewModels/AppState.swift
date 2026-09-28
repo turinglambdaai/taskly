@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 enum SmartView: Hashable {
     case today
@@ -86,7 +87,9 @@ public final class AppState {
         config.load()
         i18n = I18nService.shared
         i18n.setLanguage(config.language)
-        theme.isDark = false
+        // Follow the macOS appearance at launch (the manual Settings toggle
+        // remains a per-session override).
+        theme.isDark = Self.systemAppearanceIsDark
         statusMessage = i18n.t("statusDatabaseNotConnected")
 
         reminder = ReminderService()
@@ -135,6 +138,13 @@ public final class AppState {
 
     func refreshStatusPersistent() {
         statusMessage = persistentStatus
+    }
+
+    /// True when macOS is currently in Dark Mode (main-thread read).
+    static var systemAppearanceIsDark: Bool {
+        NSApp.effectiveAppearance.bestMatch(
+            from: ["NSAppearanceNameAqua", "NSAppearanceNameDarkAqua"])
+            == "NSAppearanceNameDarkAqua"
     }
 
     /// Transient status message; reverts to persistent after 3 s.
