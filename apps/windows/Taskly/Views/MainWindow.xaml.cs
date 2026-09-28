@@ -39,26 +39,44 @@ public sealed partial class MainWindow : Window
             Pane.ApplyLanguage();
         };
 
-        Closed += (_, _) => Vm.Reminder.Dispose();
-        Activated += async (_, args) =>
+        // Close-to-tray: closing hides the window; reminders keep running.
+        AppWindow.Closing += (_, args) =>
         {
-            // One silent online-update check per session, after first paint.
-            if (_databaseOpened
-                && args.WindowActivationState != WindowActivationState.Deactivated
-                && !_updateChecked)
+            if (_reallyExit || !Vm.CloseToTray)
             {
-                _updateChecked = true;
-                await RunUpdateCheckAsync(silent: true);
+                _trayIcon?.Dispose();
+                Vm.Reminder.Dispose();
+                return;
             }
+
+            args.Cancel = true;
+            AppWindow.Hide();
+            Vm.ShowTransientStatus(Vm.T("trayTip"));
         };
+        Closed += (_, _) =>
+        {
+            Vm.Reminder.Dispose();
+            _trayIcon?.Dispose();
+        };
+
+        // Toast quick actions from the live window refresh the UI.
+        Taskly.Services.ToastActivationBridge.UiActionRequested += (_, _) =>
+        {
+            ShowMainWindow();
+            _ = Vm.RefreshAsync();
+        };
+
+        StartTrayIcon();
         Activated += async (_, args) =>
         {
-            // Open the default DB once, after the window is live (XamlRoot ready).
+            // Open the default DB once, after the window is live (XamlRoot
+            // ready).
             if (!_databaseOpened
                 && args.WindowActivationState != WindowActivationState.Deactivated)
             {
                 _databaseOpened = true;
                 await Vm.OpenDefaultDatabaseAsync();
+                await RunUpdateCheckAsync(silent: true);
             }
         };
     }
@@ -157,6 +175,54 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    // ---------------- tray ----------------
+
+    private Taskly.Services.TrayIconService? _trayIcon;
+    private bool _reallyExit;
+
+    public void ShowMainWindow()
+    {
+        AppWindow.Show();
+        Activate();
+    }
+
+    private void TrayIcon_LeftClick(object sender, RoutedEventArgs e) => ShowMainWindow();
+
+    private void TrayExit_Click(object sender, RoutedEventArgs e)
+    {
+        _reallyExit = true;
+        Close();
+    }
+
+    private void OnCloseToTrayToggle(object sender, RoutedEventArgs e)
+    {
+        var toggle = (ToggleMenuFlyoutItem)sender;
+        Vm.CloseToTray = toggle.IsChecked;
+        MenuCloseToTray.IsChecked = Vm.CloseToTray;
+    }
+
+    private void StartTrayIcon()
+    {
+        _trayIcon = new Taskly.Services.TrayIconService();
+        _trayIcon.ShowRequested += () => DispatcherQueue.TryEnqueue(ShowMainWindow);
+        _trayIcon.ExitRequested += () => DispatcherQueue.TryEnqueue(() =>
+        {
+            _reallyExit = true;
+            Close();
+        });
+
+        var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "taskly.ico");
+        var showText = Vm.T("trayShow");
+        var exitText = Vm.T("trayExit");
+        var thread = new Thread(() => _trayIcon.Show(nint.Zero, iconPath, "Taskly", showText, exitText))
+        {
+            IsBackground = true,
+            Name = "TasklyTray",
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+    }
+
     private void OnSidebarToggleRequested()
     {
         var collapsing = SidebarColumn.Width.Value != 0;
@@ -184,6 +250,9 @@ public sealed partial class MainWindow : Window
         MenuThemeSystem.Text = Vm.T("themeFollowSystem");
         MenuThemeLight.Text = Vm.T("themeLight");
         MenuThemeDark.Text = Vm.T("themeDark");
+
+        MenuCloseToTray.Text = Vm.T("settingsCloseToTray");
+        MenuCloseToTray.IsChecked = Vm.CloseToTray;
 
         MenuHelp.Title = Vm.T("menuHelp");
         MenuAbout.Text = Vm.T("menuAbout");

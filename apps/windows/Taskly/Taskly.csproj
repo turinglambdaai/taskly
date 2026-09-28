@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -36,6 +36,10 @@
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
     <!-- Auto-update framework (same as the 0.6.x releases). -->
     <PackageReference Include="Velopack" Version="1.0.0" />
+    <!-- System-tray icon: reminders keep working while the window is closed. -->
+    <PackageReference Include="H.NotifyIcon.WinUI" Version="2.3.0" />
+    <!-- System-tray icon: reminders keep working while the window is closed. -->
+    <PackageReference Include="H.NotifyIcon.WinUI" Version="2.3.0" />
   </ItemGroup>
 
   <ItemGroup>

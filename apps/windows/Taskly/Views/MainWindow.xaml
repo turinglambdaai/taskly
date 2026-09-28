@@ -7,6 +7,7 @@
     Title="Taskly">
 
     <Grid x:Name="RootGrid" Background="{ThemeResource ThemeBackgroundBrush}">
+
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Modifiers="Control" Key="Number1" Invoked="OnAccViewToday" />
             <KeyboardAccelerator Modifiers="Control" Key="Number2" Invoked="OnAccViewPlanned" />
@@ -51,6 +52,8 @@
                     <RadioMenuFlyoutItem x:Name="MenuThemeLight" Click="OnThemeLight" />
                     <RadioMenuFlyoutItem x:Name="MenuThemeDark" Click="OnThemeDark" />
                 </MenuFlyoutSubItem>
+                <MenuFlyoutSeparator />
+                <ToggleMenuFlyoutItem x:Name="MenuCloseToTray" Click="OnCloseToTrayToggle" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="MenuCheckUpdates" Click="OnCheckUpdates" />
             </MenuBarItem>

@@ -113,5 +113,11 @@
   "menuTheme": "Theme",
   "themeFollowSystem": "Follow system",
   "themeLight": "Light",
-  "themeDark": "Dark"
+  "themeDark": "Dark",
+  "trayShow": "Show Taskly",
+  "trayExit": "Exit",
+  "toastComplete": "Complete",
+  "toastSnooze": "Remind later",
+  "settingsCloseToTray": "Close to tray (reminders keep working)",
+  "trayTip": "Taskly keeps running in the background — reminders stay on."
 }

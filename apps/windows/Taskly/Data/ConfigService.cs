@@ -106,6 +106,13 @@ public sealed class ConfigService
         set => Set("last-selected-list-id", value.ToString(CultureInfo.InvariantCulture));
     }
 
+    /// <summary>Close button minimizes to tray instead of exiting.</summary>
+    public bool CloseToTray
+    {
+        get => Get("close-to-tray", "1") == "1";
+        set => Set("close-to-tray", value ? "1" : "0");
+    }
+
     /// <summary>"system" | "light" | "dark" (default: system).</summary>
     public string Theme
     {

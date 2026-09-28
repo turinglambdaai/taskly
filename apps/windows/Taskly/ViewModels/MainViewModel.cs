@@ -87,6 +87,17 @@ public partial class MainViewModel : ObservableObject
         _config.Save();
     }
 
+    /// <summary>Close button minimizes to tray (reminders keep running).</summary>
+    public bool CloseToTray
+    {
+        get => _config.CloseToTray;
+        set
+        {
+            _config.CloseToTray = value;
+            _config.Save();
+        }
+    }
+
     public void SaveLanguage(string language)
     {
         _config.Language = language;
