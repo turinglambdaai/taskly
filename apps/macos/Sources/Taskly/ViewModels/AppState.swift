@@ -93,8 +93,8 @@ public final class AppState {
         appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { [weak self] _, _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                theme.isDark = Self.systemAppearanceIsDark
-                refresh()
+                self.theme.isDark = Self.systemAppearanceIsDark
+                self.refresh()
             }
         }
         statusMessage = i18n.t("statusDatabaseNotConnected")
