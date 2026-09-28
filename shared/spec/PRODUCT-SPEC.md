@@ -97,8 +97,10 @@ pickers. Save (blank text silently ignored), Delete (confirm first), Cancel
   Completed toggle (Ctrl+Shift+C).
 - Tools: Install / Uninstall Command Line Tool.
 - Settings: Language (简体中文 / English, runtime switch, persisted in
-  config `language`), Dark Mode toggle (**not persisted** — always starts
-  light; native apps may follow the OS but the manual toggle stays).
+  config `language`), Theme submenu — 跟随系统 (follow system) / 浅色
+  (light) / 深色 (dark), persisted in config `theme`; follow-system tracks
+  OS personalization live. macOS follows the system appearance at launch
+  and live; its Settings toggle is a per-session override.
 - Help: About — `Taskly v<version>` + `© 2026 Taskly Team` + `aboutContent`.
 - All accelerators work window-wide without opening the menu.
 

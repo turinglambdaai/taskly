@@ -28,6 +28,7 @@ public sealed partial class MainWindow : Window
         Pane.SidebarToggleRequested += OnSidebarToggleRequested;
 
         ApplyLanguage();
+        ApplyTheme(); // read persisted theme= (system/light/dark) at startup
         Vm.LanguageChanged += ApplyLanguage;
         RootGrid.ActualThemeChanged += (_, _) =>
         {
