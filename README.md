@@ -40,6 +40,23 @@ until the native 1.0 GA.
   [CLI-SPEC](shared/spec/CLI-SPEC.md). Install via the app menu (Tools ▸
   Install Command Line Tool) or `taskly install-cli`.
 
+## Install
+
+Download from [Releases](https://github.com/turinglambdaai/taskly/releases/latest):
+
+| Platform | Download | Updates |
+|---|---|---|
+| macOS 14+ (universal) | `Taskly-<version>-macos.dmg` | reinstall the newer DMG |
+| Windows 10+ x64 | the Velopack `*-Setup.exe` installer (recommended) or the portable `Taskly-<version>-windows-x64.zip` | installed builds update in-app; portable builds are manual |
+| Linux x64 | `Taskly-<version>-linux-x64.tar.gz` | reinstall the newer tarball |
+
+Every release carries a `SHA256SUMS` manifest and Sigstore build provenance
+(`gh attestation verify <file> -R turinglambdaai/taskly`).
+
+macOS builds are unsigned; on first launch macOS may block the app. Use the
+bundled `安装 Taskly.command` guided step (or `xattr -cr /Applications/Taskly.app`)
+to clear the Gatekeeper quarantine.
+
 ## For developers
 
 ```

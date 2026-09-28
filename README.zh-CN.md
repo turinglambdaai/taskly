@@ -26,6 +26,22 @@ Taskly v1 是对基于 Avalonia 的 0.6.x 版本的完全原生重写。每个�
 - **单一数据文件** —— 所有任务存于一个 SQLite 文件（`~/.taskly/tasks.db`，WAL 模式），放进 iCloud / OneDrive / Dropbox 即可多设备同步。格式文档化且稳定：[DATA-FORMAT](shared/spec/DATA-FORMAT.md)。
 - **同一二进制内的 agent CLI** —— `taskly list|add|update|done|rm|search|…`，支持 `--json`、稳定退出码、无头运行。规格：[CLI-SPEC](shared/spec/CLI-SPEC.md)。通过应用菜单（工具 ▸ 安装命令行工具）或 `taskly install-cli` 安装。
 
+## 安装
+
+从 [Releases](https://github.com/turinglambdaai/taskly/releases/latest) 下载：
+
+| 平台 | 下载 | 更新方式 |
+|---|---|---|
+| macOS 14+（通用二进制） | `Taskly-<version>-macos.dmg` | 重新安装新版 DMG |
+| Windows 10+ x64 | 推荐 Velopack 的 `*-Setup.exe` 安装器；也可选便携版 `Taskly-<version>-windows-x64.zip` | 安装版支持应用内更新；便携版手动替换 |
+| Linux x64 | `Taskly-<version>-linux-x64.tar.gz` | 重新安装新版压缩包 |
+
+每个 Release 附带 `SHA256SUMS` 校验清单与 Sigstore 构建溯源证明
+（`gh attestation verify <文件> -R turinglambdaai/taskly`）。
+
+macOS 构建未签名，首次启动可能被 Gatekeeper 拦截：使用 DMG 内的
+`安装 Taskly.command` 引导步骤，或执行 `xattr -cr /Applications/Taskly.app` 清除隔离标记。
+
 ## 开发者指南
 
 ```
