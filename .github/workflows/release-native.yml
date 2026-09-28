@@ -50,6 +50,12 @@ jobs:
           mkdir -p /tmp/dist/pkg
           mv /tmp/dist/Taskly.app /tmp/dist/pkg/Taskly.app
           mv "/tmp/dist/安装 Taskly.command" "/tmp/dist/pkg/安装 Taskly.command"
+          # DMG contents: app + guided installer + guide + drag target.
+          mkdir -p /tmp/dist/pkg
+          mv /tmp/dist/Taskly.app /tmp/dist/pkg/Taskly.app
+          mv "/tmp/dist/安装 Taskly.command" "/tmp/dist/pkg/安装 Taskly.command"
+          mv "/tmp/dist/使用说明.txt" "/tmp/dist/pkg/使用说明.txt"
+          ln -s /Applications /tmp/dist/pkg/Applications
           hdiutil create -volname Taskly -srcfolder /tmp/dist/pkg \
             -ov -format UDZO "Taskly-${{ github.ref_name }}-macos.dmg"
       - uses: actions/upload-artifact@v4
