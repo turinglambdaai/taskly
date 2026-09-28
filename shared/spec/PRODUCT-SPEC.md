@@ -20,6 +20,9 @@ place in a cloud-synced folder; agent-facing CLI in the same binary.
 - Status bar shows a persistent line (search term > view description >
   list name; `Database Not Connected` when closed). Transient messages
   (task added, switched list…) revert to persistent after 3 s.
+- **Search lives in the header toolbar** (right side, next to the
+  Show Completed toggle — Reminders convention). The quick-add field is
+  the task pane's only input, directly under the large view title.
 - Sidebar collapse toggle (`‹`/`›`); the task pane takes the full width.
 
 ## 3. Sidebar
@@ -56,8 +59,14 @@ place in a cloud-synced folder; agent-facing CLI in the same binary.
 
 - 18px circular checkbox: incomplete = hollow ring; complete = ring +
   check in accent; completed text gets strikethrough + tertiary color.
-- Meta line under the text when present: `🗓 dueDate [🕐 HH:mm]` and a
-  single-line-ellipsized notes preview.
+- Meta line under the text when present: the localized due date
+  (today/tomorrow/yesterday/`Aug 31`/`8月31日`, plus the time when set) in
+  its semantic color (overdue incomplete `#FF3B30`, due today accent,
+  otherwise text/secondary; completed always secondary), and a
+  single-line-ellipsized notes preview. The checkbox ring takes the task's
+  list color (accent fallback); Linux, whose stock CheckButton carries no
+  recolorable ring, renders an 8px list-color dot before the row instead
+  (platform-native idiom, same information).
 - `ⓘ` button (always visible) opens the detail dialog.
 - Edit mode (double-click row): text field focused+selected; Enter=save,
   Esc=cancel, click-outside=save; date/time buttons open pickers and write
@@ -81,13 +90,19 @@ pickers. Save (blank text silently ignored), Delete (confirm first), Cancel
 
 ## 8. Menus / app-level
 
-- File: New Database (save panel, default name `tasks`), Open Database
-  (*.db), Close Database (confirm), Quit/Exit.
-- Settings: Language (简体中文 / English, runtime switch, persisted in
-  config `language`), Dark Mode toggle (**not persisted** — always starts
-  light; native apps may follow the OS but the manual toggle stays).
+- File: New Database (Ctrl+Shift+N, save panel, default name `tasks`),
+  Open Database (Ctrl+O, *.db), Close Database (confirm), Quit/Exit.
+- View: Today / Planned / All / Completed (Ctrl+1…4), New Task
+  (Ctrl+N, focuses quick add), Search (Ctrl+F, focuses search), Show
+  Completed toggle (Ctrl+Shift+C).
 - Tools: Install / Uninstall Command Line Tool.
+- Settings: Language (简体中文 / English, runtime switch, persisted in
+  config `language`), Theme submenu — 跟随系统 (follow system) / 浅色
+  (light) / 深色 (dark), persisted in config `theme`; follow-system tracks
+  OS personalization live. macOS follows the system appearance at launch
+  and live; its Settings toggle is a per-session override.
 - Help: About — `Taskly v<version>` + `© 2026 Taskly Team` + `aboutContent`.
+- All accelerators work window-wide without opening the menu.
 
 ## 9. Reminders (all platforms)
 
@@ -114,7 +129,8 @@ Task text non-empty ≤1000 chars; list name non-empty ≤100; date year
 All user-facing strings come from `shared/i18n/{zh,en}.json` (copied into
 each app; CI verifies byte-identity). `T(key)`: current language → zh
 fallback → key itself. `{0}` placeholders formatted positionally. Default
-zh; persisted in config.
+zh; persisted in config. **Date shapes are not copy**: they follow the app
+language through the platform culture/locale formatter (zh-CN / en-US).
 
 ## 12. Known v0.6.4 quirks — resolved in native apps
 

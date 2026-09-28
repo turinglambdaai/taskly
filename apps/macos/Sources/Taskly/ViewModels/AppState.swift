@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 enum SmartView: Hashable {
     case today
@@ -53,8 +54,16 @@ public final class AppState {
     var isConnected = false
 
     // UI state
+    /// Row the user clicked (Reminders-style quiet selection highlight).
+    var selectedTaskID: Int?
     var searchText = ""
     var quickAddText = ""
+    /// Incremented by View menu → New Task; TaskPaneView focuses the
+    /// quick-add field on change.
+    var quickAddFocusToken = 0
+    /// Incremented by View menu → Find; TaskPaneView focuses the search
+    /// field on change.
+    var searchFocusToken = 0
     var isSidebarVisible = true
     var statusMessage: String = ""
     @ObservationIgnored private var transientDeadline: Task<Void, Never>?
@@ -78,7 +87,9 @@ public final class AppState {
         config.load()
         i18n = I18nService.shared
         i18n.setLanguage(config.language)
-        theme.isDark = false
+        // Follow the macOS appearance at launch (live tracking registers at
+        // the end of init, once all stored properties are initialized).
+        theme.isDark = Self.systemAppearanceIsDark
         statusMessage = i18n.t("statusDatabaseNotConnected")
 
         reminder = ReminderService()
@@ -89,6 +100,15 @@ public final class AppState {
             Task { @MainActor [weak self] in
                 self?.languageChangedToken += 1
                 self?.refreshStatusPersistent()
+            }
+        }
+
+        // Live-follow macOS appearance changes (initial fire sets it too).
+        appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { [weak self] _, _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.theme.isDark = Self.systemAppearanceIsDark
+                self.refresh()
             }
         }
     }
@@ -129,6 +149,13 @@ public final class AppState {
         statusMessage = persistentStatus
     }
 
+    @ObservationIgnored private var appearanceObserver: NSKeyValueObservation?
+
+    /// True when macOS is currently in Dark Mode (main-thread read).
+    static var systemAppearanceIsDark: Bool {
+        NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+    }
+
     /// Transient status message; reverts to persistent after 3 s.
     func flashStatus(_ text: String) {
         transientDeadline?.cancel()
@@ -153,6 +180,35 @@ public final class AppState {
         case .all: return i18n.t("navAll")
         case .completed: return i18n.t("navCompleted")
         case .list(let id): return lists.first { $0.id == id }?.name ?? "List \(id)"
+        }
+    }
+
+    /// Secondary header line (DESIGN-TOKENS view header): full date under
+    /// Today shows the full date via locale; other views show open or
+    /// completed counts. Empty while disconnected or searching.
+    var currentSubtitle: String {
+        _ = languageChangedToken
+        if !isConnected || !searchText.isEmpty {
+            return ""
+        }
+        switch currentView {
+        case .today:
+            // Date shapes come from the platform locale, not copy (§11).
+            let locale = Locale(identifier: config.language == "zh" ? "zh_CN" : "en_US")
+            let formatter = DateFormatter()
+            formatter.locale = locale
+            formatter.dateStyle = .full
+            formatter.timeStyle = .none
+            return formatter.string(from: Date())
+        case .planned:
+            return i18n.format("subtitleOpenTasks", plannedCount)
+        case .completed:
+            return i18n.format("subtitleCompleted", completedCount)
+        case .list(let id):
+            let pending = lists.first { $0.id == id }?.pendingCount ?? 0
+            return i18n.format("subtitleOpenTasks", pending)
+        case .all:
+            return i18n.format("subtitleOpenTasks", allCount)
         }
     }
 
@@ -242,11 +298,15 @@ public final class AppState {
             return
         }
         do {
-            if !searchText.isEmpty {
-                tasks = try tasksRepository.searchTasks(searchText)
-            } else {
-                tasks = try tasksRepository.getTasksByView(
-                    currentView.taskView, showCompleted: showCompleted)
+            // Row insertions/removals animate (parity with the Windows
+            // AddDeleteThemeTransition).
+            try withAnimation(.easeOut(duration: 0.15)) {
+                if !searchText.isEmpty {
+                    tasks = try tasksRepository.searchTasks(searchText)
+                } else {
+                    tasks = try tasksRepository.getTasksByView(
+                        currentView.taskView, showCompleted: showCompleted)
+                }
             }
         } catch {
             tasks = []

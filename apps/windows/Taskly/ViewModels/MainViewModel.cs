@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
@@ -19,6 +19,8 @@ public partial class MainViewModel : ObservableObject
 
     public ObservableCollection<TodoList> ListCollection { get; } = new();
     public ObservableCollection<TaskItem> TaskItems { get; } = new();
+
+
 
     [ObservableProperty]
     private TaskViewType _currentView = TaskViewType.All;
@@ -47,6 +49,7 @@ public partial class MainViewModel : ObservableObject
 
     public event Action? CountsChanged;
     public event Action? LanguageChanged;
+    public event Action? SubtitleChanged;
 
     public int TodayCount { get; private set; }
     public int PlannedCount { get; private set; }
@@ -78,6 +81,29 @@ public partial class MainViewModel : ObservableObject
     }
 
     public string T(string key) => _i18n.T(key);
+
+    /// <summary>Theme preference passthrough for the window (system/light/dark).</summary>
+    public string ConfigTheme => _config.Theme;
+
+    /// <summary>Single-task lookup for the row context menu.</summary>
+    public Task<TaskItem?> GetTaskByIdAsync(int id) => _backend.GetTaskByIdAsync(id);
+
+    public void SetConfigTheme(string theme)
+    {
+        _config.Theme = theme;
+        _config.Save();
+    }
+
+    /// <summary>Close button minimizes to tray (reminders keep running).</summary>
+    public bool CloseToTray
+    {
+        get => _config.CloseToTray;
+        set
+        {
+            _config.CloseToTray = value;
+            _config.Save();
+        }
+    }
 
     public void SaveLanguage(string language)
     {
@@ -237,8 +263,45 @@ public partial class MainViewModel : ObservableObject
         UpdateTitle();
     }
 
+    /// <summary>Secondary header line (DESIGN-TOKENS view header): full
+    /// date under Today, open/completed counts elsewhere. Empty while
+    /// disconnected or searching.</summary>
+    public string CurrentSubtitle
+    {
+        get
+        {
+            if (!IsConnected || !string.IsNullOrEmpty(_searchKeyword))
+            {
+                return "";
+            }
+
+            switch (CurrentView)
+            {
+                case TaskViewType.Today:
+                {
+                    var culture = new CultureInfo(_i18n.Current == "zh" ? "zh-CN" : "en-US");
+                    return DateTime.Now.ToString("D", culture);
+                }
+                case TaskViewType.Planned:
+                    return string.Format(CultureInfo.InvariantCulture, T("subtitleOpenTasks"), PlannedCount);
+                case TaskViewType.Completed:
+                    return string.Format(CultureInfo.InvariantCulture, T("subtitleCompleted"), CompletedCount);
+                case TaskViewType.List:
+                {
+                    var list = ListCollection.FirstOrDefault(l => l.Id == CurrentListId);
+                    return string.Format(CultureInfo.InvariantCulture, T("subtitleOpenTasks"),
+                        list?.PendingCount ?? 0);
+                }
+                default:
+                    return string.Format(CultureInfo.InvariantCulture, T("subtitleOpenTasks"), AllCount);
+            }
+        }
+    }
+
     private void UpdateTitle()
     {
+        SubtitleChanged?.Invoke();
+
         if (!string.IsNullOrEmpty(_searchKeyword))
         {
             CurrentTitle = $"{T("searchHint")}: {_searchKeyword}";
@@ -488,6 +551,16 @@ public partial class MainViewModel : ObservableObject
     }
 
     // ---------------- display formatting ----------------
+
+    /// <summary>Relative label for a day offset from today (今天/明天 for
+    /// the row context menu; offset 0 → 今天, 1 → 明天).</summary>
+    public string RelativeDueLabel(int dayOffset)
+    {
+        var date = DateTime.Now.Date.AddDays(dayOffset);
+        return dayOffset == 0 ? T("navToday")
+            : dayOffset == 1 ? T("dateTomorrow")
+            : date.ToString("M", new CultureInfo(_i18n.Current == "zh" ? "zh-CN" : "en-US"));
+    }
 
     public string FormatDateOnly(string? dueDate)
     {

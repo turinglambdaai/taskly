@@ -328,7 +328,7 @@ public final class SQLiteDatabase: @unchecked Sendable {
     // MARK: - Tasks (queries)
 
     private static let taskSelectBase = """
-        SELECT t.*, l.name AS list_name
+        SELECT t.*, l.name AS list_name, l.color AS list_color
         FROM tasks t
         LEFT JOIN lists l ON t.list_id = l.id
         """
@@ -349,7 +349,8 @@ public final class SQLiteDatabase: @unchecked Sendable {
             dueTime: row.text("due_time"),
             completed: completed,
             notes: row.text("notes"),
-            listName: row.text("list_name"))
+            listName: row.text("list_name"),
+            listColor: row.int("list_color"))
     }
 
     public func getAllTasks() throws -> [TaskItem] {

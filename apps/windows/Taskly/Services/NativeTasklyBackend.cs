@@ -1,4 +1,4 @@
-using Taskly.Data;
+﻿using Taskly.Data;
 using Taskly.Models;
 using Taskly.Repositories;
 
@@ -142,6 +142,11 @@ public sealed class NativeTasklyBackend : ITasklyBackend
     {
         cancellationToken.ThrowIfCancellationRequested();
         return await _lists.DeleteListAsync(id) > 0;
+    }
+
+    public async Task<TaskItem?> GetTaskByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _tasks.GetTaskByIdAsync(id);
     }
 
     public async Task<IReadOnlyList<TaskItem>> GetDueTasksAsync(

@@ -67,31 +67,58 @@ public class TasklyUi : Object {
     private Gtk.Box lists_box;
     private Gtk.Box tasks_box;
     private Gtk.Entry quick_add;
-    private Gtk.Entry search;
+    private Gtk.SearchEntry search;
     private Gtk.Box input_area;
+    private Gtk.Label subtitle_label;
     private GLib.HashTable<TaskViewType, Gtk.Label> tile_counts;
     private GLib.HashTable<Gtk.Button, TaskViewType> tile_buttons;
+    // Per-color CssProvider pool for list dots, keyed by "#RRGGBB".
+    private GLib.HashTable<string, Gtk.CssProvider> dot_providers;
     private uint flash_source = 0;
 
     public TasklyUi(AppContext ctx) {
         this.ctx = ctx;
         tile_counts = new GLib.HashTable<TaskViewType, Gtk.Label>(int_hash, int_equal);
         tile_buttons = new GLib.HashTable<Gtk.Button, TaskViewType>(direct_hash, direct_equal);
+        dot_providers = new GLib.HashTable<string, Gtk.CssProvider>(str_hash, str_equal);
     }
 
     public const string APP_CSS = """
 window.taskly-root { background-color: #FFFFFF; }
 .sidebar { background-color: #F2F2F2; border-right: 1px solid #E3E3E8; }
-.smart-tile { color: white; border-radius: 12px; padding: 8px 10px; }
+.smart-tile { color: white; border-radius: 12px; padding: 8px 10px; border: 2px solid transparent; opacity: 0.72;  transition: opacity 120ms ease-out; }
 .smart-tile.today { background-color: #007AFF; }
 .smart-tile.planned { background-color: #FF3B30; }
 .smart-tile.all { background-color: #8E8E93; }
-.smart-tile.completed { background-color: #8E8E93; }
+.smart-tile.completed { background-color: #34C759; }
 .smart-tile .title { font-weight: 600; }
 .smart-tile .count { opacity: 0.85; font-size: 11px; }
+.smart-tile:hover { opacity: 0.88; background-image: none; }
+.smart-tile.selected { border-color: white; opacity: 1.0; }
+.cal-weekday { color: #8E8E93; font-size: 12px; }
+.list-row { border-radius: 8px; transition: background-color 120ms ease-out; }
+@keyframes checkpop { 0% { opacity: 1.0; } 40% { opacity: 0.15; } 100% { opacity: 1.0; } }
+.check-pop { animation: checkpop 240ms ease-out; }
+.list-row.selected { background-color: rgba(0, 0, 0, 0.08); }
+.cal-title { font-weight: 600; }
+.cal-cell { padding: 2px 4px; border-radius: 8px; border: 1px solid transparent; }
+.cal-cell.selected { border-color: #007AFF; }
+.cal-cell .day { font-size: 13px; }
+.cal-cell .day.out { color: #B0B0B5; }
+.cal-cell .day.today { color: #007AFF; font-weight: 600; }
+.cal-dot { border-radius: 2px; background-color: #007AFF; }
+.cal-header { padding: 10px 4px 2px 4px; }
+.cal-header .cal-header-count { color: #8E8E93; font-size: 12px; }
+.cal-header label { color: #1D1D1F; font-size: 13px; font-weight: 600; }
+.cal-header.today-h label { color: #007AFF; }
+.cal-header.overdue-h label { color: #FF3B30; }
 .task-row { border-radius: 10px; padding: 8px 12px; }
 .task-row.completed .task-text { color: #B0B0B5; text-decoration: line-through; }
 .task-meta { color: #8E8E93; font-size: 12px; }
+.task-meta.due-overdue { color: #FF3B30; }
+.task-meta.due-today { color: #007AFF; }
+.list-dot { border-radius: 4px; background-color: #007AFF; }
+.subtitle { color: #8E8E93; font-size: 13px; }
 .section-header { color: #8E8E93; font-weight: 600; }
 .statusbar { background-color: #F2F2F2; border-top: 1px solid #E3E3E8; }
 """;
@@ -101,8 +128,8 @@ window.taskly-root { background-color: #FFFFFF; }
 
         var win = new Adw.ApplicationWindow(app);
         win.title = "Taskly";
-        win.default_width = 1024;
-        win.default_height = 768;
+        win.default_width = 1280;
+        win.default_height = 880;
         win.add_css_class("taskly-root");
         ctx.window = win;
 
@@ -145,6 +172,14 @@ window.taskly-root { background-color: #FFFFFF; }
         sidebar.margin_end = 12;
         sidebar.width_request = 200;
 
+        // Search sits inside the sidebar, above the four filter tiles
+        // (macOS Reminders placement). Created here, before the append.
+        search = new Gtk.SearchEntry();
+        search.placeholder_text = ctx.t("searchHint");
+        search.changed.connect(() => refresh_all());
+        search.margin_bottom = 12;
+        sidebar.append(search);
+
         var tiles_grid = new Gtk.Grid();
         tiles_grid.column_spacing = 8;
         tiles_grid.row_spacing = 8;
@@ -181,10 +216,6 @@ window.taskly-root { background-color: #FFFFFF; }
         task_pane.margin_end = 12;
         task_pane.hexpand = true;
 
-        search = new Gtk.Entry();
-        search.placeholder_text = ctx.t("searchHint");
-        search.changed.connect(() => refresh_all());
-
         quick_add = new Gtk.Entry();
         quick_add.placeholder_text = ctx.t("taskListInputHint");
         quick_add.hexpand = true;
@@ -195,8 +226,16 @@ window.taskly-root { background-color: #FFFFFF; }
         });
 
         input_area = new Gtk.Box(Gtk.Orientation.VERTICAL, 8);
-        input_area.append(search);
         input_area.append(quick_add);
+
+        // Secondary header line (DESIGN-TOKENS view header), hidden while
+        // searching.
+        subtitle_label = new Gtk.Label("");
+        subtitle_label.add_css_class("subtitle");
+        subtitle_label.halign = Gtk.Align.START;
+        subtitle_label.ellipsize = Pango.EllipsizeMode.END;
+
+        task_pane.append(subtitle_label);
         task_pane.append(input_area);
 
         var tasks_scroll = new Gtk.ScrolledWindow();
@@ -276,14 +315,77 @@ window.taskly-root { background-color: #FFFFFF; }
         });
         win.add_action(uninstall_action);
 
+        var about_action = new GLib.SimpleAction("about", null);
+        about_action.activate.connect(() => {
+            var about = new Adw.AboutWindow();
+            about.set_transient_for(win);
+            about.set_modal(true);
+            about.set_application_name("Taskly");
+            about.set_application_icon("app.taskly.Taskly");
+            about.set_version("v%s".printf(APP_VERSION));
+            about.set_comments(ctx.t("aboutContent"));
+            about.set_copyright("© 2026 Taskly Team");
+            about.present();
+        });
+        win.add_action(about_action);
+
+        add_view_action(win, "view-today", TaskViewType.TODAY);
+        add_view_action(win, "view-planned", TaskViewType.PLANNED);
+        add_view_action(win, "view-all", TaskViewType.ALL);
+        add_view_action(win, "view-completed", TaskViewType.COMPLETED);
+
+        var focus_add_action = new GLib.SimpleAction("focus-quick-add", null);
+        focus_add_action.activate.connect(() => quick_add.grab_focus());
+        win.add_action(focus_add_action);
+
+        var focus_search_action = new GLib.SimpleAction("focus-search", null);
+        focus_search_action.activate.connect(() => search.grab_focus());
+        win.add_action(focus_search_action);
+
+        var show_completed_action = new GLib.SimpleAction("toggle-show-completed", null);
+        show_completed_action.activate.connect(() => {
+            ctx.show_completed = !ctx.show_completed;
+            refresh_all();
+        });
+        win.add_action(show_completed_action);
+
+        // ---- accelerators (window-scoped actions register on the app) ----
+        var app = win.application as Adw.Application;
+        if (app != null) {
+            app.set_accels_for_action("win.view-today", { "<Control>1" });
+            app.set_accels_for_action("win.view-planned", { "<Control>2" });
+            app.set_accels_for_action("win.view-all", { "<Control>3" });
+            app.set_accels_for_action("win.view-completed", { "<Control>4" });
+            app.set_accels_for_action("win.focus-quick-add", { "<Control>n" });
+            app.set_accels_for_action("win.focus-search", { "<Control>f" });
+            app.set_accels_for_action("win.toggle-show-completed", { "<Control><Shift>c" });
+        }
+
+        // ---- menu model ----
         var menu = new GLib.Menu();
+
+        // View switching lives in the sidebar tiles (Reminders); the
+        // accelerators (Ctrl+1..4/N/F/Shift+C) stay registered on the
+        // actions above without menu items.
+
+        var tools_section = new GLib.Menu();
+        tools_section.append(ctx.t("menuInstallCli"), "win.install-cli");
+        tools_section.append(ctx.t("menuUninstallCli"), "win.uninstall-cli");
+        menu.append_section(ctx.t("menuTools"), tools_section);
+
         var lang_section = new GLib.Menu();
-        lang_section.append("简体中文", "win.lang-zh");
-        lang_section.append("English", "win.lang-en");
+        lang_section.append(ctx.t("menuLangZh"), "win.lang-zh");
+        lang_section.append(ctx.t("menuLangEn"), "win.lang-en");
         menu.append_section(ctx.t("menuLanguage"), lang_section);
-        menu.append(ctx.t("menuInstallCli"), "win.install-cli");
-        menu.append(ctx.t("menuUninstallCli"), "win.uninstall-cli");
+
+        menu.append(ctx.t("menuAbout"), "win.about");
         return menu;
+    }
+
+    private void add_view_action(Gtk.ApplicationWindow win, string name, TaskViewType view) {
+        var action = new GLib.SimpleAction(name, null);
+        action.activate.connect(() => select_view(view));
+        win.add_action(action);
     }
 
     private void set_language(string lang) {
@@ -294,7 +396,7 @@ window.taskly-root { background-color: #FFFFFF; }
     }
 
     private void add_tile(Gtk.Grid grid, string key, string icon, string css,
-                          TaskViewType view, int row, int col) {
+                          TaskViewType view, int row, int col, int width = 1) {
         var button = new Gtk.Button();
         button.add_css_class("smart-tile");
         button.add_css_class(css);
@@ -312,7 +414,7 @@ window.taskly-root { background-color: #FFFFFF; }
         tile_box.append(title);
         button.child = tile_box;
 
-        grid.attach(button, col, row, 1, 1);
+        grid.attach(button, col, row, width, 1);
         tile_counts[view] = count_label;
         tile_buttons[button] = view;
         button.clicked.connect(() => select_view(view));
@@ -417,6 +519,9 @@ window.taskly-root { background-color: #FFFFFF; }
             ? i18n.t("hideCompletedToggle")
             : i18n.t("showCompletedToggle");
 
+        // Smart-tile selection ring tracks the active view.
+        update_tile_selection();
+
         // Counts
         try {
             var today = ctx.db.get_today_task_count();
@@ -433,9 +538,75 @@ window.taskly-root { background-color: #FFFFFF; }
 
         rebuild_lists();
         rebuild_tasks(search_text);
+        update_subtitle();
         status_label.label = status;
         quick_add.placeholder_text = ctx.t("taskListInputHint");
         search.placeholder_text = ctx.t("searchHint");
+    }
+
+    /// Marks the active view's smart tile with the "selected" class and
+    /// clears it from the rest (DESIGN-TOKENS smart view tile).
+    private void update_tile_selection() {
+        foreach (unowned Gtk.Button button in tile_buttons.get_keys()) {
+            if (tile_buttons.lookup(button) == ctx.current_view) {
+                button.add_css_class("selected");
+            } else {
+                button.remove_css_class("selected");
+            }
+        }
+    }
+
+    /// Secondary header line (DESIGN-TOKENS view header): full date under
+    /// Today, open-task counts elsewhere. Hidden while searching.
+    private void update_subtitle() {
+        subtitle_label.visible = search.text.length == 0;
+        if (!subtitle_label.visible) {
+            return;
+        }
+        try {
+            switch (ctx.current_view) {
+                case TaskViewType.TODAY:
+                    subtitle_label.label = today_subtitle();
+                    break;
+                case TaskViewType.PLANNED:
+                    subtitle_label.label = ctx.i18n.format("subtitleOpenTasks",
+                        ctx.db.get_planned_task_count().to_string());
+                    break;
+                case TaskViewType.COMPLETED:
+                    subtitle_label.label = ctx.i18n.format("subtitleCompleted",
+                        ctx.db.get_completed_task_count().to_string());
+                    break;
+                case TaskViewType.LIST:
+                    subtitle_label.label = ctx.i18n.format("subtitleOpenTasks",
+                        ctx.db.get_task_count_by_list(ctx.current_list_id).to_string());
+                    break;
+                default:
+                    subtitle_label.label = ctx.i18n.format("subtitleOpenTasks",
+                        ctx.db.get_incomplete_task_count().to_string());
+                    break;
+            }
+        } catch (GLib.Error e) {
+            // Subtitle refresh failure: leave the previous text.
+        }
+    }
+
+    /// `2026年9月26日 周五` / `Friday, September 26, 2026` (subtitleToday).
+    private string today_subtitle() {
+        // Date shapes follow the app language via name tables here (GLib's
+        // %A/%B follow the C locale, not the app language); copy stays in
+        // shared/i18n (spec §11).
+        var now = new DateTime.now_local();
+        if (ctx.config.language() == "zh") {
+            var weekdays = "一二三四五六日";
+            return "%d年%d月%d日 周%c".printf(now.get_year(), now.get_month(),
+                now.get_day_of_month(), weekdays.get(now.get_day_of_week() - 1));
+        }
+        string[] months = { "", "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December" };
+        string[] weekdays = { "", "Monday", "Tuesday", "Wednesday", "Thursday",
+            "Friday", "Saturday", "Sunday" };
+        return "%s, %s %d, %d".printf(weekdays[now.get_day_of_week()],
+            months[now.get_month()], now.get_day_of_month(), now.get_year());
     }
 
     private string view_status() {
@@ -476,16 +647,22 @@ window.taskly-root { background-color: #FFFFFF; }
             } catch (GLib.Error e) {
                 list.pending_count = 0;
             }
-            append_list_row(list);
+            var row_button = append_list_row(list);
+            bool selected = ctx.current_view == TaskViewType.LIST && list.id == ctx.current_list_id;
+            row_button.add_css_class("list-row");
+            if (selected) {
+                row_button.add_css_class("selected");
+            }
         }
     }
 
-    private void append_list_row(TodoList list) {
+    private Gtk.Button append_list_row(TodoList list) {
         var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8);
         row.margin_top = 4;
         row.margin_bottom = 4;
 
         var icon_label = new Gtk.Label(list.icon_or_default());
+        icon_label.width_request = 20;
         var name_label = new Gtk.Label(list.name);
         name_label.halign = Gtk.Align.START;
         name_label.hexpand = true;
@@ -523,6 +700,7 @@ window.taskly-root { background-color: #FFFFFF; }
         });
 
         lists_box.append(row_button);
+        return row_button;
     }
 
     private void select_list(int64 list_id) {
@@ -607,6 +785,10 @@ window.taskly-root { background-color: #FFFFFF; }
         if (due_display.length > 0) {
             var meta = new Gtk.Label("🗓 " + due_display);
             meta.add_css_class("task-meta");
+            var tone = due_tone_class(task);
+            if (tone.length > 0) {
+                meta.add_css_class(tone);
+            }
             meta.halign = Gtk.Align.START;
             meta.xalign = 0.0f;
             text_box.append(meta);
@@ -624,6 +806,7 @@ window.taskly-root { background-color: #FFFFFF; }
         detail_button.add_css_class("flat");
         detail_button.tooltip_text = ctx.t("tooltipTaskEdit");
 
+        row.append(build_list_dot(task));
         row.append(checkbox);
         row.append(text_box);
         row.append(detail_button);
@@ -632,7 +815,18 @@ window.taskly-root { background-color: #FFFFFF; }
         checkbox.toggled.connect(() => {
             try {
                 ctx.db.set_task_completed(task_id, checkbox.active);
-                refresh_all();
+                if (checkbox.active) {
+                    // Completion pop: pulse the check, then rebuild the list
+                    // once the animation has played (parity with the Windows
+                    // checkbox scale + macOS symbol bounce).
+                    checkbox.add_css_class("check-pop");
+                    Timeout.add(260, () => {
+                        refresh_all();
+                        return Source.REMOVE;
+                    });
+                } else {
+                    refresh_all();
+                }
             } catch (GLib.Error e) {
                 flash(e.message);
             }
@@ -651,6 +845,70 @@ window.taskly-root { background-color: #FFFFFF; }
         return row;
     }
 
+    /// 8px circular list-color dot leading each task row (DESIGN-TOKENS
+    /// checkbox semantics: list color with accent fallback). GTK4 has no
+    /// dynamic color API, so the tint comes from a per-color CssProvider
+    /// (cached pool) added to the dot widget itself.
+    private Gtk.Widget build_list_dot(TaskItem task) {
+        var dot = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
+        dot.add_css_class("list-dot");
+        dot.width_request = 8;
+        dot.height_request = 8;
+        dot.valign = Gtk.Align.CENTER;
+        dot.get_style_context().add_provider(
+            provider_for_list_color(task.list_color ?? DEFAULT_LIST_COLOR),
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
+        return dot;
+    }
+
+    private Gtk.CssProvider provider_for_list_color(int32 argb) {
+        var key = list_color_hex(argb);
+        var existing = dot_providers.lookup(key);
+        if (existing != null) {
+            return existing;
+        }
+        var provider = new Gtk.CssProvider();
+        try {
+            provider.load_from_string(".list-dot { background-color: %s; }".printf(key));
+        } catch (Error e) {
+            // Non-fatal: the dot keeps the accent fallback from APP_CSS.
+        }
+        dot_providers.insert(key, provider);
+        return provider;
+    }
+
+    /// Signed ARGB int (lists.color storage format) → `#RRGGBB`.
+    private string list_color_hex(int32 argb) {
+        var rgb = ((uint32) argb) & 0x00FFFFFFu;
+        return "#%02X%02X%02X".printf(
+            (uint) ((rgb >> 16) & 0xFFu),
+            (uint) ((rgb >> 8) & 0xFFu),
+            (uint) (rgb & 0xFFu));
+    }
+
+    /// Semantic class for the due-date label (DESIGN-TOKENS due-date
+    /// semantics): overdue incomplete red, due today accent, otherwise no
+    /// override (gray). yyyy-MM-dd strings compare lexicographically.
+    private string due_tone_class(TaskItem task) {
+        // Completed tasks always render in the secondary tone (DESIGN-TOKENS
+        // due-date semantics), never in the due-today accent.
+        if (task.completed) {
+            return "";
+        }
+        var date_only = DateParser.extract_date_only(task.due_date);
+        if (date_only == null) {
+            return "";
+        }
+        var today = DateParser.today_string();
+        if (date_only == today) {
+            return "due-today";
+        }
+        if (date_only < today) {
+            return "due-overdue";
+        }
+        return "";
+    }
+
     private string format_due_display(TaskItem task) {
         var date_only = DateParser.extract_date_only(task.due_date);
         if (date_only == null) {
@@ -664,11 +922,30 @@ window.taskly-root { background-color: #FFFFFF; }
             label = ctx.i18n.t("dateTomorrow");
         } else if (date_only == now.add_days(-1).format("%Y-%m-%d")) {
             label = ctx.i18n.t("dateYesterday");
+        } else {
+            label = format_month_day(date_only);
         }
         if (task.due_time != null && task.due_time.length > 0) {
             return "%s %s".printf(label, task.due_time);
         }
         return label;
+    }
+
+    /// Non-relative dates render localized (DESIGN-TOKENS due-date
+    /// semantics): zh `9月26日`, en `Sep 26`, month name from the
+    private string format_month_day(string date_only) {
+        var parts = date_only.split("-");
+        if (parts.length != 3) {
+            return date_only;
+        }
+        var month = int.parse(parts[1]);
+        var day = int.parse(parts[2]);
+        if (ctx.config.language() == "zh") {
+            return "%d月%d日".printf(month, day);
+        }
+        string[] months = { "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+        return "%s %d".printf(months[month], day);
     }
 }
 

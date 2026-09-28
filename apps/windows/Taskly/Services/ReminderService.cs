@@ -1,4 +1,5 @@
-using System.Globalization;
+﻿using System.Globalization;
+using Taskly.Data;
 using Taskly.Models;
 using Microsoft.Toolkit.Uwp.Notifications;
 
@@ -72,7 +73,8 @@ public sealed class ReminderService : IDisposable
                     var dueLine = task.DueDate + (string.IsNullOrEmpty(task.DueTime) ? "" : " " + task.DueTime);
                     Notify(
                         _i18n.T("reminderTitle"),
-                        $"{task.Text}\n{_i18n.T("reminderDueAt")}: {dueLine}");
+                        $"{task.Text}\n{_i18n.T("reminderDueAt")}: {dueLine}",
+                        task.Id);
                 }
             }
         }
@@ -99,7 +101,7 @@ public sealed class ReminderService : IDisposable
         return due <= DateTime.Now;
     }
 
-    private void Notify(string title, string body)
+    private void Notify(string title, string body, int taskId = 0)
     {
         if (_notificationsDisabled)
         {
@@ -108,15 +110,76 @@ public sealed class ReminderService : IDisposable
 
         try
         {
-            new ToastContentBuilder()
+            var builder = new ToastContentBuilder()
                 .AddText(title)
-                .AddText(body)
-                .Show();
+                .AddText(body);
+
+            if (taskId > 0)
+            {
+                // TickTick/Todoist-style quick actions: complete or snooze
+                // without opening the app (activation routes through
+                // Program.OnToastActivated).
+                builder.AddButton(new ToastButton()
+                    .SetContent(_i18n.T("toastComplete"))
+                    .AddArgument("action", "complete")
+                    .AddArgument("taskId", taskId.ToString()));
+                builder.AddButton(new ToastButton()
+                    .SetContent(_i18n.T("toastSnooze"))
+                    .AddArgument("action", "snooze")
+                    .AddArgument("taskId", taskId.ToString()));
+            }
+
+            builder.Show();
         }
         catch
         {
             // No notification permission/transport: stay silent this session.
             _notificationsDisabled = true;
+        }
+    }
+
+    /// <summary>Re-arms a snoozed task's reminder (the notified set would
+    /// otherwise swallow the rescheduled due time).</summary>
+    public void ClearNotified(int taskId) => _notifiedIds.Remove(taskId);
+
+    /// <summary>Snooze: push the due time one hour forward (adds a time to
+    /// date-only tasks). Returns false when the task vanished.</summary>
+    public bool SnoozeOneHour(int taskId)
+    {
+        try
+        {
+            var task = _backend.GetTaskByIdAsync(taskId).GetAwaiter().GetResult();
+            if (task is null)
+            {
+                return false;
+            }
+
+            var target = DateTime.Now.AddHours(1);
+            task.DueDate = target.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            task.DueTime = target.ToString("HH:mm", CultureInfo.InvariantCulture);
+            _backend.UpdateTaskAsync(task).GetAwaiter().GetResult();
+            ClearNotified(taskId);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Mark a task completed (toast action; UI refreshes through the
+    /// normal channels when visible).</summary>
+    public bool CompleteTask(int taskId)
+    {
+        try
+        {
+            _backend.SetCompletedAsync(taskId, true).GetAwaiter().GetResult();
+            ClearNotified(taskId);
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 

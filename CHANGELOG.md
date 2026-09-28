@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-09-27
+
+The first release of the native rewrite (SwiftUI / WinUI 3 / GTK4-libadwaita,
+zero shared runtime code, one behavioral contract in `shared/spec/`). The
+Avalonia line (≤ 0.7.0) is retired; releases before this one belong to a
+different architecture and are no longer published.
+
+### Added
+- **Task-row context menu** (spec §5): right-click a row for toggle
+  completed, delete (no confirmation from the row, per contract), and
+  move to list ▸ — the Windows GUI previously had no delete path.
+- **Immersive task editor** (Windows): the task text is the title — an
+  18px borderless input — with borderless notes, and a red Delete with
+  confirmation.
+- **Keyboard shortcuts, window-wide** (menu-labeled): Ctrl/Cmd+1…4 switch
+  Today/Planned/All/Completed, Ctrl/Cmd+N focuses quick add,
+  Ctrl/Cmd+F focuses search, Ctrl/Cmd+Shift+C toggles Show Completed,
+  Ctrl/Cmd+Shift+N new database, Ctrl/Cmd+O open.
+- **Restructured menu bar**: File / View / Tools / Settings / Help — the CLI
+  installer lives under Tools, every smart view is reachable from the View
+  menu.
+- **Reminders-aligned layout**: the search field sits inside the sidebar
+  above the smart-list tiles; the window header is a toolbar row plus an
+  independent large-title block; Show Completed lives in the View menu.
+- **Reminders-grade task rows**: checkbox rings take the task's list color;
+  due dates render localized via the platform culture
+  (today/tomorrow/yesterday/`Aug 31`/`8月31日`) with semantic color —
+  overdue incomplete in red, due today in accent, completed always
+  secondary; rows select and hover with quiet fills, and the row info
+  button reveals on hover; list changes animate (add/remove transitions).
+- **Large view header** (24 px title + 13 px subtitle: full date under
+  Today, the displayed month under Calendar, open/completed counts
+  elsewhere); search lives in the header toolbar (Reminders convention),
+  quick add is the pane's single prominent input.
+- ~50 new bilingual strings shared via `shared/i18n` and verified
+  byte-identical in CI.
+- Linux About window (libadwaita `AboutWindow`, PRODUCT-SPEC §8 parity) and
+  a header-bar search entry (Gtk.SearchEntry).
+- Windows crash telemetry floor: unhandled XAML-thread exceptions append to
+  `~/.taskly/crash.log` (opt-in Sentry remains the commercial plan).
+
+### Changed
+- License finalized: desktop core AGPL-3.0 (was Apache-2.0), open-core model.
+- Release engineering: canonical root `VERSION` file with a release
+  preflight that fails the pipeline on cross-platform version drift;
+  reproducible native tag builds; a UIA end-to-end suite
+  (`scripts/e2e/e2e-windows.ps1`) drives 38 user-flow checks against a
+  disposable database.
+- Status bar wording reads naturally ("List: 工作", "All tasks").
+- Tile hover/selection states use a saturation language: the active view's
+  tile stays at full saturation with a white inset ring while the rest
+  recede; the Completed tile is green (`#34C759`, done semantics);
+  transitions ease over 120 ms (macOS/Linux).
+- Default window 1280×880 — the calendar rail plus time line cannot fit a
+  1024×768 physical window at 150% DPI; below ~420 logical px of pane
+  width the month rail yields to the day-group time line.
+
+### Fixed
+- **Windows: crash on entering the calendar view** — a synchronous
+  PropertyChanged between the year and month assignments let the month grid
+  render with month `0` and `DateTime` threw inside XAML layout (native
+  fail-fast, no managed trace). Guarded in the pane and the view-model.
+- Windows day cells / weekday header read theme colors from the static
+  `UiTheme` projection instead of `Application.Resources` indexer lookups,
+  which cannot see `ThemeDictionaries`.
+- Windows smart tiles: two-row geometry (glyph and count on top, label at
+  the bottom — fixes a glyph/label overlap) on chrome-free template buttons,
+  so hover lifts instead of graying the fill and keyboard/UIA access is
+  preserved; icon-only buttons and dialog inputs carry accessibility names.
+- Windows calendar day groups now regenerate on a runtime language switch
+  (their headers are pre-formatted strings).
+- zh status line no longer renders the duplicated "9月月".
+- macOS: deterministic release packaging arguments; `.app` version wired to
+  the canonical VERSION file; universal builds copy from the multi-arch
+  SwiftPM output directory.
+
 ## [0.7.0] - 2026-08-24
 
 ### Changed

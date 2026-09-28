@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// Taskly macOS app. Entry logic lives in main.swift: CLI subcommands run
 /// headless; no arguments opens this scene.
@@ -16,6 +17,7 @@ struct TasklyApp: App {
         .commands {
             TasklyCommands(state: appState)
         }
+
     }
 }
 
@@ -26,12 +28,43 @@ struct TasklyCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button(state.t("menuNewDatabase")) { newDatabase() }
-                .keyboardShortcut("n", modifiers: [.command])
+                .keyboardShortcut("n", modifiers: [.command, .shift])
             Button(state.t("menuOpenDatabase")) { openDatabase() }
                 .keyboardShortcut("o", modifiers: [.command])
             Button(state.t("menuCloseDatabase")) { confirmClose() }
                 .keyboardShortcut("w", modifiers: [.command])
                 .disabled(!state.isConnected)
+        }
+
+        // View menu mirrors the Windows View menu: smart views, quick
+        // add / search focus, show-completed toggle.
+        CommandMenu(state.t("menuView")) {
+            Button(state.t("navToday")) { state.select(.today) }
+                .keyboardShortcut("1", modifiers: [.command])
+            Button(state.t("navPlanned")) { state.select(.planned) }
+                .keyboardShortcut("2", modifiers: [.command])
+            Button(state.t("navAll")) { state.select(.all) }
+                .keyboardShortcut("3", modifiers: [.command])
+            Button(state.t("navCompleted")) { state.select(.completed) }
+                .keyboardShortcut("4", modifiers: [.command])
+            Divider()
+            Button(newTaskMenuTitle) { state.quickAddFocusToken += 1 }
+                .keyboardShortcut("n", modifiers: [.command])
+            Button(state.t("searchHint")) { state.searchFocusToken += 1 }
+                .keyboardShortcut("f", modifiers: [.command])
+            Divider()
+            Toggle(state.t("showCompletedToggle"), isOn: Binding(
+                get: { state.showCompleted },
+                set: {
+                    state.showCompleted = $0
+                    state.refresh()
+                }))
+                .keyboardShortcut("c", modifiers: [.command, .shift])
+        }
+
+        CommandMenu(state.t("menuTools")) {
+            Button(state.t("menuInstallCli")) { state.installCli() }
+            Button(state.t("menuUninstallCli")) { state.uninstallCli() }
         }
 
         CommandMenu(state.t("menuSettings")) {
@@ -48,9 +81,6 @@ struct TasklyCommands: Commands {
             Toggle(state.t("menuDarkMode"), isOn: Binding(
                 get: { state.theme.isDark },
                 set: { state.theme.isDark = $0 }))
-            Divider()
-            Button(state.t("menuInstallCli")) { state.installCli() }
-            Button(state.t("menuUninstallCli")) { state.uninstallCli() }
         }
 
         CommandGroup(after: .appInfo) {
@@ -58,6 +88,12 @@ struct TasklyCommands: Commands {
                 state.aboutVisible = true
             }
         }
+    }
+
+    /// Windows trims the "+ " prompt off the quick-add hint for the
+    /// View-menu item; keep the same label ("添加任务" / "Add Task").
+    private var newTaskMenuTitle: String {
+        String(state.t("taskListInputHint").drop(while: { $0 == "+" || $0 == " " }))
     }
 
     private func setLanguage(_ language: String) {

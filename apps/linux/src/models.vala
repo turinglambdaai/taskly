@@ -2,6 +2,10 @@
 
 namespace Taskly {
 
+// App version: kept in sync with the root VERSION file (checked by
+// scripts/check-release-version.sh).
+public const string APP_VERSION = "1.0.0";
+
 public const string DEFAULT_LIST_ICON = "📋";
 // ARGB 0xFF007AFF (system blue) as a signed 32-bit int.
 public const int32 DEFAULT_LIST_COLOR = (int32) 0xFF007AFF;
@@ -20,6 +24,9 @@ public class TaskItem : Object {
     public string? notes { get; set; default = null; }
     // Join artifact (LEFT JOIN lists); never persisted.
     public string? list_name { get; set; default = null; }
+    // Join artifact (LEFT JOIN lists); never persisted. Signed ARGB int or
+    // null (plain field: nullable value types cannot be GObject properties).
+    public int32? list_color;
 
     public TaskItem clone() {
         var copy = new TaskItem();
@@ -32,6 +39,7 @@ public class TaskItem : Object {
         copy.completed = completed;
         copy.notes = notes;
         copy.list_name = list_name;
+        copy.list_color = list_color;
         return copy;
     }
 }
@@ -58,6 +66,7 @@ public enum TaskViewType {
     COMPLETED,
     LIST;
 }
+
 
 public enum AppErrorType {
     GENERIC,     // exit code 1

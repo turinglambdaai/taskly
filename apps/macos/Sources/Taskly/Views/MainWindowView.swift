@@ -82,6 +82,9 @@ struct SidebarView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                // Search sits inside the sidebar, above the four filter
+                // tiles — macOS Reminders placement.
+                SidebarSearchField()
                 smartTiles
                 myLists
             }
@@ -130,6 +133,39 @@ struct SidebarView: View {
     }
 }
 
+/// Sidebar search bound to the global searchText (Reminders placement:
+/// above the smart-list tiles). The View menu's Ctrl+F focuses it via the
+/// searchFocusToken.
+private struct SidebarSearchField: View {
+    @Environment(AppState.self) private var state
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        @Bindable var state = state
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(state.theme.tertiaryText)
+                .font(.system(size: 12))
+            TextField(state.t("searchHint"), text: $state.searchText)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .focused($isFocused)
+                .onChange(of: state.searchText) { _, _ in
+                    state.refresh()
+                }
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 30)
+        .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(state.theme.inputBorder, lineWidth: 1))
+        .onChange(of: state.searchFocusToken) { _, _ in
+            isFocused = true
+        }
+    }
+}
+
 private struct SmartTile: View {
     @Environment(AppState.self) private var state
     let view: SmartView
@@ -137,6 +173,19 @@ private struct SmartTile: View {
     let titleKey: String
     let color: Color
     let count: Int
+    var height: CGFloat = Palette.tileHeight
+
+    @State private var isHovering = false
+
+    private var isSelected: Bool {
+        state.currentView == view
+    }
+
+    /// Active tile keeps full saturation; the rest recede to 0.72 and lift
+    /// to 0.88 on hover (DESIGN-TOKENS smart-tile states).
+    private var tileOpacity: Double {
+        isSelected ? 1.0 : (isHovering ? 0.88 : 0.72)
+    }
 
     var body: some View {
         Button {
@@ -166,11 +215,21 @@ private struct SmartTile: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: Palette.tileHeight)
+            .frame(height: height)
             .background(color, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                // 2px white inset ring on the active view's tile.
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(Color.white, lineWidth: 2)
+                    .opacity(isSelected ? 1 : 0))
         }
         .buttonStyle(.plain)
         .disabled(!state.isConnected)
+        .opacity(tileOpacity)
+        .animation(.easeOut(duration: 0.12), value: tileOpacity)
+        .onHover { hovering in
+            isHovering = hovering
+        }
     }
 }
 
@@ -187,10 +246,10 @@ private struct ListRowView: View {
         HStack(spacing: 8) {
             Circle()
                 .fill(Color(argb: list.color))
-                .frame(width: 32, height: 32)
+                .frame(width: 20, height: 20)
                 .overlay(
                     Text(list.icon ?? TodoList.defaultIcon)
-                        .font(.system(size: 14))
+                        .font(.system(size: 11))
                         .clipShape(Circle())
                 )
             Text(list.name)
@@ -205,7 +264,7 @@ private struct ListRowView: View {
             }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.vertical, 5)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(isSelected ? state.theme.selection : Color.clear)

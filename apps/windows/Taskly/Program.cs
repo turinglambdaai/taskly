@@ -1,4 +1,4 @@
-using Microsoft.UI.Dispatching;
+﻿using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -51,6 +51,49 @@ public static class Program
             return;
         }
 #endif
+
+        // Toast button actions (完成/稍后提醒). Runs headless when the
+        // process was launched by the click from a dismissed toast.
+        Microsoft.Toolkit.Uwp.Notifications.ToastNotificationManagerCompat.OnActivated +=
+            async e =>
+            {
+                // ToastNotificationActivatedEventArgsCompat exposes the
+                // argument string; parse key=value pairs from it.
+                var action = (string?)null;
+                var idRaw = (string?)null;
+                foreach (var part in (e.Argument ?? string.Empty).Split(';'))
+                {
+                    var kv = part.Split('=', 2);
+                    if (kv.Length == 2 && kv[0] == "action") { action = kv[1]; }
+                    if (kv.Length == 2 && kv[0] == "taskId") { idRaw = kv[1]; }
+                }
+                if (action is null || !int.TryParse(idRaw, out var id))
+                {
+                    return;
+                }
+
+                var config = new Taskly.Data.ConfigService();
+                config.Load();
+                if (!string.IsNullOrEmpty(config.LastDbPath))
+                {
+                    var backend = new Taskly.Services.NativeTasklyBackend(
+                        Taskly.Services.I18nService.Instance);
+                    await backend.OpenAsync(config.LastDbPath);
+                    var reminders = new Taskly.Services.ReminderService(backend, Taskly.Services.I18nService.Instance);
+                    if (action == "complete")
+                    {
+                        reminders.CompleteTask(id);
+                    }
+                    else if (action == "snooze")
+                    {
+                        reminders.SnoozeOneHour(id);
+                    }
+
+                    await backend.DisposeAsync();
+                }
+
+                Taskly.Services.ToastActivationBridge.NotifyUi(action, id);
+            };
 
         if (args.Length > 0)
         {

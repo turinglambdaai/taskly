@@ -3,6 +3,7 @@ import SwiftUI
 /// Task pane: header, search + quick add, task list, empty states.
 struct TaskPaneView: View {
     @Environment(AppState.self) private var state
+    @FocusState private var quickAddFocused: Bool
 
     var body: some View {
         @Bindable var state = state
@@ -27,10 +28,15 @@ struct TaskPaneView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(state.theme.background)
         }
+        // View menu focus requests (New Task ⌘N / Find ⌘F).
+        .onChange(of: state.quickAddFocusToken) { _, _ in
+            quickAddFocused = true
+        }
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
+        @Bindable var state = state
+        return HStack(alignment: .top, spacing: 10) {
             Button {
                 withAnimation(.easeInOut(duration: 0.15)) {
                     state.isSidebarVisible.toggle()
@@ -43,10 +49,20 @@ struct TaskPaneView: View {
             .buttonStyle(.plain)
             .help(state.isSidebarVisible ? state.t("sidebarHide") : state.t("sidebarShow"))
 
-            Text(state.currentTitle)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(state.theme.onSurface)
-                .lineLimit(1)
+            // Large title + secondary subtitle line (DESIGN-TOKENS view header).
+            VStack(alignment: .leading, spacing: 2) {
+                Text(state.currentTitle)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(state.theme.onSurface)
+                    .lineLimit(1)
+                let subtitle = state.currentSubtitle
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.system(size: 13))
+                        .foregroundStyle(state.theme.secondaryText)
+                        .lineLimit(1)
+                }
+            }
 
             Spacer()
 
@@ -67,37 +83,7 @@ struct TaskPaneView: View {
     private var inputArea: some View {
         @Bindable var state = state
         return VStack(spacing: 8) {
-            // Native addition: search field (0.6.4 shipped search via CLI only).
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(state.theme.tertiaryText)
-                    .font(.system(size: 12))
-                TextField(state.t("searchHint"), text: Binding(
-                    get: { state.searchText },
-                    set: { state.searchText = $0; state.refresh(); state.refreshStatusPersistent() }
-                ))
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                if !state.searchText.isEmpty {
-                    Button {
-                        state.searchText = ""
-                        state.refresh()
-                        state.refreshStatusPersistent()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(state.theme.tertiaryText)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 10)
-            .frame(height: 32)
-            .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 8))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(state.theme.inputBorder, lineWidth: 1))
-
-            // Quick add
+            // Quick add — the pane's single, prominent input
             HStack {
                 TextField(state.t("taskListInputHint"), text: $state.quickAddText)
                     .textFieldStyle(.plain)
@@ -112,8 +98,8 @@ struct TaskPaneView: View {
                 }
             }
             .padding(.horizontal, 12)
-            .frame(height: 38)
-            .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 8))
+            .frame(height: 40)
+            .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 10))
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(state.theme.inputBorder, lineWidth: 1))

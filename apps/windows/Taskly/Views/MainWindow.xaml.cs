@@ -1,4 +1,4 @@
-using Microsoft.UI.Windowing;
+﻿using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Taskly.Models;
@@ -13,15 +13,13 @@ public sealed partial class MainWindow : Window
 {
     public MainViewModel Vm { get; } = new();
     private bool _databaseOpened;
-    private bool _shutdownStarted;
-    private bool _shutdownComplete;
 
     public MainWindow()
     {
         InitializeComponent();
 
         Title = "Taskly";
-        AppWindow.Resize(new SizeInt32(1024, 768));
+        AppWindow.Resize(new SizeInt32(1280, 880));
         // Unpackaged WinUI shows the default icon unless told otherwise.
         AppWindow.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "taskly.ico"));
 
@@ -30,54 +28,207 @@ public sealed partial class MainWindow : Window
         Pane.SidebarToggleRequested += OnSidebarToggleRequested;
 
         ApplyLanguage();
+        ApplyTheme(); // read persisted theme= (system/light/dark) at startup
         Vm.LanguageChanged += ApplyLanguage;
+        RootGrid.ActualThemeChanged += (_, _) =>
+        {
+            // OS personalization changed while following system.
+            SyncUiThemeFromActual();
+            _ = Vm.RefreshAsync();
+            Sidebar.ApplyLanguage();
+            Pane.ApplyLanguage();
+        };
 
-        // Window.Close() is synchronous, but embedded Racket shutdown is not.
-        // Cancel the first close request, drain Taskly/Rivet, then close again.
-        // The second Closing event sees _shutdownComplete and is allowed through.
-        AppWindow.Closing += OnAppWindowClosing;
+        // Close-to-tray: closing hides the window; reminders keep running.
+        AppWindow.Closing += (_, args) =>
+        {
+            if (_reallyExit || !Vm.CloseToTray)
+            {
+                _trayIcon?.Dispose();
+                Vm.Reminder.Dispose();
+                return;
+            }
+
+            args.Cancel = true;
+            AppWindow.Hide();
+            Vm.ShowTransientStatus(Vm.T("trayTip"));
+        };
+        Closed += (_, _) =>
+        {
+            Vm.Reminder.Dispose();
+            _trayIcon?.Dispose();
+        };
+
+        // Toast quick actions from the live window refresh the UI.
+        Taskly.Services.ToastActivationBridge.UiActionRequested += (_, _) =>
+        {
+            ShowMainWindow();
+            _ = Vm.RefreshAsync();
+        };
+
+        StartTrayIcon();
         Activated += async (_, args) =>
         {
-            // Open the default DB once, after the window is live (XamlRoot ready).
+            // Open the default DB once, after the window is live (XamlRoot
+            // ready).
             if (!_databaseOpened
                 && args.WindowActivationState != WindowActivationState.Deactivated)
             {
                 _databaseOpened = true;
                 await Vm.OpenDefaultDatabaseAsync();
+                await RunUpdateCheckAsync(silent: true);
             }
         };
     }
 
-    private async void OnAppWindowClosing(AppWindow sender, AppWindowClosingEventArgs args)
+    // ---------------- online updates (Velopack over GitHub Releases) ----------------
+
+    private bool _updateChecked;
+
+    private async void OnCheckUpdates(object sender, RoutedEventArgs e) =>
+        await RunUpdateCheckAsync(silent: false);
+
+    /// <summary>Checks GitHub Releases via Velopack. Silent mode swallows all
+    /// failures (offline, portable copy, rate limit); manual mode reports.
+    /// Only a Velopack-managed install can update — portable zips get a
+    /// re-download hint.</summary>
+    private async Task RunUpdateCheckAsync(bool silent)
     {
-        if (_shutdownComplete)
-        {
-            return;
-        }
-
-        args.Cancel = true;
-        if (_shutdownStarted)
-        {
-            return;
-        }
-
-        _shutdownStarted = true;
+        Microsoft.UI.Xaml.Controls.ContentDialog? dialog;
         try
         {
-            await Vm.ShutdownAsync();
+            var source = new Velopack.Sources.GithubSource(
+                "https://github.com/turinglambdaai/taskly", null, false);
+            Velopack.UpdateManager? mgr = null;
+            try
+            {
+                mgr = new Velopack.UpdateManager(source);
+            }
+            catch
+            {
+                // Not a Velopack-managed install (portable zip extract).
+            }
+
+            if (mgr is null || !mgr.IsInstalled)
+            {
+                if (!silent)
+                {
+                    dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                    {
+                        Title = Vm.T("menuCheckUpdates"),
+                        Content = Vm.T("updatePortable"),
+                        CloseButtonText = Vm.T("dialogConfirm"),
+                        XamlRoot = RootGrid.XamlRoot,
+                    };
+                    await dialog.ShowAsync();
+                }
+
+                return;
+            }
+
+            var info = await mgr.CheckForUpdatesAsync();
+            if (info is not null && !info.IsDowngrade
+                && info.TargetFullRelease.Version > mgr.CurrentVersion)
+            {
+                dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                {
+                    Title = Vm.T("updateAvailableTitle"),
+                    Content = string.Format(
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        Vm.T("updateAvailableBody"), info.TargetFullRelease.Version),
+                    PrimaryButtonText = Vm.T("updateRestart"),
+                    CloseButtonText = Vm.T("dialogCancel"),
+                    XamlRoot = RootGrid.XamlRoot,
+                };
+                if (await dialog.ShowAsync() == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
+                {
+                    mgr.ApplyUpdatesAndRestart(info.TargetFullRelease);
+                }
+            }
+            else if (!silent)
+            {
+                dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                {
+                    Title = Vm.T("menuCheckUpdates"),
+                    Content = Vm.T("updateUpToDate"),
+                    CloseButtonText = Vm.T("dialogConfirm"),
+                    XamlRoot = RootGrid.XamlRoot,
+                };
+                await dialog.ShowAsync();
+            }
         }
-        finally
+        catch (Exception ex)
         {
-            _shutdownComplete = true;
-            Close();
+            if (!silent)
+            {
+                dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                {
+                    Title = Vm.T("menuCheckUpdates"),
+                    Content = string.Format(
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        Vm.T("updateCheckFailed"), ex.Message),
+                    CloseButtonText = Vm.T("dialogConfirm"),
+                    XamlRoot = RootGrid.XamlRoot,
+                };
+                await dialog.ShowAsync();
+            }
         }
+    }
+
+    // ---------------- tray ----------------
+
+    private Taskly.Services.TrayIconService? _trayIcon;
+    private bool _reallyExit;
+
+    public void ShowMainWindow()
+    {
+        AppWindow.Show();
+        Activate();
+    }
+
+    private void TrayIcon_LeftClick(object sender, RoutedEventArgs e) => ShowMainWindow();
+
+    private void TrayExit_Click(object sender, RoutedEventArgs e)
+    {
+        _reallyExit = true;
+        Close();
+    }
+
+    private void OnCloseToTrayToggle(object sender, RoutedEventArgs e)
+    {
+        var toggle = (ToggleMenuFlyoutItem)sender;
+        Vm.CloseToTray = toggle.IsChecked;
+        MenuCloseToTray.IsChecked = Vm.CloseToTray;
+    }
+
+    private void StartTrayIcon()
+    {
+        _trayIcon = new Taskly.Services.TrayIconService();
+        _trayIcon.ShowRequested += () => DispatcherQueue.TryEnqueue(ShowMainWindow);
+        _trayIcon.ExitRequested += () => DispatcherQueue.TryEnqueue(() =>
+        {
+            _reallyExit = true;
+            Close();
+        });
+
+        var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "taskly.ico");
+        var showText = Vm.T("trayShow");
+        var exitText = Vm.T("trayExit");
+        var thread = new Thread(() => _trayIcon.Show(nint.Zero, iconPath, "Taskly", showText, exitText))
+        {
+            IsBackground = true,
+            Name = "TasklyTray",
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
     }
 
     private void OnSidebarToggleRequested()
     {
-        SidebarColumn.Width = SidebarColumn.Width.Value == 0
-            ? new GridLength(280)
-            : new GridLength(0);
+        var collapsing = SidebarColumn.Width.Value != 0;
+        // MinWidth would clamp the 0-width collapse; release it while hidden.
+        SidebarColumn.MinWidth = collapsing ? 0 : 200;
+        SidebarColumn.Width = collapsing ? new GridLength(0) : new GridLength(280);
     }
 
     private void ApplyLanguage()
@@ -88,18 +239,78 @@ public sealed partial class MainWindow : Window
         MenuCloseDatabase.Text = Vm.T("menuCloseDatabase");
         MenuExit.Text = Vm.T("menuExit");
 
+        MenuTools.Title = Vm.T("menuTools");
+        MenuInstallCli.Text = Vm.T("menuInstallCli");
+        MenuUninstallCli.Text = Vm.T("menuUninstallCli");
+
         MenuSettings.Title = Vm.T("menuSettings");
         MenuLangZh.Text = Vm.T("menuLangZh");
         MenuLangEn.Text = Vm.T("menuLangEn");
-        MenuDarkMode.Text = Vm.T("menuDarkMode");
-        MenuInstallCli.Text = Vm.T("menuInstallCli");
-        MenuUninstallCli.Text = Vm.T("menuUninstallCli");
+        MenuTheme.Text = Vm.T("menuTheme");
+        MenuThemeSystem.Text = Vm.T("themeFollowSystem");
+        MenuThemeLight.Text = Vm.T("themeLight");
+        MenuThemeDark.Text = Vm.T("themeDark");
+
+        MenuCloseToTray.Text = Vm.T("settingsCloseToTray");
+        MenuCloseToTray.IsChecked = Vm.CloseToTray;
 
         MenuHelp.Title = Vm.T("menuHelp");
         MenuAbout.Text = Vm.T("menuAbout");
 
         Sidebar.ApplyLanguage();
         Pane.ApplyLanguage();
+    }
+
+    // ---------------- window accelerators (no menu items needed) ----------------
+
+    private async void OnAccViewToday(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        await Vm.SelectViewAsync(TaskViewType.Today);
+    }
+
+    private async void OnAccViewPlanned(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        await Vm.SelectViewAsync(TaskViewType.Planned);
+    }
+
+    private async void OnAccViewAll(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        await Vm.SelectViewAsync(TaskViewType.All);
+    }
+
+    private async void OnAccViewCompleted(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        await Vm.SelectViewAsync(TaskViewType.Completed);
+    }
+
+    private void OnAccNewTask(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        Pane.FocusQuickAdd();
+    }
+
+    private void OnAccFind(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        Sidebar.FocusSearch();
+    }
+
+    private async void OnAccToggleCompleted(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender,
+        Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        await Vm.ToggleShowCompletedAsync();
+        Pane.SyncShowCompletedLabel();
     }
 
     // ---------------- file menu ----------------
@@ -157,14 +368,49 @@ public sealed partial class MainWindow : Window
         Vm.SaveLanguage("en");
     }
 
-    private async void OnToggleDarkMode(object sender, RoutedEventArgs e)
-    {
-        var toggle = (ToggleMenuFlyoutItem)sender;
-        RootGrid.RequestedTheme = toggle.IsChecked ? ElementTheme.Dark : ElementTheme.Light;
+    // ---------------- theme (system / light / dark) ----------------
 
-        // Row projections (brushes per task item) read this flag.
-        Models.UiTheme.IsDark = toggle.IsChecked;
-        await Vm.RefreshAsync();
+    private void ApplyTheme()
+    {
+        RootGrid.RequestedTheme = Vm.ConfigTheme switch
+        {
+            "light" => ElementTheme.Light,
+            "dark" => ElementTheme.Dark,
+            _ => ElementTheme.Default, // follows Windows personalization
+        };
+        SyncUiThemeFromActual();
+        MenuThemeSystem.IsChecked = Vm.ConfigTheme == "system";
+        MenuThemeLight.IsChecked = Vm.ConfigTheme == "light";
+        MenuThemeDark.IsChecked = Vm.ConfigTheme == "dark";
+        _ = Vm.RefreshAsync(); // rebuild per-item projected brushes
+        Sidebar.ApplyLanguage();
+        Pane.ApplyLanguage();
+    }
+
+    /// <summary>Per-item brushes read the static flag; keep it in step with
+    /// the effective theme (RequestedTheme.Default tracks the OS live).</summary>
+    private void SyncUiThemeFromActual()
+    {
+        Models.UiTheme.IsDark = Vm.ConfigTheme == "dark"
+            || (Vm.ConfigTheme == "system" && RootGrid.ActualTheme == ElementTheme.Dark);
+    }
+
+    private void OnThemeSystem(object sender, RoutedEventArgs e)
+    {
+        Vm.SetConfigTheme("system");
+        ApplyTheme();
+    }
+
+    private void OnThemeLight(object sender, RoutedEventArgs e)
+    {
+        Vm.SetConfigTheme("light");
+        ApplyTheme();
+    }
+
+    private void OnThemeDark(object sender, RoutedEventArgs e)
+    {
+        Vm.SetConfigTheme("dark");
+        ApplyTheme();
     }
 
     private void OnInstallCli(object sender, RoutedEventArgs e)

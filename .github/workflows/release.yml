@@ -1,9 +1,8 @@
-name: Release Build
+name: Release Build (legacy Avalonia)
 
+# LEGACY: builds the frozen 0.x Avalonia app (src/Taskly). Manual runs only —
+# v* tags belong to the native pipeline (release-native.yml).
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 permissions:

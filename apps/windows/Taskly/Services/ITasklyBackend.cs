@@ -1,4 +1,4 @@
-using Taskly.Models;
+﻿using Taskly.Models;
 
 namespace Taskly.Services;
 
@@ -41,6 +41,8 @@ public interface ITasklyBackend : IAsyncDisposable
     Task<bool> DeleteListAsync(int id, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<TaskItem>> GetDueTasksAsync(CancellationToken cancellationToken = default);
+
+    Task<TaskItem?> GetTaskByIdAsync(int id, CancellationToken cancellationToken = default);
 }
 
 public sealed record TasklyCounts(int Today, int Planned, int All, int Completed);

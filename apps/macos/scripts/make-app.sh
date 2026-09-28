@@ -1,30 +1,68 @@
-#!/bin/bash
-# Builds Taskly.app from the Swift package (release) and optionally a DMG.
-# Usage: scripts/make-app.sh [output-dir]
+﻿#!/bin/bash
+# Build Taskly.app from the Swift package.
+# Usage: scripts/make-app.sh [--universal] [output-dir]
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-OUT_DIR="${1:-.build/app}"
+
+UNIVERSAL=0
+OUT_DIR=".build/app"
+OUTPUT_SET=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --universal)
+      UNIVERSAL=1
+      shift
+      ;;
+    --help|-h)
+      echo "Usage: scripts/make-app.sh [--universal] [output-dir]"
+      exit 0
+      ;;
+    --*)
+      echo "Unknown option: $1" >&2
+      exit 2
+      ;;
+    *)
+      if [[ $OUTPUT_SET == 1 ]]; then
+        echo "Only one output directory may be specified" >&2
+        exit 2
+      fi
+      OUT_DIR="$1"
+      OUTPUT_SET=1
+      shift
+      ;;
+  esac
+done
+
+VERSION_FILE="../../VERSION"
+[[ -f "$VERSION_FILE" ]] || { echo "Missing root VERSION file" >&2; exit 1; }
+VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
+[[ -n "$VERSION" ]] || { echo "Root VERSION file is empty" >&2; exit 1; }
+
 APP="$OUT_DIR/Taskly.app"
 CONTENT="$APP/Contents"
 MACOS="$CONTENT/MacOS"
 RES="$CONTENT/Resources"
 
-UNIVERSAL=0
-[[ "${1:-}" == "--universal" ]] && UNIVERSAL=1
-
 echo "▶ swift build -c release"
 if [[ $UNIVERSAL == 1 ]]; then
   swift build -c release --arch arm64 --arch x86_64
+  # Multi-arch SwiftPM builds land in the Apple products dir, not .build/release.
+  BUILT=".build/apple/Products/Release"
 else
   swift build -c release
+  BUILT=".build/release"
 fi
 
 rm -rf "$APP"
 mkdir -p "$MACOS" "$RES"
 
-cp .build/release/Taskly "$MACOS/Taskly"
-cp -R .build/release/Taskly_Taskly.bundle "$RES/TasklyResources.bundle" 2>/dev/null || true
+cp "$BUILT/Taskly" "$MACOS/Taskly"
+# Keep the SwiftPM bundle name: Bundle.module looks up exactly
+# "Taskly_Taskly.bundle" and fatalErrors when it is missing — a rename
+# crashed every launch.
+[[ -d "$BUILT/Taskly_Taskly.bundle" ]] || { echo "Missing $BUILT/Taskly_Taskly.bundle" >&2; exit 1; }
+cp -R "$BUILT/Taskly_Taskly.bundle" "$RES/Taskly_Taskly.bundle"
 
 # Icon: icon_512.png → .icns (via iconset)
 ICONSET="$OUT_DIR/taskly.iconset"
@@ -48,8 +86,8 @@ cat > "$CONTENT/Info.plist" <<PLIST
     <key>CFBundleName</key><string>Taskly</string>
     <key>CFBundleDisplayName</key><string>Taskly</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.0.0</string>
-    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleShortVersionString</key><string>$VERSION</string>
+    <key>CFBundleVersion</key><string>$VERSION</string>
     <key>CFBundleIconFile</key><string>Taskly</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSHighResolutionCapable</key><true/>
@@ -62,8 +100,77 @@ PLIST
 # Minimum deployment target: swift build may default to the host OS.
 vtool -set-build-version macos 14.0 14.0 "$MACOS/Taskly" 2>/dev/null || true
 
+# Development/beta packages are ad-hoc signed here. Commercial stable builds
+# must replace this with Developer ID signing + notarization in release CI.
 codesign --force --deep --sign - "$APP" 2>/dev/null || true
 
-echo "✔ Built $APP"
+# Double-clickable guided installer next to the app: clears quarantine on
+# the unsigned build, copies to /Applications and launches — with step
+# feedback. Softens Gatekeeper friction until Developer ID + notarization.
+cat > "$OUT_DIR/安装 Taskly.command" <<'INSTALL'
+#!/bin/bash
+# Taskly 引导安装 / Taskly guided install
+cd "$(dirname "$0")" || exit 1
+echo ""
+echo "  ┌──────────────────────────────────────────┐"
+echo "  │        Taskly 引导安装 / Guided Install   │"
+echo "  └──────────────────────────────────────────┘"
+echo ""
+echo "  [1/4] 解除 macOS 对未签名应用的安全限制…"
+xattr -cr Taskly.app 2>/dev/null
+echo "        完成 ✓"
+echo "  [2/4] 复制 Taskly 到『应用程序』文件夹…"
+rm -rf /Applications/Taskly.app 2>/dev/null
+if cp -R Taskly.app /Applications/ 2>/dev/null; then
+  echo "        完成 ✓"
+else
+  echo "        失败 ✗  （权限不足）"
+  echo ""
+  echo "  请手动把 Taskly.app 拖进『应用程序』文件夹，然后打开"
+  echo "  『终端』执行：  xattr -cr /Applications/Taskly.app"
+  echo ""
+  read -rp "  按回车键关闭…"
+  exit 1
+fi
+echo "  [3/4] 清理安装副本的安全标记…"
+xattr -cr /Applications/Taskly.app 2>/dev/null
+echo "        完成 ✓"
+echo "  [4/4] 启动 Taskly…"
+open /Applications/Taskly.app
+echo ""
+echo "  🎉 安装完成！以后从『应用程序』文件夹或启动台打开 Taskly。"
+echo ""
+sleep 3
+INSTALL
+chmod +x "$OUT_DIR/安装 Taskly.command"
+
+# Bilingual quick guide shipped inside the DMG.
+cat > "$OUT_DIR/使用说明.txt" <<'GUIDE'
+Taskly 快速上手 / Quick Start
+═════════════════════════════
+
+安装方式一（推荐）：
+  双击「安装 Taskly.command」，按提示操作即可——
+  它会自动解除限制、安装到『应用程序』并启动 Taskly。
+
+安装方式二（拖拽）：
+  把 Taskly.app 拖进右边（或旁边）的『Applications』文件夹。
+  如果启动时提示「已损坏」或「无法验证」，请在终端执行一次：
+    xattr -cr /Applications/Taskly.app
+
+数据位置：所有任务保存在 ~/.taskly/tasks.db（可用任意云盘同步）。
+
+Install option 1 (recommended): double-click 安装 Taskly.command —
+  it clears the unsigned-app restriction, installs into /Applications
+  and launches Taskly for you.
+
+Install option 2: drag Taskly.app onto the Applications folder.
+  If macOS reports the app as damaged, run once in Terminal:
+    xattr -cr /Applications/Taskly.app
+
+Data: every task lives in ~/.taskly/tasks.db (sync-friendly).
+GUIDE
+
+echo "✔ Built $APP (v$VERSION)"
 echo "  Launch: open $APP"
 echo "  CLI:    $APP/Contents/MacOS/Taskly list --json"

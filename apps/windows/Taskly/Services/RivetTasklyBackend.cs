@@ -1,4 +1,4 @@
-#if TASKLY_RIVET
+﻿#if TASKLY_RIVET
 using Rivet.Runtime;
 using Taskly.Models;
 using Taskly.RivetGenerated;
@@ -189,6 +189,17 @@ public sealed class RivetTasklyBackend : ITasklyBackend
         var api = await RequireConnectedApiAsync(cancellationToken);
         var snapshot = await api.LoadSnapshotAsync("planned", null, false, cancellationToken);
         return snapshot.Tasks.Select(ToModel).ToArray();
+    }
+
+    public async Task<ModelTask?> GetTaskByIdAsync(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        // Single-task lookup rides the snapshot protocol — no dedicated RPC
+        // needed. "all" + showCompleted covers every possible task state.
+        var api = await RequireConnectedApiAsync(cancellationToken);
+        var snapshot = await api.LoadSnapshotAsync("all", null, true, cancellationToken);
+        return snapshot.Tasks.Select(ToModel).FirstOrDefault(t => t.Id == id);
     }
 
     private async Task<RivetAPI> GetApiAsync(CancellationToken cancellationToken)

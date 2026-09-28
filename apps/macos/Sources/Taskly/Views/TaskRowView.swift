@@ -18,10 +18,20 @@ struct TaskRowView: View {
                 displayContent
             }
         }
+        // Completion transition: strikethrough/color crossfade with the
+        // checkbox pop (parity with the Windows AddDelete/pop pair).
+        .animation(.easeOut(duration: 0.15), value: task.completed)
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color.clear))
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(state.selectedTaskID == task.id
+                    ? state.theme.selection
+                    : Color.clear))
         .contentShape(RoundedRectangle(cornerRadius: 10))
+        .onTapGesture {
+            state.selectedTaskID = task.id
+        }
         .contextMenu { contextMenu }
     }
 
@@ -80,7 +90,7 @@ struct TaskRowView: View {
                         }
                     }
                 }
-                .foregroundStyle(state.theme.secondaryText)
+                .foregroundStyle(dueDateColor)
             }
             if let notes = task.notes, !notes.isEmpty {
                 Text(notes)
@@ -93,12 +103,34 @@ struct TaskRowView: View {
     }
 
     private var displayDate: String {
-        let parser = DateParser()
-        return parser.formatDateOnlyForDisplay(
+        guard let dateOnly = DateParser.extractDateOnly(task.dueDate), !dateOnly.isEmpty else {
+            return ""
+        }
+        // Relative word (今天/明天/昨天) first, mirroring
+        // formatDateOnlyForDisplay's logic.
+        let relative = DateParser().formatDateOnlyForDisplay(
             task.dueDate,
             todayLabel: state.t("navToday"),
             tomorrowLabel: state.t("dateTomorrow"),
             yesterdayLabel: state.t("dateYesterday"))
+        if relative != dateOnly {
+            return relative
+        }
+        // Same-year dates render as "9月30日" / "Sep 30" (short month names);
+        // cross-year falls back to the ISO key.
+        guard let date = strictDate(from: dateOnly) else { return dateOnly }
+        let cal = Calendar.current
+        guard cal.component(.year, from: date) == cal.component(.year, from: Date()) else {
+            return dateOnly
+        }
+        let day = cal.component(.day, from: date)
+        if state.config.language == "zh" {
+            return "\(cal.component(.month, from: date))月\(day)日"
+        }
+        // en: "Sep 27" via a cached locale formatter.
+        let formatter = Self.shortMonthFormatter
+        formatter.locale = Locale(identifier: "en_US")
+        return formatter.string(from: date)
     }
 
     private var checkbox: some View {
@@ -107,18 +139,77 @@ struct TaskRowView: View {
         } label: {
             ZStack {
                 Circle()
+                    .fill(task.completed ? state.theme.tertiaryText : Color.clear)
+                    .frame(width: 18, height: 18)
+                    .animation(.easeOut(duration: 0.15), value: task.completed)
+                Circle()
                     .strokeBorder(
-                        task.completed ? state.theme.accent : state.theme.tertiaryText,
+                        task.completed ? state.theme.tertiaryText : task.listAccentColor,
                         lineWidth: 1.5)
                     .frame(width: 18, height: 18)
                 if task.completed {
                     Image(systemName: "checkmark")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(state.theme.accent)
+                        .foregroundStyle(.white)
+                        // Bounce pops on completion (macOS 14 symbol effect).
+                        .symbolEffect(.bounce, value: task.completed)
                 }
             }
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Due-date semantics (DESIGN-TOKENS)
+
+    /// Meta-line color: overdue incomplete = danger red, due today = accent,
+    /// otherwise (or completed) secondary.
+    private var dueDateColor: Color {
+        if task.completed {
+            return state.theme.secondaryText
+        }
+        guard let day = dueDay else {
+            return state.theme.secondaryText
+        }
+        let today = Calendar.current.startOfDay(for: Date())
+        if day < today { return Palette.danger }
+        if day == today { return state.theme.accent }
+        return state.theme.secondaryText
+    }
+
+    /// Start-of-day of the task's due date, or nil when absent/unparseable.
+    private var dueDay: Date? {
+        guard let dateOnly = DateParser.extractDateOnly(task.dueDate),
+              !dateOnly.isEmpty,
+              let date = strictDate(from: dateOnly)
+        else { return nil }
+        return Calendar.current.startOfDay(for: date)
+    }
+
+    /// "yyyy-MM-dd" parse, cached: this sits on the body evaluation path of
+    /// every row (DateFormatter construction is expensive; AppState keeps the
+    /// same cached-formatter precedent). MainActor-confined like the view.
+    @MainActor private static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    @MainActor private static let shortMonthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.dateFormat = "MMM d"
+        return formatter
+    }()
+
+    private func setDue(_ date: Date?) {
+        var updated = task
+        updated.dueDate = date.map { DateParser.string(from: $0, format: "yyyy-MM-dd") }
+        state.saveTask(updated)
+    }
+
+    private func strictDate(from dateOnly: String) -> Date? {
+        Self.dayFormatter.date(from: dateOnly)
     }
 
     // MARK: - Edit mode
@@ -267,6 +358,23 @@ struct TaskRowView: View {
         Button(state.t("menuToggleCompleted")) {
             state.toggleCompleted(task)
         }
+
+        // Date quick actions: reschedule in one click.
+        Button(state.t("navToday")) {
+            setDue(Date())
+        }
+        Button(state.t("dateTomorrow")) {
+            setDue(Calendar.current.date(byAdding: .day, value: 1, to: Date()))
+        }
+        Button(state.t("dialogClear")) {
+            var cleared = task
+            cleared.dueDate = nil
+            cleared.dueTime = nil
+            state.saveTask(cleared)
+        }
+
+        Divider()
+
         Button(state.t("taskDelete"), role: .destructive) {
             state.deleteTask(task)
         }

@@ -69,21 +69,35 @@
 
 | Token | Value |
 |---|---|
-| window default | 1024×768 (min 760×520) |
+| window default | 1280×880 (min 760×520 logical) |
+| sidebar collapse | toggle sets the column width to 0 (releasing MinWidth) — a fixed MinWidth must not clamp the collapsed state |
 | sidebar width | 280 (200…420) |
 | menu bar / status bar height | 32 / 28 |
-| smart view tile | 2×2 grid of 68×tile-height color fills (radius 12): white glyph top-left (16px), bold white count top-right (16px), semibold white label bottom-left (14px) |
-| list row | card: surface fill + 1px divider border, radius 8, padding 10,8; 32px round color dot with the emoji inside (17px), name 13px, gray count right |
+| smart-list chip | 2×2 grid of 34px chips (radius 8, 8px gaps): neutral surface fill + 1px divider, horizontal content = colored glyph (14px, view semantic color) + 13px label + quiet 12px count right; checked = quiet selection fill (VSM), hover = hover fill; saturated color never fills the chip — color lives on the glyph (macOS Reminders language) |
+| list row | card: surface fill + 1px divider border, radius 8, padding 8,5; 20px round color dot with the emoji inside (11px), name 13px, gray count right — compact, aligned with the sidebar icon column |
 | list icon size | 32 (round) |
-| checkbox size | 18–22 (round) |
+| checkbox size | 20px ring in the task's list color (accent fallback); completed = list-color fill with a white check |
+| task row | 44px min height, padding 16,9; text 14px; meta 12px with the owning list name (list-colored dot + name) shown in multi-list views; info button at 45% opacity, full on row hover |
 | corner radius (rows/cards) | 8 / 10 / 12 |
 | content padding | 16, 8; sidebar item 12, 10 |
 | task text | 14px; list name 13px |
+| view header | large title 22px semibold (view name) + 13px secondary subtitle line beneath (today view → full weekday date, calendar → month with task count, list/all → N open tasks); the show-completed toggle stays top-right |
+| due-date semantics | due dates render localized (今天/明天/昨天/8月31日); overdue incomplete → `#FF3B30`, due today → accent, otherwise text/secondary; a leading clock glyph only when a time is set |
+| input fields | search 30px, quick add 36px, radius 10, 1px input-border |
 | font stack | system UI font of the platform (`-apple-system` / Segoe UI / GNOME default), CJK fallback PingFang SC / Microsoft YaHei / Noto Sans CJK SC |
 
 Tile glyphs are monochrome platform icon fonts (Windows: Segoe Fluent Icons;
 macOS: SF Symbols; Linux: symbolic icons), not emoji — mixed emoji/text runs
 render fallback debris on some stacks.
+
+## Task detail dialog (immersive editor, Things-style)
+
+480px wide, radius 12. No dialog title — the task text *is* the title:
+18px semibold borderless multiline input. Notes: 13px borderless multiline
+with tertiary placeholder. Date and time render as rounded chips (accent
+border when set, hollow "Add" chips when empty). Bottom row: Delete as a
+red text button on the left, spacer, Cancel as plain text, Save as an
+accent-filled white-text rounded button. No chrome field borders anywhere.
 
 ## App icon
 

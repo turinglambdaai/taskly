@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Taskly.Models;
 
@@ -14,6 +14,18 @@ public static class UiTheme
         ? Windows.UI.Color.FromArgb(0xFF, 0x0A, 0x84, 0xFF)
         : Windows.UI.Color.FromArgb(0xFF, 0x00, 0x7A, 0xFF);
 
+    public static Windows.UI.Color SelectionColor => IsDark
+        ? Windows.UI.Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF)
+        : Windows.UI.Color.FromArgb(0x14, 0x00, 0x00, 0x00);
+
+    public static Windows.UI.Color SurfaceColor => IsDark
+        ? Windows.UI.Color.FromArgb(0xFF, 0x32, 0x32, 0x34)
+        : Windows.UI.Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF);
+
+    public static Windows.UI.Color Secondary => IsDark
+        ? Windows.UI.Color.FromArgb(0xFF, 0x98, 0x98, 0x9E)
+        : Windows.UI.Color.FromArgb(0xFF, 0x8E, 0x8E, 0x93);
+
     public static Windows.UI.Color Tertiary => IsDark
         ? Windows.UI.Color.FromArgb(0xFF, 0x6B, 0x6B, 0x72)
         : Windows.UI.Color.FromArgb(0xFF, 0xB0, 0xB0, 0xB5);
@@ -21,10 +33,16 @@ public static class UiTheme
     public static Windows.UI.Color OnSurface => IsDark
         ? Windows.UI.Color.FromArgb(0xFF, 0xF5, 0xF5, 0xF7)
         : Windows.UI.Color.FromArgb(0xFF, 0x1D, 0x1D, 0x1F);
+
+    public static Microsoft.UI.Xaml.Media.SolidColorBrush BrushOf(Windows.UI.Color color) =>
+        new(color);
+
+    public static Windows.UI.Color WithAlpha(Windows.UI.Color color, byte alpha) =>
+        Windows.UI.Color.FromArgb(alpha, color.R, color.G, color.B);
 }
 
 /// <summary>Task model; mirrors the tasks table (DATA-FORMAT.md, schema v4).</summary>
-public sealed class TaskItem : ObservableObject
+public sealed partial class TaskItem : ObservableObject
 {
     private int _id;
     private int _listId;
@@ -94,11 +112,34 @@ public sealed class TaskItem : ObservableObject
         set => SetProperty(ref _listName, value);
     }
 
+    /// <summary>Join artifact (lists.color, signed ARGB); never persisted.
+    /// Drives the checkbox ring color (Reminders-style list identity).</summary>
+    [ObservableProperty]
+    private int? _listColor;
+
+    /// <summary>Inline row edit mode (double-click), UI-only.</summary>
+    [ObservableProperty]
+    private bool _isEditing;
+
+    partial void OnIsEditingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsEditVisibility));
+        OnPropertyChanged(nameof(IsReadVisibility));
+    }
+
+    public Microsoft.UI.Xaml.Visibility IsEditVisibility => IsEditing
+        ? Microsoft.UI.Xaml.Visibility.Visible
+        : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    public Microsoft.UI.Xaml.Visibility IsReadVisibility => IsEditing
+        ? Microsoft.UI.Xaml.Visibility.Collapsed
+        : Microsoft.UI.Xaml.Visibility.Visible;
+
     public TaskItem() { }
 
     public TaskItem(int id, int listId, string text, string createdAt,
         string? dueDate = null, string? dueTime = null, bool completed = false,
-        string? notes = null, string? listName = null)
+        string? notes = null, string? listName = null, int? listColor = null)
     {
         Id = id;
         ListId = listId;
@@ -109,12 +150,26 @@ public sealed class TaskItem : ObservableObject
         Completed = completed;
         Notes = notes;
         ListName = listName;
+        ListColor = listColor;
     }
 
     // UI projections for the task-row data template (classic {Binding}).
 
-    public Windows.UI.Color RingColor => Completed ? UiTheme.Accent : UiTheme.Tertiary;
-    public Windows.UI.Color RingFill => Completed ? UiTheme.Accent : Microsoft.UI.Colors.Transparent;
+    private Windows.UI.Color ListAccent =>
+        ListColor is null ? UiTheme.Accent : FromArgbInt(ListColor.Value);
+
+    private static Windows.UI.Color FromArgbInt(int argb)
+    {
+        var hex = unchecked((uint)argb);
+        return Windows.UI.Color.FromArgb(
+            (byte)((hex >> 24) & 0xFF),
+            (byte)((hex >> 16) & 0xFF),
+            (byte)((hex >> 8) & 0xFF),
+            (byte)(hex & 0xFF));
+    }
+
+    public Windows.UI.Color RingColor => Completed ? UiTheme.Tertiary : ListAccent;
+    public Windows.UI.Color RingFill => Completed ? UiTheme.Tertiary : Microsoft.UI.Colors.Transparent;
 
     public Microsoft.UI.Xaml.Media.Brush TextBrush =>
         new Microsoft.UI.Xaml.Media.SolidColorBrush(
@@ -124,13 +179,93 @@ public sealed class TaskItem : ObservableObject
         ? Windows.UI.Text.TextDecorations.Strikethrough
         : Windows.UI.Text.TextDecorations.None;
 
-    public string DueText => DueDate is null
-        ? ""
-        : "🗓 " + DueDate + (string.IsNullOrEmpty(DueTime) ? "" : "  🕐 " + DueTime);
+    /// <summary>Localized due display: 今天/明天/昨天 → `9月26日` / `September 26`
+    /// (DESIGN-TOKENS due-date semantics); cross-year falls back to ISO.</summary>
+    public string DueText
+    {
+        get
+        {
+            if (DueDate is null)
+            {
+                return "";
+            }
+
+            var i18n = Services.I18nService.Instance;
+            var dateText = DueDate;
+            if (DateTime.TryParseExact(DueDate, "yyyy-MM-dd",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var date))
+            {
+                var today = DateTime.Now.Date;
+                if (date == today)
+                {
+                    dateText = i18n.T("navToday");
+                }
+                else if (date == today.AddDays(1))
+                {
+                    dateText = i18n.T("dateTomorrow");
+                }
+                else if (date == today.AddDays(-1))
+                {
+                    dateText = i18n.T("dateYesterday");
+                }
+                else if (date.Year == today.Year)
+                {
+                    // Date formatting follows the app language via the
+                    // platform culture (spec §11: i18n carries copy, culture
+                    // carries date/number shapes).
+                    if (i18n.Current == "zh")
+                    {
+                        dateText = $"{date.Month}月{date.Day}日";
+                    }
+                    else
+                    {
+                        var culture = new System.Globalization.CultureInfo("en-US");
+                        dateText = date.ToString("MMM d", culture);
+                    }
+                }
+            }
+
+            return string.IsNullOrEmpty(DueTime) ? dateText : $"{dateText} · {DueTime}";
+        }
+    }
+
+    /// <summary>Meta-line color: overdue incomplete = danger red, due today =
+    /// accent, otherwise secondary (DESIGN-TOKENS due-date semantics).</summary>
+    public Microsoft.UI.Xaml.Media.Brush DueBrush
+    {
+        get
+        {
+            Windows.UI.Color color;
+            if (Completed || DueDate is null)
+            {
+                color = UiTheme.Secondary;
+            }
+            else if (DateTime.TryParseExact(DueDate, "yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var date))
+            {
+                var today = DateTime.Now.Date;
+                color = date < today ? Windows.UI.Color.FromArgb(0xFF, 0xFF, 0x3B, 0x30)
+                    : date == today ? UiTheme.Accent
+                    : UiTheme.Secondary;
+            }
+            else
+            {
+                color = UiTheme.Secondary;
+            }
+
+            return new Microsoft.UI.Xaml.Media.SolidColorBrush(color);
+        }
+    }
 
     public Microsoft.UI.Xaml.Visibility MetaVisibility => DueDate is null
         ? Microsoft.UI.Xaml.Visibility.Collapsed
         : Microsoft.UI.Xaml.Visibility.Visible;
+
+    public Microsoft.UI.Xaml.Visibility CheckVisibility => Completed
+        ? Microsoft.UI.Xaml.Visibility.Visible
+        : Microsoft.UI.Xaml.Visibility.Collapsed;
 
     public string NotesText => Notes ?? "";
 
@@ -154,7 +289,7 @@ public sealed class TaskItem : ObservableObject
 }
 
 /// <summary>Task list; color is a signed ARGB int as stored in the DB.</summary>
-public sealed class TodoList : ObservableObject
+public sealed partial class TodoList : ObservableObject
 {
     public const string DefaultIcon = "📋";
     /// <summary>System blue, ARGB 0xFF007AFF, as a signed 32-bit int.</summary>
@@ -196,6 +331,19 @@ public sealed class TodoList : ObservableObject
         get => _pendingCount;
         set => SetProperty(ref _pendingCount, value);
     }
+
+    /// <summary>Sidebar selection highlight, UI-only (set by the pane from
+    /// the view-model state).</summary>
+    [ObservableProperty]
+    private bool _isSelected;
+
+    partial void OnIsSelectedChanged(bool value) => OnPropertyChanged(nameof(CardBrush));
+
+    /// <summary>Row card fill: quiet selection when active, surface else.
+    /// Static projection because WinUI data templates lack style triggers.</summary>
+    public Microsoft.UI.Xaml.Media.Brush CardBrush =>
+        new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            IsSelected ? UiTheme.SelectionColor : UiTheme.SurfaceColor);
 
     public TodoList(int id, string name, string? icon = null, int? color = null)
     {

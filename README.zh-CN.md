@@ -4,7 +4,7 @@
 
 **English** · [中文](README.zh-CN.md)
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Native CI](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE) [![Native CI](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml)
 
 ## 原生，而非跨平台
 
@@ -62,4 +62,4 @@ cd apps/linux && meson setup build && meson compile -C build && meson test -C bu
 
 ## 许可证
 
-当前公开代码为 Apache-2.0；商业化授权模式确定中，见 [COMMERCIAL-CHECKLIST](COMMERCIAL-CHECKLIST.md)。
+桌面端核心采用 AGPL-3.0 —— 桌面应用开源，可自由使用、分叉与研究。未来的商业化面（iOS/iPadOS 客户端与云同步）以独立项目形式按各自条款发布，见 [COMMERCIAL-CHECKLIST](COMMERCIAL-CHECKLIST.md)。

@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Taskly.Models;
 using Taskly.ViewModels;
@@ -49,15 +49,34 @@ public sealed partial class TaskDetailDialog : ContentDialog
 
     private void ApplyLanguage()
     {
-        Title = _vm.T("dialogTaskDetail");
+        // The task text is the title — no dialog caption (immersive editor).
         PrimaryButtonText = _vm.T("dialogSave");
         CloseButtonText = _vm.T("dialogCancel");
-        TaskLabel.Text = _vm.T("labelTask");
-        NotesLabel.Text = _vm.T("labelNotes");
-        DateLabel.Text = _vm.T("labelDate");
-        TimeLabel.Text = _vm.T("labelTime");
+        NotesBox.PlaceholderText = _vm.T("hintAddNotes");
         ClearDateButton.Content = _vm.T("dialogClear");
         ClearTimeButton.Content = _vm.T("dialogClear");
+        DeleteButton.Content = _vm.T("taskDelete");
+    }
+
+    /// <summary>Delete (spec §6: confirm first), then close the editor.</summary>
+    private async void OnDeleteClicked(object sender, RoutedEventArgs e)
+    {
+        var confirm = new ContentDialog
+        {
+            Title = _vm.T("taskDeleteConfirm"),
+            Content = _vm.T("taskDeleteConfirmContent"),
+            PrimaryButtonText = _vm.T("taskDelete"),
+            CloseButtonText = _vm.T("dialogCancel"),
+            XamlRoot = XamlRoot,
+        };
+        var result = await confirm.ShowAsync();
+        if (result != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        await _vm.DeleteTaskAsync(_original);
+        Hide();
     }
 
     private bool _syncing;

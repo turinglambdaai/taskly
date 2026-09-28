@@ -1,8 +1,9 @@
 import Foundation
+import SwiftUI
 
 /// A single task. Mirrors the `tasks` table in DATA-FORMAT.md (schema v4).
 /// `dueDate` is "yyyy-MM-dd", `dueTime` is "HH:mm", `createdAt` is ISO-8601.
-/// `listName` is a join artifact (never persisted).
+/// `listName` and `listColor` are join artifacts (never persisted).
 public struct TaskItem: Identifiable, Hashable, Codable, Sendable {
     public var id: Int
     public var listId: Int
@@ -13,6 +14,9 @@ public struct TaskItem: Identifiable, Hashable, Codable, Sendable {
     public var completed: Bool
     public var notes: String?
     public var listName: String?
+    /// Join artifact (`lists.color`, signed ARGB int); never persisted.
+    /// Drives the checkbox ring color (Reminders-style list identity).
+    public var listColor: Int?
 
     public init(
         id: Int,
@@ -23,7 +27,8 @@ public struct TaskItem: Identifiable, Hashable, Codable, Sendable {
         dueTime: String? = nil,
         completed: Bool = false,
         notes: String? = nil,
-        listName: String? = nil
+        listName: String? = nil,
+        listColor: Int? = nil
     ) {
         self.id = id
         self.listId = listId
@@ -34,6 +39,13 @@ public struct TaskItem: Identifiable, Hashable, Codable, Sendable {
         self.completed = completed
         self.notes = notes
         self.listName = listName
+        self.listColor = listColor
+    }
+
+    /// Checkbox ring accent: the owning list's color; accent blue when the
+    /// list has none (DESIGN-TOKENS checkbox semantics).
+    public var listAccentColor: Color {
+        listColor == nil ? Palette.today : Color(argb: listColor)
     }
 
     /// JSON representation used by the CLI (--json). Field names are a stable

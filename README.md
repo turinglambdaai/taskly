@@ -5,7 +5,7 @@ implemented natively per platform.
 
 **English** · [中文](README.zh-CN.md)
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Native CI](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE) [![Native CI](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml)
 
 ## Native, not cross-platform
 
@@ -78,5 +78,7 @@ cd apps/linux && meson setup build && meson compile -C build && meson test -C bu
 
 ## License
 
-Apache-2.0 for the current public code; the commercial licensing model is
-being decided — see [COMMERCIAL-CHECKLIST](COMMERCIAL-CHECKLIST.md).
+AGPL-3.0 for the desktop core — the desktop app is open source and free to
+use, fork, and study. Future commercial surfaces (the iOS/iPadOS client and
+cloud sync) ship as separate projects under their own terms; see
+[COMMERCIAL-CHECKLIST](COMMERCIAL-CHECKLIST.md).

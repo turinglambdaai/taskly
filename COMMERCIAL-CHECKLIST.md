@@ -9,10 +9,11 @@ going commercial; pricing/licensing decisions are the business half.
 - [ ] Decide distribution model per platform before 1.0 (Mac App Store vs
       direct + Paddle/FastSpring keys; Microsoft Store MSIX vs direct exe;
       Flatpak on Flathub). The DB/CLI contract stays identical either way.
-- [ ] Replace the repo-level Apache-2.0 LICENSE with the chosen proprietary
-      license (or keep the repo source-available private). Decide BEFORE the
-      first public native release — existing public git history stays
-      Apache-2.0 for the code already published.
+- [x] License model decided: the desktop core stays open source under
+      AGPL-3.0 — free to use and fork, copyleft blocks closed-source forks.
+      Commercial surfaces (the iOS/iPadOS client and the sync service) live
+      in separate private repos under their own terms. Already-published
+      history stays under the license it was released under.
 - [ ] EULA + privacy policy: the app is fully offline/local-first — say so.
       No telemetry in v1 (crash reporting opt-in only, see §4).
 - [ ] Trademark search on "Taskly" in target markets before paid ads.
