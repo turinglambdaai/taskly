@@ -69,7 +69,7 @@ jobs:
       # appdmg writes the .DS_Store binary directly (no Finder/AppleScript),
       # producing a decorated DMG (background + /Applications link) in headless CI.
       - name: Setup Node for appdmg
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
 
