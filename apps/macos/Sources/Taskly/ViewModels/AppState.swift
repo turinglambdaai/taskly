@@ -142,9 +142,7 @@ public final class AppState {
 
     /// True when macOS is currently in Dark Mode (main-thread read).
     static var systemAppearanceIsDark: Bool {
-        NSApp.effectiveAppearance.bestMatch(
-            from: ["NSAppearanceNameAqua", "NSAppearanceNameDarkAqua"])
-            == "NSAppearanceNameDarkAqua"
+        NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
     }
 
     /// Transient status message; reverts to persistent after 3 s.

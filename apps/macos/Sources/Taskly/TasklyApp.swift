@@ -10,9 +10,7 @@ struct TasklyApp: App {
 
     private func observeSystemAppearance() {
         appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { app, _ in
-            let dark = app.effectiveAppearance.bestMatch(
-                from: ["NSAppearanceNameAqua", "NSAppearanceNameDarkAqua"])
-                == "NSAppearanceNameDarkAqua"
+            let dark = app.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
             Task { @MainActor in
                 appState.theme.isDark = dark
                 appState.refresh()
