@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # Build Taskly.app from the Swift package.
 # Usage: scripts/make-app.sh [--universal] [output-dir]
 set -euo pipefail
@@ -104,25 +104,72 @@ vtool -set-build-version macos 14.0 14.0 "$MACOS/Taskly" 2>/dev/null || true
 # must replace this with Developer ID signing + notarization in release CI.
 codesign --force --deep --sign - "$APP" 2>/dev/null || true
 
-# Double-clickable installer next to the app: clears quarantine on the
-# unsigned build and copies it to /Applications. Softens Gatekeeper friction
-# until Developer ID + notarization land.
+# Double-clickable guided installer next to the app: clears quarantine on
+# the unsigned build, copies to /Applications and launches — with step
+# feedback. Softens Gatekeeper friction until Developer ID + notarization.
 cat > "$OUT_DIR/安装 Taskly.command" <<'INSTALL'
 #!/bin/bash
-cd "$(dirname "$0")"
+# Taskly 引导安装 / Taskly guided install
+cd "$(dirname "$0")" || exit 1
+echo ""
+echo "  ┌──────────────────────────────────────────┐"
+echo "  │        Taskly 引导安装 / Guided Install   │"
+echo "  └──────────────────────────────────────────┘"
+echo ""
+echo "  [1/4] 解除 macOS 对未签名应用的安全限制…"
 xattr -cr Taskly.app 2>/dev/null
+echo "        完成 ✓"
+echo "  [2/4] 复制 Taskly 到『应用程序』文件夹…"
 rm -rf /Applications/Taskly.app 2>/dev/null
-cp -R Taskly.app /Applications/ 2>/dev/null
-if [ -d /Applications/Taskly.app ]; then
-  osascript -e 'display notification "已安装到应用程序文件夹" with title "Taskly"'
-  open /Applications/Taskly.app
+if cp -R Taskly.app /Applications/ 2>/dev/null; then
+  echo "        完成 ✓"
 else
-  echo "自动安装失败。请手动把 Taskly.app 拖进『应用程序』文件夹，"
-  echo "然后在终端运行:  xattr -cr /Applications/Taskly.app"
-  read -rp "按回车键关闭…"
+  echo "        失败 ✗  （权限不足）"
+  echo ""
+  echo "  请手动把 Taskly.app 拖进『应用程序』文件夹，然后打开"
+  echo "  『终端』执行：  xattr -cr /Applications/Taskly.app"
+  echo ""
+  read -rp "  按回车键关闭…"
+  exit 1
 fi
+echo "  [3/4] 清理安装副本的安全标记…"
+xattr -cr /Applications/Taskly.app 2>/dev/null
+echo "        完成 ✓"
+echo "  [4/4] 启动 Taskly…"
+open /Applications/Taskly.app
+echo ""
+echo "  🎉 安装完成！以后从『应用程序』文件夹或启动台打开 Taskly。"
+echo ""
+sleep 3
 INSTALL
 chmod +x "$OUT_DIR/安装 Taskly.command"
+
+# Bilingual quick guide shipped inside the DMG.
+cat > "$OUT_DIR/使用说明.txt" <<'GUIDE'
+Taskly 快速上手 / Quick Start
+═════════════════════════════
+
+安装方式一（推荐）：
+  双击「安装 Taskly.command」，按提示操作即可——
+  它会自动解除限制、安装到『应用程序』并启动 Taskly。
+
+安装方式二（拖拽）：
+  把 Taskly.app 拖进右边（或旁边）的『Applications』文件夹。
+  如果启动时提示「已损坏」或「无法验证」，请在终端执行一次：
+    xattr -cr /Applications/Taskly.app
+
+数据位置：所有任务保存在 ~/.taskly/tasks.db（可用任意云盘同步）。
+
+Install option 1 (recommended): double-click 安装 Taskly.command —
+  it clears the unsigned-app restriction, installs into /Applications
+  and launches Taskly for you.
+
+Install option 2: drag Taskly.app onto the Applications folder.
+  If macOS reports the app as damaged, run once in Terminal:
+    xattr -cr /Applications/Taskly.app
+
+Data: every task lives in ~/.taskly/tasks.db (sync-friendly).
+GUIDE
 
 echo "✔ Built $APP (v$VERSION)"
 echo "  Launch: open $APP"
