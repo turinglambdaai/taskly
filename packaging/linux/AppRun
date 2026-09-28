@@ -1,5 +1,0 @@
-#!/bin/bash
-# AppImage 启动入口：运行 self-contained 的 Taskly 可执行文件
-SELF="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
-HERE="$(dirname "$SELF")"
-exec "$HERE/usr/bin/Taskly" "$@"

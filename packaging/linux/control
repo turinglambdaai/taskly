@@ -1,8 +1,0 @@
-Package: taskly
-Version: @VERSION@
-Architecture: amd64
-Maintainer: Taskly Team
-Depends: libx11-6, libice6, libsm6, libfontconfig1, libc6, libgcc-s1, libstdc++6, zlib1g, ca-certificates
-Description: Cross-platform task manager for humans and AI agents
- Taskly provides a clean GUI (inspired by macOS Reminders) plus a CLI
- interface designed for AI agents. Built with Avalonia and .NET.
