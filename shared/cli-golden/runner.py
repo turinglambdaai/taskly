@@ -38,12 +38,16 @@ ISO_TS = re.compile(
     r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})")
 
 
-def normalize(text: str) -> str:
+def normalize(text: str, dynamic_dates: bool) -> str:
     tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
     today = datetime.date.today().isoformat()
     text = ISO_TS.sub("{{now}}", text)
-    text = text.replace(tomorrow, "{{tomorrow}}")
-    text = text.replace(today, "{{today}}")
+    # {{today}}/{{tomorrow}} only for cases that use relative --due
+    # expressions — a static yyyy-MM-dd fixture date must never be
+    # rewritten just because the calendar caught up with it.
+    if dynamic_dates:
+        text = text.replace(tomorrow, "{{tomorrow}}")
+        text = text.replace(today, "{{today}}")
     # Detail after the path in "Cannot open database:" is OS-specific
     # (Cocoa / Win32 / errno strings); CLI-SPEC pins only the prefix.
     # Not line-anchored: the message sits inside a JSON string on stderr.
@@ -78,9 +82,10 @@ def run_case(binary: str, case: dict, work_dir: Path, seed_sqls: dict) -> dict:
                 f"pre command {pre_argv} failed ({pre.returncode}): {pre.stderr.strip()}")
 
     result = invoke(case["args"])
+    dyn = bool(case.get("dynamicDates"))
     return {
-        "out": normalize(result.stdout),
-        "err": normalize(result.stderr),
+        "out": normalize(result.stdout, dyn),
+        "err": normalize(result.stderr, dyn),
         "exit": str(result.returncode),
     }
 

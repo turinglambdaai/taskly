@@ -147,10 +147,13 @@ bytes live in `golden/<case>.{out,err,exit}`.
 
 Comparison normalizes dynamic values in actual output first:
 
-- ISO-8601 local timestamps → `{{now}}`
-- today / tomorrow (`yyyy-MM-dd`) → `{{today}}` / `{{tomorrow}}`
-- the OS-specific detail after `Cannot open database: <path>` is dropped —
-  the contract pins the message prefix and exit code only
+- ISO-8601 local timestamps → `{{now}}`; the OS-specific detail after
+  `Cannot open database: <path>` is dropped — the contract pins the
+  message prefix and exit code only
+- today / tomorrow (`yyyy-MM-dd`) → `{{today}}` / `{{tomorrow}}`, but
+  **only** for cases flagged `"dynamicDates": true` (those using relative
+  `--due` expressions) — a static fixture date must never be rewritten
+  when the calendar catches up with it
 
 Each platform wraps the shared `runner.py` with its own binary path;
 macOS: `apps/macos/scripts/golden-cli.sh` (wired into `native.yml`).

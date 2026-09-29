@@ -1,88 +1,603 @@
 {
   "cases": [
-    { "name": "list-default", "args": ["list", "--json"] },
-    { "name": "list-by-id", "args": ["list", "--json", "--list", "1"] },
-    { "name": "list-by-name", "args": ["list", "--json", "--list", "工作"] },
-    { "name": "list-by-name-miss", "args": ["list", "--json", "--list", "NoSuch"] },
-    { "name": "list-view-today",
-      "pre": [["add", "今天的事", "--due", "today", "--json"]],
-      "args": ["list", "--json", "--view", "today"] },
-    { "name": "list-view-planned",
-      "pre": [["add", "今天的事", "--due", "today", "--json"],
-              ["add", "明天的事", "--due", "tomorrow", "--json"]],
-      "args": ["list", "--json", "--view", "planned"] },
-    { "name": "list-view-scheduled-alias",
-      "pre": [["add", "今天的事", "--due", "today", "--json"]],
-      "args": ["list", "--json", "--view", "SCHEDULED"] },
-    { "name": "list-view-all",
-      "pre": [["add", "今天的事", "--due", "today", "--json"]],
-      "args": ["list", "--json", "--view", "all"] },
-    { "name": "list-view-completed", "args": ["list", "--json", "--view", "completed"] },
-    { "name": "list-view-bogus", "args": ["list", "--json", "--view", "bogus"] },
-    { "name": "list-status-completed", "args": ["list", "--json", "--status", "completed"] },
-    { "name": "list-limit-1", "args": ["list", "--json", "--limit", "1"] },
-    { "name": "list-human", "args": ["list"] },
-    { "name": "search-human-empty", "args": ["search", "ZZZ"] },
-
-    { "name": "lists-json", "args": ["lists", "--json"] },
-    { "name": "lists-human", "args": ["lists"] },
-
-    { "name": "add-minimal", "args": ["add", "新的金色任务", "--json"] },
-    { "name": "add-pure-date", "args": ["add", "纯日期任务", "--due", "2026-10-01", "--json"] },
-    { "name": "add-date-plus-time", "args": ["add", "带时间任务", "--due", "2026-10-01", "--time", "09:05", "--json"] },
-    { "name": "add-time-override",
-      "args": ["add", "时间覆盖", "--due", "@9am tomorrow", "--time", "23:45", "--json"] },
-    { "name": "add-at-tomorrow", "args": ["add", "明早任务", "--due", "@9am tomorrow", "--json"] },
-    { "name": "add-notes-list-id", "args": ["add", "清单二任务", "--list", "2", "--notes", "备注内容", "--json"] },
-    { "name": "add-list-name", "args": ["add", "清单名任务", "--list", "Personal", "--json"] },
-    { "name": "add-list-miss", "args": ["add", "某任务", "--list", "NoSuch", "--json"] },
-    { "name": "add-empty-text", "args": ["add", "", "--json"] },
-    { "name": "add-bad-due", "args": ["add", "某任务", "--due", "明天", "--json"] },
-    { "name": "add-quiet", "args": ["add", "静默任务", "--quiet"] },
-    { "name": "add-no-lists", "seed": "seed-empty.sql", "args": ["add", "孤儿任务", "--json"] },
-
-    { "name": "update-text", "args": ["update", "2", "--text", "周报加急", "--json"] },
-    { "name": "update-due-keeps-time", "args": ["update", "1", "--due", "2026-10-02", "--json"] },
-    { "name": "update-due-with-time", "args": ["update", "1", "--due", "@8am tomorrow", "--json"] },
-    { "name": "update-clear-due", "args": ["update", "1", "--clear-due", "--json"] },
-    { "name": "update-list-move", "args": ["update", "2", "--list", "2", "--json"] },
-    { "name": "update-notes-clear", "args": ["update", "4", "--clear-notes", "--json"] },
-    { "name": "update-unknown", "args": ["update", "999", "--text", "x", "--json"] },
-    { "name": "update-bad-due", "args": ["update", "1", "--due", "罢工", "--json"] },
-
-    { "name": "done-json", "args": ["done", "1", "--json"] },
-    { "name": "done-already-done", "args": ["done", "3", "--json"] },
-    { "name": "done-quiet", "args": ["done", "2", "--json", "--quiet"] },
-    { "name": "done-unknown", "args": ["done", "999", "--json"] },
-    { "name": "undone-json", "args": ["undone", "3", "--json"] },
-
-    { "name": "rm-json", "args": ["rm", "2", "--json"] },
-    { "name": "rm-again",
-      "pre": [["rm", "2", "--json"]],
-      "args": ["rm", "2", "--json"] },
-    { "name": "rm-human", "args": ["rm", "2"] },
-    { "name": "rm-unknown", "args": ["rm", "999", "--json"] },
-
-    { "name": "rmlist-json", "args": ["rmlist", "2", "--json"] },
-    { "name": "rmlist-then-list-miss",
-      "pre": [["rmlist", "2", "--json"]],
-      "args": ["list", "--json", "--list", "Personal"] },
-    { "name": "rmlist-missing", "args": ["rmlist", "999", "--json"] },
-    { "name": "rmlist-human", "args": ["rmlist", "2"] },
-
-    { "name": "search-hit-cjk", "args": ["search", "买", "--json"] },
-    { "name": "search-hit-ascii", "args": ["search", "demo", "--json"] },
-    { "name": "search-miss", "args": ["search", "ZZZ", "--json"] },
-    { "name": "search-completed-included", "args": ["search", "历史", "--json"] },
-
-    { "name": "mklist-full", "args": ["mklist", "测试清单", "--icon", "🎯", "--color", "#FF0000", "--json"] },
-    { "name": "mklist-defaults", "args": ["mklist", "默认清单", "--json"] },
-    { "name": "mklist-int-color", "args": ["mklist", "整数色", "--color", "12345", "--json"] },
-    { "name": "mklist-bad-color", "args": ["mklist", "坏色", "--color", "#GGG", "--json"] },
-    { "name": "mklist-empty-name", "args": ["mklist", "", "--json"] },
-
-    { "name": "unknown-command", "args": ["badcmd", "--json"] },
-    { "name": "help", "args": ["--help"] },
-    { "name": "db-unopenable", "args": ["list", "--json", "--db", "/nonexistent-dir-for-golden/x.db"] }
+    {
+      "name": "list-default",
+      "args": [
+        "list",
+        "--json"
+      ]
+    },
+    {
+      "name": "list-by-id",
+      "args": [
+        "list",
+        "--json",
+        "--list",
+        "1"
+      ]
+    },
+    {
+      "name": "list-by-name",
+      "args": [
+        "list",
+        "--json",
+        "--list",
+        "工作"
+      ]
+    },
+    {
+      "name": "list-by-name-miss",
+      "args": [
+        "list",
+        "--json",
+        "--list",
+        "NoSuch"
+      ]
+    },
+    {
+      "name": "list-view-today",
+      "pre": [
+        [
+          "add",
+          "今天的事",
+          "--due",
+          "today",
+          "--json"
+        ]
+      ],
+      "args": [
+        "list",
+        "--json",
+        "--view",
+        "today"
+      ],
+      "dynamicDates": true
+    },
+    {
+      "name": "list-view-planned",
+      "pre": [
+        [
+          "add",
+          "今天的事",
+          "--due",
+          "today",
+          "--json"
+        ],
+        [
+          "add",
+          "明天的事",
+          "--due",
+          "tomorrow",
+          "--json"
+        ]
+      ],
+      "args": [
+        "list",
+        "--json",
+        "--view",
+        "planned"
+      ],
+      "dynamicDates": true
+    },
+    {
+      "name": "list-view-scheduled-alias",
+      "pre": [
+        [
+          "add",
+          "今天的事",
+          "--due",
+          "today",
+          "--json"
+        ]
+      ],
+      "args": [
+        "list",
+        "--json",
+        "--view",
+        "SCHEDULED"
+      ],
+      "dynamicDates": true
+    },
+    {
+      "name": "list-view-all",
+      "pre": [
+        [
+          "add",
+          "今天的事",
+          "--due",
+          "today",
+          "--json"
+        ]
+      ],
+      "args": [
+        "list",
+        "--json",
+        "--view",
+        "all"
+      ],
+      "dynamicDates": true
+    },
+    {
+      "name": "list-view-completed",
+      "args": [
+        "list",
+        "--json",
+        "--view",
+        "completed"
+      ]
+    },
+    {
+      "name": "list-view-bogus",
+      "args": [
+        "list",
+        "--json",
+        "--view",
+        "bogus"
+      ]
+    },
+    {
+      "name": "list-status-completed",
+      "args": [
+        "list",
+        "--json",
+        "--status",
+        "completed"
+      ]
+    },
+    {
+      "name": "list-limit-1",
+      "args": [
+        "list",
+        "--json",
+        "--limit",
+        "1"
+      ]
+    },
+    {
+      "name": "list-human",
+      "args": [
+        "list"
+      ]
+    },
+    {
+      "name": "search-human-empty",
+      "args": [
+        "search",
+        "ZZZ"
+      ]
+    },
+    {
+      "name": "lists-json",
+      "args": [
+        "lists",
+        "--json"
+      ]
+    },
+    {
+      "name": "lists-human",
+      "args": [
+        "lists"
+      ]
+    },
+    {
+      "name": "add-minimal",
+      "args": [
+        "add",
+        "新的金色任务",
+        "--json"
+      ]
+    },
+    {
+      "name": "add-pure-date",
+      "args": [
+        "add",
+        "纯日期任务",
+        "--due",
+        "2026-10-01",
+        "--json"
+      ]
+    },
+    {
+      "name": "add-date-plus-time",
+      "args": [
+        "add",
+        "带时间任务",
+        "--due",
+        "2026-10-01",
+        "--time",
+        "09:05",
+        "--json"
+      ]
+    },
+    {
+      "name": "add-time-override",
+      "args": [
+        "add",
+        "时间覆盖",
+        "--due",
+        "@9am tomorrow",
+        "--time",
+        "23:45",
+        "--json"
+      ],
+      "dynamicDates": true
+    },
+    {
+      "name": "add-at-tomorrow",
+      "args": [
+        "add",
+        "明早任务",
+        "--due",
+        "@9am tomorrow",
+        "--json"
+      ],
+      "dynamicDates": true
+    },
+    {
+      "name": "add-notes-list-id",
+      "args": [
+        "add",
+        "清单二任务",
+        "--list",
+        "2",
+        "--notes",
+        "备注内容",
+        "--json"
+      ]
+    },
+    {
+      "name": "add-list-name",
+      "args": [
+        "add",
+        "清单名任务",
+        "--list",
+        "Personal",
+        "--json"
+      ]
+    },
+    {
+      "name": "add-list-miss",
+      "args": [
+        "add",
+        "某任务",
+        "--list",
+        "NoSuch",
+        "--json"
+      ]
+    },
+    {
+      "name": "add-empty-text",
+      "args": [
+        "add",
+        "",
+        "--json"
+      ]
+    },
+    {
+      "name": "add-bad-due",
+      "args": [
+        "add",
+        "某任务",
+        "--due",
+        "明天",
+        "--json"
+      ]
+    },
+    {
+      "name": "add-quiet",
+      "args": [
+        "add",
+        "静默任务",
+        "--quiet"
+      ]
+    },
+    {
+      "name": "add-no-lists",
+      "seed": "seed-empty.sql",
+      "args": [
+        "add",
+        "孤儿任务",
+        "--json"
+      ]
+    },
+    {
+      "name": "update-text",
+      "args": [
+        "update",
+        "2",
+        "--text",
+        "周报加急",
+        "--json"
+      ]
+    },
+    {
+      "name": "update-due-keeps-time",
+      "args": [
+        "update",
+        "1",
+        "--due",
+        "2026-10-02",
+        "--json"
+      ]
+    },
+    {
+      "name": "update-due-with-time",
+      "args": [
+        "update",
+        "1",
+        "--due",
+        "@8am tomorrow",
+        "--json"
+      ],
+      "dynamicDates": true
+    },
+    {
+      "name": "update-clear-due",
+      "args": [
+        "update",
+        "1",
+        "--clear-due",
+        "--json"
+      ]
+    },
+    {
+      "name": "update-list-move",
+      "args": [
+        "update",
+        "2",
+        "--list",
+        "2",
+        "--json"
+      ]
+    },
+    {
+      "name": "update-notes-clear",
+      "args": [
+        "update",
+        "4",
+        "--clear-notes",
+        "--json"
+      ]
+    },
+    {
+      "name": "update-unknown",
+      "args": [
+        "update",
+        "999",
+        "--text",
+        "x",
+        "--json"
+      ]
+    },
+    {
+      "name": "update-bad-due",
+      "args": [
+        "update",
+        "1",
+        "--due",
+        "罢工",
+        "--json"
+      ]
+    },
+    {
+      "name": "done-json",
+      "args": [
+        "done",
+        "1",
+        "--json"
+      ]
+    },
+    {
+      "name": "done-already-done",
+      "args": [
+        "done",
+        "3",
+        "--json"
+      ]
+    },
+    {
+      "name": "done-quiet",
+      "args": [
+        "done",
+        "2",
+        "--json",
+        "--quiet"
+      ]
+    },
+    {
+      "name": "done-unknown",
+      "args": [
+        "done",
+        "999",
+        "--json"
+      ]
+    },
+    {
+      "name": "undone-json",
+      "args": [
+        "undone",
+        "3",
+        "--json"
+      ]
+    },
+    {
+      "name": "rm-json",
+      "args": [
+        "rm",
+        "2",
+        "--json"
+      ]
+    },
+    {
+      "name": "rm-again",
+      "pre": [
+        [
+          "rm",
+          "2",
+          "--json"
+        ]
+      ],
+      "args": [
+        "rm",
+        "2",
+        "--json"
+      ]
+    },
+    {
+      "name": "rm-human",
+      "args": [
+        "rm",
+        "2"
+      ]
+    },
+    {
+      "name": "rm-unknown",
+      "args": [
+        "rm",
+        "999",
+        "--json"
+      ]
+    },
+    {
+      "name": "rmlist-json",
+      "args": [
+        "rmlist",
+        "2",
+        "--json"
+      ]
+    },
+    {
+      "name": "rmlist-then-list-miss",
+      "pre": [
+        [
+          "rmlist",
+          "2",
+          "--json"
+        ]
+      ],
+      "args": [
+        "list",
+        "--json",
+        "--list",
+        "Personal"
+      ]
+    },
+    {
+      "name": "rmlist-missing",
+      "args": [
+        "rmlist",
+        "999",
+        "--json"
+      ]
+    },
+    {
+      "name": "rmlist-human",
+      "args": [
+        "rmlist",
+        "2"
+      ]
+    },
+    {
+      "name": "search-hit-cjk",
+      "args": [
+        "search",
+        "买",
+        "--json"
+      ]
+    },
+    {
+      "name": "search-hit-ascii",
+      "args": [
+        "search",
+        "demo",
+        "--json"
+      ]
+    },
+    {
+      "name": "search-miss",
+      "args": [
+        "search",
+        "ZZZ",
+        "--json"
+      ]
+    },
+    {
+      "name": "search-completed-included",
+      "args": [
+        "search",
+        "历史",
+        "--json"
+      ]
+    },
+    {
+      "name": "mklist-full",
+      "args": [
+        "mklist",
+        "测试清单",
+        "--icon",
+        "🎯",
+        "--color",
+        "#FF0000",
+        "--json"
+      ]
+    },
+    {
+      "name": "mklist-defaults",
+      "args": [
+        "mklist",
+        "默认清单",
+        "--json"
+      ]
+    },
+    {
+      "name": "mklist-int-color",
+      "args": [
+        "mklist",
+        "整数色",
+        "--color",
+        "12345",
+        "--json"
+      ]
+    },
+    {
+      "name": "mklist-bad-color",
+      "args": [
+        "mklist",
+        "坏色",
+        "--color",
+        "#GGG",
+        "--json"
+      ]
+    },
+    {
+      "name": "mklist-empty-name",
+      "args": [
+        "mklist",
+        "",
+        "--json"
+      ]
+    },
+    {
+      "name": "unknown-command",
+      "args": [
+        "badcmd",
+        "--json"
+      ]
+    },
+    {
+      "name": "help",
+      "args": [
+        "--help"
+      ]
+    },
+    {
+      "name": "db-unopenable",
+      "args": [
+        "list",
+        "--json",
+        "--db",
+        "/nonexistent-dir-for-golden/x.db"
+      ]
+    }
   ]
 }
