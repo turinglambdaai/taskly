@@ -379,3 +379,16 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(i18n.t("nonexistent_key_xyz"), "nonexistent_key_xyz")
     }
 }
+
+final class AppStateInitTests: XCTestCase {
+    // Regression: on macOS 26, SwiftUI constructs the App struct before
+    // creating NSApplication, so AppState.init dereferenced the nil NSApp
+    // and every GUI launch trapped with EXC_BREAKPOINT. `swift test` runs
+    // without a host app, so NSApp is equally nil here — this test
+    // reproduces the crash if the getter ever touches bare `NSApp` again.
+    @MainActor
+    func testInitBeforeNSApplicationExists() {
+        let state = AppState()
+        XCTAssertFalse(state.isConnected)
+    }
+}

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Root window: [sidebar | task pane] + status bar.
@@ -24,6 +25,12 @@ struct MainWindowView: View {
         .frame(minWidth: 760, minHeight: 520)
         .onAppear {
             state.openDefaultDatabaseIfNeeded()
+            // The CommandGroup replacements above empty some system-injected
+            // groups but leave their menu shells behind (an empty View menu,
+            // trailing separators). SwiftUI exposes no placement to delete a
+            // menu, so drop all-separator submenus on the AppKit level once
+            // the menu bar is built.
+            DispatchQueue.main.async { Self.pruneEmptyMenus() }
         }
         .sheet(item: Binding(
             get: { state.taskDetailContext },
@@ -57,6 +64,25 @@ struct MainWindowView: View {
             }
         } message: {
             Text(state.confirmContext?.message ?? "")
+        }
+    }
+
+    /// Remove submenus whose items are only separators (system shells left
+    /// empty by CommandGroup replacements) and trailing separators/hidden
+    /// stub items left by replaced groups.
+    @MainActor static func pruneEmptyMenus() {
+        guard let mainMenu = NSApp.mainMenu else { return }
+        for item in mainMenu.items {
+            guard let submenu = item.submenu else { continue }
+            while let last = submenu.items.last,
+                  last.isSeparatorItem || last.isHidden
+                  || (last.title.isEmpty && last.submenu == nil) {
+                submenu.removeItem(last)
+            }
+            let visible = submenu.items.filter { !$0.isHidden }
+            if visible.allSatisfy(\.isSeparatorItem) {
+                mainMenu.removeItem(item)
+            }
         }
     }
 
@@ -95,14 +121,14 @@ struct SidebarView: View {
 
     private var smartTiles: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible())], spacing: 8) {
-            SmartTile(view: .today, icon: "🗓", titleKey: "navToday",
+            SmartChip(view: .today, icon: "calendar", titleKey: "navToday",
                       color: Palette.today, count: state.todayCount)
-            SmartTile(view: .planned, icon: "📅", titleKey: "navPlanned",
+            SmartChip(view: .planned, icon: "calendar.badge.clock", titleKey: "navPlanned",
                       color: Palette.planned, count: state.plannedCount)
-            SmartTile(view: .all, icon: "≡", titleKey: "navAll",
+            SmartChip(view: .all, icon: "tray.full", titleKey: "navAll",
                       color: Palette.all, count: state.allCount)
-            SmartTile(view: .completed, icon: "✓", titleKey: "navCompleted",
-                      color: Palette.completed, count: state.completedCount)
+            SmartChip(view: .completed, icon: "checkmark.circle", titleKey: "navCompleted",
+                      color: Palette.all, count: state.completedCount)
         }
     }
 
@@ -156,9 +182,9 @@ private struct SidebarSearchField: View {
         }
         .padding(.horizontal, 10)
         .frame(height: 30)
-        .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 8))
+        .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 10))
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(state.theme.inputBorder, lineWidth: 1))
         .onChange(of: state.searchFocusToken) { _, _ in
             isFocused = true
@@ -166,14 +192,17 @@ private struct SidebarSearchField: View {
     }
 }
 
-private struct SmartTile: View {
+/// Smart-view chip (DESIGN-TOKENS: 34px neutral chip, radius 8, 8px gaps;
+/// colored 14px SF Symbol glyph + 13px label + quiet 12px count right;
+/// checked = quiet selection fill, hover = hover fill — saturated color
+/// never fills the chip, it lives on the glyph).
+private struct SmartChip: View {
     @Environment(AppState.self) private var state
     let view: SmartView
     let icon: String
     let titleKey: String
     let color: Color
     let count: Int
-    var height: CGFloat = Palette.tileHeight
 
     @State private var isHovering = false
 
@@ -181,52 +210,43 @@ private struct SmartTile: View {
         state.currentView == view
     }
 
-    /// Active tile keeps full saturation; the rest recede to 0.72 and lift
-    /// to 0.88 on hover (DESIGN-TOKENS smart-tile states).
-    private var tileOpacity: Double {
-        isSelected ? 1.0 : (isHovering ? 0.88 : 0.72)
-    }
-
     var body: some View {
         Button {
             state.select(view)
         } label: {
-            ZStack(alignment: .topTrailing) {
-                VStack(alignment: .leading) {
-                    Spacer()
-                    HStack(spacing: 6) {
-                        Text(icon)
-                            .font(.system(size: 15))
-                        Text(state.t(titleKey))
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .foregroundStyle(.white)
-                    .padding(10)
-                    Spacer().frame(height: 0)
-                }
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                    .foregroundStyle(color)
+                Text(state.t(titleKey))
+                    .font(.system(size: 13))
+                    .foregroundStyle(state.theme.onSurface)
+                    .lineLimit(1)
+                    // The label compresses last: Spacer and count yield first.
+                    .layoutPriority(1)
+                Spacer(minLength: 4)
                 if count > 0 {
                     Text("\(count)")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.white.opacity(0.18), in: Capsule())
-                        .padding(8)
+                        .font(.system(size: 12))
+                        .foregroundStyle(state.theme.secondaryText)
                 }
             }
+            .padding(.horizontal, 8)
             .frame(maxWidth: .infinity)
-            .frame(height: height)
-            .background(color, in: RoundedRectangle(cornerRadius: 12))
+            .frame(height: Palette.smartChipHeight)
+            // First background = top layer: the quiet tint composites over
+            // the surface fill; border sits outside both.
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isSelected ? state.theme.selection : (isHovering ? state.theme.hover : .clear)))
+            .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 8))
             .overlay(
-                // 2px white inset ring on the active view's tile.
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(Color.white, lineWidth: 2)
-                    .opacity(isSelected ? 1 : 0))
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(state.theme.divider, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .disabled(!state.isConnected)
-        .opacity(tileOpacity)
-        .animation(.easeOut(duration: 0.12), value: tileOpacity)
+        .animation(.easeOut(duration: 0.12), value: isSelected)
         .onHover { hovering in
             isHovering = hovering
         }
@@ -263,15 +283,22 @@ private struct ListRowView: View {
                     .foregroundStyle(state.theme.secondaryText)
             }
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 8)
         .padding(.vertical, 5)
+        // First background = top layer: selection tint over the surface card.
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(isSelected ? state.theme.selection : Color.clear)
         )
-        .overlay(
+        .background(
             RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(isSelected ? state.theme.accent : state.theme.divider, lineWidth: 1)
+                .fill(state.theme.surface)
+        )
+        .overlay(
+            // Checked = quiet selection fill; the divider border never
+            // changes color (DESIGN-TOKENS list row).
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(state.theme.divider, lineWidth: 1)
         )
         .contentShape(RoundedRectangle(cornerRadius: 8))
         .onTapGesture {

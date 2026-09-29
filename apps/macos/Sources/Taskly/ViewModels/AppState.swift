@@ -104,11 +104,24 @@ public final class AppState {
         }
 
         // Live-follow macOS appearance changes (initial fire sets it too).
-        appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { [weak self] _, _ in
+        // The getter above has created NSApplication.shared by now.
+        appearanceObserver = NSApplication.shared.observe(\.effectiveAppearance, options: [.initial, .new]) { [weak self] _, _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.theme.isDark = Self.systemAppearanceIsDark
                 self.refresh()
+            }
+        }
+
+        // SwiftUI keeps separator stubs for replaced-empty CommandGroups and
+        // re-adds them on menu rebuilds. Prune after each menu closes (the
+        // closed menu itself included) — modifying a tracking menu is unsafe,
+        // so the launch-time onAppear prune covers the first open.
+        NotificationCenter.default.addObserver(
+            forName: NSMenu.didEndTrackingNotification, object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated {
+                MainWindowView.pruneEmptyMenus()
             }
         }
     }
@@ -153,7 +166,11 @@ public final class AppState {
 
     /// True when macOS is currently in Dark Mode (main-thread read).
     static var systemAppearanceIsDark: Bool {
-        NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        // `.shared` creates NSApplication on first touch; bare `NSApp` is
+        // nil while SwiftUI (macOS 26) is still building the App struct,
+        // and force-unwrapping it crashed every launch before the first
+        // frame (see AppStateInitTests regression).
+        NSApplication.shared.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
     }
 
     /// Transient status message; reverts to persistent after 3 s.

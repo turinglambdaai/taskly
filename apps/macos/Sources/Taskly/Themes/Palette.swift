@@ -7,7 +7,7 @@ public enum Palette {
     public static let todayDark = Color(hex: 0x0A84FF)
     public static let planned = Color(hex: 0xFF3B30)
     public static let all = Color(hex: 0x8E8E93)
-    public static let completed = Color(hex: 0x34C759)
+    public static let completed = Color(hex: 0x8E8E93)
     public static let calendar = Color(hex: 0x5856D6)
     public static let flagged = Color(hex: 0xFF9500)
     public static let danger = Color(hex: 0xFF3B30)
@@ -63,7 +63,7 @@ public enum Palette {
     // Geometry
     public static let sidebarWidth: CGFloat = 280
     public static let statusHeight: CGFloat = 28
-    public static let tileHeight: CGFloat = 68
+    public static let smartChipHeight: CGFloat = 34
 }
 
 public extension Color {

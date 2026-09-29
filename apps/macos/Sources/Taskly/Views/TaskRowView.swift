@@ -8,6 +8,7 @@ struct TaskRowView: View {
 
     @State private var isEditing = false
     @State private var editText = ""
+    @State private var isHovering = false
     @FocusState private var editFocused: Bool
 
     var body: some View {
@@ -21,8 +22,9 @@ struct TaskRowView: View {
         // Completion transition: strikethrough/color crossfade with the
         // checkbox pop (parity with the Windows AddDelete/pop pair).
         .animation(.easeOut(duration: 0.15), value: task.completed)
+        .frame(minHeight: 44, alignment: .center)
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.vertical, 9)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(state.selectedTaskID == task.id
@@ -32,13 +34,16 @@ struct TaskRowView: View {
         .onTapGesture {
             state.selectedTaskID = task.id
         }
+        .onHover { hovering in
+            isHovering = hovering
+        }
         .contextMenu { contextMenu }
     }
 
     // MARK: - Display mode
 
     private var displayContent: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             checkbox
 
             VStack(alignment: .leading, spacing: 4) {
@@ -61,6 +66,8 @@ struct TaskRowView: View {
                 Image(systemName: "info.circle")
                     .font(.system(size: 15))
                     .foregroundStyle(state.theme.tertiaryText)
+                    // 45% at rest, full on row hover (DESIGN-TOKENS task row).
+                    .opacity(isHovering ? 1 : 0.45)
             }
             .buttonStyle(.plain)
             .help(state.t("tooltipTaskEdit"))
@@ -74,23 +81,44 @@ struct TaskRowView: View {
         task.dueDate != nil || (task.notes?.isEmpty == false)
     }
 
+    /// In views spanning several lists (today / planned / all / completed),
+    /// the meta line leads with the owning list (list-colored dot + name).
+    private var showsListName: Bool {
+        if case .list = state.currentView { return false }
+        return true
+    }
+
     private var metaLine: some View {
         VStack(alignment: .leading, spacing: 2) {
-            if task.dueDate != nil {
-                HStack(spacing: 12) {
+            HStack(spacing: 12) {
+                if showsListName, let listName = task.listName, !listName.isEmpty {
                     HStack(spacing: 4) {
-                        Text("🗓").font(.system(size: 11))
+                        Circle()
+                            .fill(task.listAccentColor)
+                            .frame(width: 7, height: 7)
+                        Text(listName)
+                            .font(.system(size: 12))
+                            .foregroundStyle(state.theme.secondaryText)
+                    }
+                }
+                if task.dueDate != nil {
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 11))
                         Text(displayDate)
                             .font(.system(size: 12))
                     }
-                    if let time = task.dueTime, !time.isEmpty {
-                        HStack(spacing: 4) {
-                            Text("🕐").font(.system(size: 11))
-                            Text(time).font(.system(size: 12))
-                        }
-                    }
+                    .foregroundStyle(dueDateColor)
                 }
-                .foregroundStyle(dueDateColor)
+                if let time = task.dueTime, !time.isEmpty {
+                    // A leading clock glyph only when a time is set.
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 11))
+                        Text(time).font(.system(size: 12))
+                    }
+                    .foregroundStyle(dueDateColor)
+                }
             }
             if let notes = task.notes, !notes.isEmpty {
                 Text(notes)
@@ -138,18 +166,18 @@ struct TaskRowView: View {
             state.toggleCompleted(task)
         } label: {
             ZStack {
+                // 20px ring in the task's list color; completed = list-color
+                // fill with a white check (DESIGN-TOKENS checkbox size).
                 Circle()
-                    .fill(task.completed ? state.theme.tertiaryText : Color.clear)
-                    .frame(width: 18, height: 18)
+                    .fill(task.completed ? task.listAccentColor : Color.clear)
+                    .frame(width: 20, height: 20)
                     .animation(.easeOut(duration: 0.15), value: task.completed)
                 Circle()
-                    .strokeBorder(
-                        task.completed ? state.theme.tertiaryText : task.listAccentColor,
-                        lineWidth: 1.5)
-                    .frame(width: 18, height: 18)
+                    .strokeBorder(task.listAccentColor, lineWidth: 1.5)
+                    .frame(width: 20, height: 20)
                 if task.completed {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(.white)
                         // Bounce pops on completion (macOS 14 symbol effect).
                         .symbolEffect(.bounce, value: task.completed)

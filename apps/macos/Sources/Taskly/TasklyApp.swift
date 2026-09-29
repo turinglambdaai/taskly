@@ -14,8 +14,24 @@ struct TasklyApp: App {
                     minWidth: 760, idealWidth: 1024,
                     minHeight: 520, idealHeight: 768)
         }
+        .defaultSize(width: 1280, height: 880)
         .commands {
             TasklyCommands(state: appState)
+            // Strip system-injected noise that is outside PRODUCT-SPEC §8:
+            // toolbar/sidebar/tab-bar groups (which otherwise spawn a second
+            // View menu), text-editing extras (AutoFill/Dictation), and the
+            // dead "Taskly Help" placeholder.
+            CommandGroup(replacing: .toolbar) {}
+            CommandGroup(replacing: .sidebar) {}
+            // Window-menu extras (Fill/Center/Move & Resize/Full Screen Tile)
+            // and File save-group commands are outside PRODUCT-SPEC §8.
+            CommandGroup(replacing: .windowArrangement) {}
+            CommandGroup(replacing: .windowSize) {}
+            CommandGroup(replacing: .help) {
+                Button(appState.t("menuAbout")) {
+                    appState.aboutVisible = true
+                }
+            }
         }
 
     }
@@ -31,11 +47,15 @@ struct TasklyCommands: Commands {
                 .keyboardShortcut("n", modifiers: [.command, .shift])
             Button(state.t("menuOpenDatabase")) { openDatabase() }
                 .keyboardShortcut("o", modifiers: [.command])
+        }
+        // Close lives in the save/close group: a replaced group must not be
+        // empty — SwiftUI re-seeds empty groups' boundary separators on every
+        // menu resync. This also displaces the system Close/Close All, whose
+        // plain Cmd+W collided with Close Database.
+        CommandGroup(replacing: .saveItem) {
             Button(state.t("menuCloseDatabase")) { confirmClose() }
-                .keyboardShortcut("w", modifiers: [.command])
                 .disabled(!state.isConnected)
         }
-
         // View menu mirrors the Windows View menu: smart views, quick
         // add / search focus, show-completed toggle.
         CommandMenu(state.t("menuView")) {
@@ -81,12 +101,6 @@ struct TasklyCommands: Commands {
             Toggle(state.t("menuDarkMode"), isOn: Binding(
                 get: { state.theme.isDark },
                 set: { state.theme.isDark = $0 }))
-        }
-
-        CommandGroup(after: .appInfo) {
-            Button(state.t("menuAbout")) {
-                state.aboutVisible = true
-            }
         }
     }
 

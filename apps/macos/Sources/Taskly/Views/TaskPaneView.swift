@@ -17,13 +17,13 @@ struct TaskPaneView: View {
             Divider().overlay(state.theme.divider)
 
             ZStack {
-                if state.isConnected {
-                    taskList
-                } else {
-                    emptyState(
-                        icon: "📂", opacity: 0.4,
-                        text: state.t("taskListEmptyHint"))
-                }
+            if state.isConnected {
+                taskList
+            } else {
+                emptyState(
+                    icon: "tray", opacity: 0.4,
+                    text: state.t("taskListEmptyHint"))
+            }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(state.theme.background)
@@ -36,13 +36,15 @@ struct TaskPaneView: View {
 
     private var header: some View {
         @Bindable var state = state
-        return HStack(alignment: .top, spacing: 10) {
+        return HStack(alignment: .center, spacing: 10) {
+            // Sidebar toggle centers against the whole title block; the
+            // subtitle aligns under the title text (Reminders layout).
             Button {
                 withAnimation(.easeInOut(duration: 0.15)) {
                     state.isSidebarVisible.toggle()
                 }
             } label: {
-                Image(systemName: state.isSidebarVisible ? "sidebar.left" : "sidebar.left")
+                Image(systemName: "sidebar.left")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(state.theme.secondaryText)
             }
@@ -98,10 +100,10 @@ struct TaskPaneView: View {
                 }
             }
             .padding(.horizontal, 12)
-            .frame(height: 40)
+            .frame(height: 36)
             .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 10))
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 10)
                     .strokeBorder(state.theme.inputBorder, lineWidth: 1))
         }
         .padding(.horizontal, 16)
@@ -111,7 +113,7 @@ struct TaskPaneView: View {
     private var taskList: some View {
         Group {
             if state.tasks.isEmpty {
-                emptyState(icon: "✓", opacity: 0.3, text: state.t("taskListEmpty"))
+                emptyState(icon: "checkmark.circle", opacity: 0.3, text: state.t("taskListEmpty"))
             } else {
                 ScrollView {
                     LazyVStack(spacing: 2) {
@@ -119,7 +121,8 @@ struct TaskPaneView: View {
                             TaskRowView(task: task)
                         }
                     }
-                    .padding(.horizontal, 12)
+                    // Rows carry their own 16pt horizontal padding
+                    // (DESIGN-TOKENS task row); the list only spaces vertically.
                     .padding(.vertical, 8)
                 }
             }
@@ -128,8 +131,9 @@ struct TaskPaneView: View {
 
     private func emptyState(icon: String, opacity: Double, text: String) -> some View {
         VStack(spacing: 10) {
-            Text(icon)
-                .font(.system(size: 48))
+            Image(systemName: icon)
+                .font(.system(size: 44))
+                .foregroundStyle(state.theme.tertiaryText)
                 .opacity(opacity)
             Text(text)
                 .font(.system(size: 14))
