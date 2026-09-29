@@ -42,8 +42,10 @@ going commercial; pricing/licensing decisions are the business half.
       Rust tests + CLI golden smoke + i18n parity).
 - [ ] Cross-platform DB conformance: open a DB written by each platform in
       each other platform (fixture in `shared/`), including a v0.6.x DB.
-- [ ] Golden CLI suite: identical argv → identical JSON/exit codes on all
-      three platforms (extend the macOS smoke into a shared fixture).
+- [ ] Golden CLI suite: shared fixture lives in `shared/cli-golden/` (61
+      cases, exact stdout/stderr/exit per platform binary; macOS runner
+      wired into `native.yml`) — Windows and Linux runners still to adopt
+      the same fixture.
 - [ ] Crash reporting: opt-in Sentry/crashpad per platform; P1 crash < 0.1%
       sessions for two consecutive betas.
 - [ ] Reminder reliability soak test: notifications fire while app runs

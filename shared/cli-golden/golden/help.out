@@ -1,0 +1,3 @@
+Taskly — task manager command-line interface (for AI agents & scripting)
+Commands: list, lists, add, update, done, undone, rm, search, mklist, rmlist, install-cli, uninstall-cli
+Global options: --json, --db <path>, --quiet (-q)

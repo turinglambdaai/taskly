@@ -24,6 +24,7 @@ cd apps/macos && swift build && swift test     # 24 个契约测试
 .build/debug/Taskly list --json
 .build/debug/Taskly add "买牛奶" --due tomorrow --json
 scripts/make-app.sh                             # 打包 Taskly.app
+scripts/golden-cli.sh                           # 61 条 golden CLI 套件（shared/cli-golden/，--record 重录）
 
 # Windows（WinUI 3，只能在 Windows 上构建）
 dotnet build apps/windows/Taskly/Taskly.csproj -c Release

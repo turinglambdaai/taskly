@@ -272,7 +272,9 @@ public enum CliEngine {
 
     static func printLists(_ ctx: CliContext, _ lists: [TodoList]) {
         if ctx.json {
-            print(CliJson.render(.array(lists.map { .listObject($0) })))
+            // The count lives on the model (cmdLists fills it); the default
+            // parameter is only for callers without a computed count.
+            print(CliJson.render(.array(lists.map { .listObject($0, pendingCount: $0.pendingCount) })))
             return
         }
         for l in lists {
@@ -364,7 +366,9 @@ public enum CliEngine {
             dueDate: dueDate, dueTime: dueTime, completed: false,
             notes: options.value("--notes"))
         task.id = try ctx.tasks.addTask(task)
-        printTask(ctx, task)
+        // Echo the stored row: listName is joined at read time, the built
+        // object above never carries it (CLI-SPEC task JSON shape).
+        printTask(ctx, try ctx.tasks.getTaskById(task.id) ?? task)
         return 0
     }
 
@@ -408,7 +412,9 @@ public enum CliEngine {
         }
 
         try ctx.tasks.updateTask(task)
-        printTask(ctx, task)
+        // Echo the stored row: after --list the stale listName must be
+        // replaced by the new list's name (joined at read time).
+        printTask(ctx, try ctx.tasks.getTaskById(id) ?? task)
         return 0
     }
 

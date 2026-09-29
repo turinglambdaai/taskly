@@ -70,14 +70,16 @@ All lists with `pendingCount` (`COUNT(*) WHERE list_id=? AND completed=0`).
 - `--due EXPR` (below), `--time HH:mm` (explicit `--time` overrides a time
   carried by `--due`), `--notes "..."`.
 - `createdAt` = local ISO-8601 round-trip now. Text validation → exit 2.
-- Output: task JSON / human row / quiet → id.
+- Output: the **stored** task (read back after insert, so `listName` is
+  joined) / human row / quiet → id.
 
 ### update <ID>
 Read-modify-write; unspecified fields unchanged. `--text --due --clear-due
 --time --clear-time --list --notes --clear-notes`.
 `--due` overwrites `dueTime` only when the expression carries a time (a pure
 date keeps the existing time); `--clear-due` clears the date only. Unknown
-id → exit 3. Outputs the updated task.
+id → exit 3. Outputs the **stored** task (read back after write, so
+`listName` reflects the final list).
 
 ### done <ID> / undone <ID>
 Idempotent `completed=1/0` (affected rows == 0 → exit 3). `--json` prints
@@ -134,3 +136,27 @@ result) **clears dueTime**; `+Nm`/`+Nh`/`@…` keep it.
 
 Unparseable → exit 2:
 `Cannot parse date/time: "<due>". Supported: +10m, +2h, +1d, +1w, @10am, @10:30pm, today, tomorrow, yyyy-MM-dd`
+
+## Golden CLI suite (shared fixture)
+
+`shared/cli-golden/` pins identical argv → identical stdout/stderr/exit
+code across platforms. `cases.json` declares the inputs; each case runs
+against a **fresh** database seeded from `seed.sql` (or the case's `seed`
+override, e.g. `seed-empty.sql`), so cases are independent. Expected
+bytes live in `golden/<case>.{out,err,exit}`.
+
+Comparison normalizes dynamic values in actual output first:
+
+- ISO-8601 local timestamps → `{{now}}`
+- today / tomorrow (`yyyy-MM-dd`) → `{{today}}` / `{{tomorrow}}`
+- the OS-specific detail after `Cannot open database: <path>` is dropped —
+  the contract pins the message prefix and exit code only
+
+Each platform wraps the shared `runner.py` with its own binary path;
+macOS: `apps/macos/scripts/golden-cli.sh` (wired into `native.yml`).
+Cases with `pre` commands build dynamic state (e.g. a task due today)
+before the asserted command; pre output is discarded but must exit 0.
+`install-cli` / `uninstall-cli` are excluded (they mutate PATH/shell
+files). After an intentional behavior change: fix the spec first, run
+`scripts/golden-cli.sh --record`, review the diff against this spec, and
+commit the new goldens in the same change.

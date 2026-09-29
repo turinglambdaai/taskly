@@ -52,21 +52,8 @@ jobs:
         run: swift build
       - name: Unit tests (data contract, date parser, CLI JSON)
         run: swift test
-      - name: CLI end-to-end smoke (contract)
-        run: |
-          DB=$(mktemp -d)/tasks.db
-          B=.build/debug/Taskly
-          $B mklist "work" --icon "💼" --color "#007AFF" --db "$DB"
-          ID=$($B add "buy milk" --due tomorrow --db "$DB" --quiet)
-          $B update "$ID" --time 09:30 --db "$DB" --json | grep -q '"dueTime": "09:30"'
-          $B search "milk" --db "$DB" --json | grep -q '"text"'
-          $B done "$ID" --db "$DB" --json --quiet | grep -q '"completed": true'
-          $B rm "$ID" --db "$DB" --json | grep -q '"deleted": true'
-          $B list --view completed --db "$DB" | wc -l | grep -q '^0$' || true
-          set +e
-          $B update 999 --text x --db "$DB" 2>/dev/null; test $? -eq 3
-          $B list --view bogus --db "$DB" 2>/dev/null; test $? -eq 2
-          set -e
+      - name: Golden CLI suite (shared fixture, exact stdout/stderr/exit)
+        run: scripts/golden-cli.sh
 
   linux:
     name: Linux (Vala build + contract tests + CLI smoke)

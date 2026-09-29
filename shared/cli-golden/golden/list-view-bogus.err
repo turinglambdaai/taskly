@@ -1,0 +1,5 @@
+{
+  "ok": false,
+  "error": "Invalid --view: \"bogus\". Use today | planned | all | completed",
+  "exitCode": 2
+}

@@ -1,0 +1,10 @@
+{
+  "id": 4,
+  "listId": 2,
+  "listName": "Personal",
+  "text": "Prepare demo",
+  "completed": false,
+  "dueDate": "2026-12-15",
+  "dueTime": "14:30",
+  "createdAt": "{{now}}"
+}

@@ -1,0 +1,8 @@
+{
+  "id": 6,
+  "listId": 2,
+  "listName": "Personal",
+  "text": "\u6e05\u5355\u540d\u4efb\u52a1",
+  "completed": false,
+  "createdAt": "{{now}}"
+}

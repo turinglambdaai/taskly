@@ -1,0 +1,10 @@
+{
+  "id": 1,
+  "listId": 1,
+  "listName": "\u5de5\u4f5c",
+  "text": "\u4e70\u725b\u5976",
+  "completed": false,
+  "dueDate": "2026-10-02",
+  "dueTime": "10:00",
+  "createdAt": "{{now}}"
+}

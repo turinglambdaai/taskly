@@ -1,0 +1,5 @@
+{
+  "ok": false,
+  "error": "Cannot parse date/time: \"\u660e\u5929\". Supported: +10m, +2h, +1d, +1w, @10am, @10:30pm, today, tomorrow, yyyy-MM-dd",
+  "exitCode": 2
+}
