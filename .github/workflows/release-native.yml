@@ -135,7 +135,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y valac meson libgtk-4-dev libadwaita-1-dev \
-            libsqlite3-dev libnotify-dev pkg-config
+            libsqlite3-dev libnotify-dev libjson-glib-dev libsoup-3.0-dev pkg-config
       - name: Build + test + install into staging dir
         working-directory: apps/linux
         run: |
