@@ -10,6 +10,7 @@ public class AppContext : Object {
     public Config config;
     public DateParser parser = new DateParser();
     public ReminderService reminder;
+    public Updater updater;
     public TaskViewType current_view = TaskViewType.ALL;
     public int64 current_list_id = 0;
     public bool show_completed = false;
@@ -21,6 +22,7 @@ public class AppContext : Object {
         this.i18n = i18n;
         this.config = config;
         this.reminder = new ReminderService(db, i18n);
+        this.updater = new Updater(i18n, config);
     }
 
     public string t(string key) {
@@ -275,6 +277,12 @@ window.taskly-root { background-color: #FFFFFF; }
         // Reminders: startup check + 60 s poll on the main loop.
         ctx.reminder.start();
 
+        // Throttled silent update check shortly after launch (UPDATE.md).
+        GLib.Timeout.add_seconds(4, () => {
+            run_update_check(false);
+            return GLib.Source.REMOVE;
+        });
+
         refresh_all();
     }
 
@@ -329,6 +337,10 @@ window.taskly-root { background-color: #FFFFFF; }
         });
         win.add_action(about_action);
 
+        var check_updates_action = new GLib.SimpleAction("check-updates", null);
+        check_updates_action.activate.connect(() => run_update_check(true));
+        win.add_action(check_updates_action);
+
         add_view_action(win, "view-today", TaskViewType.TODAY);
         add_view_action(win, "view-planned", TaskViewType.PLANNED);
         add_view_action(win, "view-all", TaskViewType.ALL);
@@ -378,8 +390,71 @@ window.taskly-root { background-color: #FFFFFF; }
         lang_section.append(ctx.t("menuLangEn"), "win.lang-en");
         menu.append_section(ctx.t("menuLanguage"), lang_section);
 
+        var updates_section = new GLib.Menu();
+        updates_section.append(ctx.t("menuCheckUpdates"), "win.check-updates");
+        menu.append_section(null, updates_section);
+
         menu.append(ctx.t("menuAbout"), "win.about");
         return menu;
+    }
+
+    /// Online update flow (shared/spec/UPDATE.md): silent mode swallows
+    /// failures; manual mode reports every outcome. A found update always
+    /// asks before installing; install replaces the prefix and restarts.
+    private void run_update_check(bool manual) {
+        var updater = ctx.updater;
+        if (updater.busy) {
+            return;
+        }
+        updater.check.begin(manual, (obj, res) => {
+            Updater.Manifest? manifest = null;
+            try {
+                manifest = updater.check.end(res);
+            } catch (UpdaterError.NOT_WRITABLE e) {
+                ctx.flash_status(ctx.t("updatePortable"));
+                return;
+            } catch (GLib.Error e) {
+                if (manual) {
+                    ctx.flash_status(ctx.i18n.format("updateCheckFailed", e.message));
+                }
+                return;
+            }
+            if (manifest == null) {
+                if (manual) {
+                    ctx.flash_status(ctx.t("updateUpToDate"));
+                }
+                return;
+            }
+            offer_update(manifest);
+        });
+    }
+
+    private void offer_update(Updater.Manifest manifest) {
+        var win = ctx.window;
+        var dialog = new Adw.MessageDialog(win,
+            ctx.t("updateAvailableTitle"),
+            ctx.i18n.format("updateAvailableBody", manifest.version));
+        dialog.add_response("cancel", ctx.t("dialogCancel"));
+        dialog.add_response("install", ctx.t("updateRestart"));
+        dialog.set_response_appearance("install", Adw.ResponseAppearance.SUGGESTED);
+        dialog.choose.begin(null, (obj, res) => {
+            var answer = dialog.choose.end(res);
+            if (answer != "install") {
+                return;
+            }
+            ctx.flash_status(ctx.t("updateDownloading"));
+            ctx.updater.download_and_install.begin(manifest, (obj2, res2) => {
+                try {
+                    ctx.updater.download_and_install.end(res2);
+                    // Only reached when the restart script could not be
+                    // spawned as root-less install (spawn failure throws).
+                } catch (UpdaterError.NOT_WRITABLE e) {
+                    ctx.flash_status(ctx.t("updatePortable"));
+                } catch (GLib.Error e) {
+                    ctx.flash_status(ctx.i18n.format("updateInstallFailed", e.message));
+                }
+            });
+        });
     }
 
     private void add_view_action(Gtk.ApplicationWindow win, string name, TaskViewType view) {

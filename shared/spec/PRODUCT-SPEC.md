@@ -100,7 +100,9 @@ pickers. Save (blank text silently ignored), Delete (confirm first), Cancel
   config `language`), Theme submenu — 跟随系统 (follow system) / 浅色
   (light) / 深色 (dark), persisted in config `theme`; follow-system tracks
   OS personalization live. macOS follows the system appearance at launch
-  and live; its Settings toggle is a per-session override.
+  and live; its Settings toggle is a per-session override. Plus 检查更新… /
+  Check for Updates… (manual online-update check; auto-check runs at
+  launch and every 4 h — contract: `UPDATE.md`).
 - Help: About — `Taskly v<version>` + `© 2026 Taskly Team` + `aboutContent`.
 - All accelerators work window-wide without opening the menu.
 

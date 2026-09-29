@@ -111,6 +111,7 @@ sides trimmed; keys case-insensitive. Writer emits two fixed header lines:
 | `last-db-path` | last opened DB (read also accepts legacy `last_db_path`) | — |
 | `language` | `zh` / `en` | `zh` |
 | `last-selected-list-id` | int as string; unparseable → 0 | `0` |
+| `last-update-check` | unix seconds of the last auto-update check (UPDATE.md throttle) | `0` |
 
 ## 8. Conformance
 

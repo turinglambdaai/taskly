@@ -1,3 +1,4 @@
+import CryptoKit
 import XCTest
 import SQLite3
 @testable import Taskly
@@ -390,5 +391,153 @@ final class AppStateInitTests: XCTestCase {
     func testInitBeforeNSApplicationExists() {
         let state = AppState()
         XCTAssertFalse(state.isConnected)
+    }
+}
+
+final class UpdateServiceTests: XCTestCase {
+    func testVersionCompare() {
+        // Numeric per segment; missing segments are zero.
+        XCTAssertTrue(UpdateService.isVersion("1.0.1", greaterThan: "1.0.0"))
+        XCTAssertTrue(UpdateService.isVersion("1.1", greaterThan: "1.0.9"))
+        XCTAssertTrue(UpdateService.isVersion("2.0", greaterThan: "1.9.9"))
+        XCTAssertFalse(UpdateService.isVersion("1.0.0", greaterThan: "1.0.0"), "equal → no update")
+        XCTAssertFalse(UpdateService.isVersion("1.0", greaterThan: "1.0.1"))
+        XCTAssertFalse(UpdateService.isVersion("0.9.9", greaterThan: "1.0.0"), "downgrade ignored")
+    }
+
+    @MainActor
+    func testDevCopyIsNotInstalled() {
+        // Test executables don't live under /Applications — the update
+        // service must refuse to self-update there (UPDATE.md).
+        let service = UpdateService()
+        XCTAssertFalse(service.canUpdate)
+        XCTAssertNil(service.installedBundleURL)
+    }
+
+    // MARK: Manifest verification (pure steps)
+
+    private func signedManifest() throws -> (bytes: Data, signature: Data, key: Curve25519.Signing.PrivateKey) {
+        let key = Curve25519.Signing.PrivateKey()
+        let manifest = """
+        {"version":"9.9.9","notesUrl":"https://example.test","platforms":{
+          "macos":{"url":"https://example.test/t.zip","sha256":"abc","size":1}}}
+        """.data(using: .utf8)!
+        let signature = try key.signature(for: manifest)
+        return (manifest, signature, key)
+    }
+
+    func testParseReleaseAssets() throws {
+        let api = """
+        {"assets":[
+          {"name":"Taskly-v1-macos.zip","browser_download_url":"https://x/t.zip"},
+          {"name":"update-manifest.json","browser_download_url":"https://x/m.json"},
+          {"name":"manifest.sig","browser_download_url":"https://x/m.sig"}]}
+        """.data(using: .utf8)!
+        let (manifest, signature) = try UpdateService.parseReleaseAssets(api)
+        XCTAssertEqual(manifest?.absoluteString, "https://x/m.json")
+        XCTAssertEqual(signature?.absoluteString, "https://x/m.sig")
+    }
+
+    func testParseReleaseAssetsMissing() throws {
+        let (manifest, signature) = try UpdateService.parseReleaseAssets(#"{"assets":[]}"#.data(using: .utf8)!)
+        XCTAssertNil(manifest)
+        XCTAssertNil(signature)
+    }
+
+    func testSignatureVerificationAcceptsAndRejects() throws {
+        // The embedded production key must be a valid Ed25519 key…
+        XCTAssertNoThrow(try Curve25519.Signing.PublicKey(
+            rawRepresentation: Data(base64Encoded: UpdateService.publicKeyBase64)!))
+
+        // …and must REJECT: a signature made by another key (release-key
+        // rotation mismatch), a wrong-length signature, and tampered bytes.
+        let (bytes, signature, key) = try signedManifest()
+        XCTAssertThrowsError(try UpdateService.verifyManifest(bytes, signature: signature))
+        XCTAssertThrowsError(try UpdateService.verifyManifest(bytes, signature: Data(repeating: 0, count: 63)))
+        _ = key // signer key intentionally ≠ embedded key
+        var tampered = bytes
+        tampered.append(0x20)
+        XCTAssertThrowsError(try UpdateService.verifyManifest(tampered, signature: signature))
+    }
+}
+
+/// End-to-end check() over a URLProtocol stub — the full wire path:
+/// release API → manifest + signature download → Ed25519 verify → semver
+/// compare. The stub signs with a throwaway key; the service trusts it via
+/// the keyOverride test seam (production-key behavior: unit tests above).
+final class UpdateServiceE2ETests: XCTestCase {
+    private final class StubProtocol: URLProtocol {
+        nonisolated(unsafe) static var responses: [String: (Int, Data)] = [:]
+        override class func canInit(with request: URLRequest) -> Bool { true }
+        override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+        override func startLoading() {
+            let url = request.url?.absoluteString ?? ""
+            let (status, data) = Self.responses[url] ?? (404, Data())
+            let http = HTTPURLResponse(url: request.url!, statusCode: status,
+                                       httpVersion: nil, headerFields: nil)!
+            client?.urlProtocol(self, didReceive: http, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        }
+        override func stopLoading() {}
+    }
+
+    @MainActor
+    private func makeService(currentVersion: String, keyBase64: String) -> UpdateService {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        return UpdateService(
+            apiURL: URL(string: "https://stub.test/api")!,
+            bundleURL: URL(fileURLWithPath: "/Applications/Taskly.app"),
+            currentVersion: currentVersion,
+            sessionConfiguration: config,
+            keyOverride: keyBase64)
+    }
+
+    @MainActor
+    func testCheckEndToEnd() async throws {
+        // Throwaway signing pair acting as the "release environment".
+        let signer = Curve25519.Signing.PrivateKey()
+        let keyBase64 = signer.publicKey.rawRepresentation.base64EncodedString()
+
+        let manifest = """
+        {"version":"9.9.9","notesUrl":"https://example.test/rel",
+         "platforms":{"macos":{"url":"https://example.test/zip","sha256":"ab","size":1}}}
+        """.data(using: .utf8)!
+        let signature = try signer.signature(for: manifest)
+        let api = """
+        {"assets":[
+          {"name":"update-manifest.json","browser_download_url":"https://stub.test/m.json"},
+          {"name":"manifest.sig","browser_download_url":"https://stub.test/m.sig"}]}
+        """.data(using: .utf8)!
+        StubProtocol.responses = [
+            "https://stub.test/api": (200, api),
+            "https://stub.test/m.json": (200, manifest),
+            "https://stub.test/m.sig": (200, signature),
+        ]
+
+        let service = makeService(currentVersion: "1.0.0", keyBase64: keyBase64)
+
+        // 9.9.9 > 1.0.0 → available, with the parsed manifest.
+        guard case .available(let m) = try await service.check() else {
+            return XCTFail("expected .available")
+        }
+        XCTAssertEqual(m.version, "9.9.9")
+        XCTAssertEqual(m.platforms["macos"]?.sha256, "ab")
+
+        // Downgrade / equal versions → upToDate.
+        let older = makeService(currentVersion: "10.0.0", keyBase64: keyBase64)
+        guard case .upToDate = try await older.check() else {
+            return XCTFail("expected .upToDate")
+        }
+
+        // Tampered manifest → signature rejection, not a silent update.
+        StubProtocol.responses["https://stub.test/m.json"] = (200, manifest + Data([0x20]))
+        do {
+            _ = try await makeService(currentVersion: "1.0.0", keyBase64: keyBase64).check()
+            XCTFail("tampered manifest must throw")
+        } catch {
+            // expected
+        }
     }
 }

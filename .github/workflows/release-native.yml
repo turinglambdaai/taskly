@@ -54,10 +54,17 @@ jobs:
           ln -s /Applications /tmp/dist/pkg/Applications
           hdiutil create -volname Taskly -srcfolder /tmp/dist/pkg \
             -ov -format UDZO "Taskly-${{ github.ref_name }}-macos.dmg"
+      - name: Zip app (auto-update feed, shared/spec/UPDATE.md)
+        run: |
+          cd /tmp/dist/pkg
+          ditto -c -k --keepParent Taskly.app \
+            "$GITHUB_WORKSPACE/Taskly-${{ github.ref_name }}-macos.zip"
       - uses: actions/upload-artifact@v7
         with:
           name: macos-dmg
-          path: Taskly-*.dmg
+          path: |
+            Taskly-*.dmg
+            Taskly-*-macos.zip
 
   windows:
     name: Windows (portable x64)
@@ -173,10 +180,22 @@ jobs:
       - name: Create release and upload
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_ED25519_PRIVATE_KEY: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY }}
         run: |
           # Flatten artifact subdirectories (vpk-dist) before uploading.
           find dist -mindepth 2 -type f -exec mv {} dist/ \; 2>/dev/null || true
           find dist -mindepth 1 -type d -empty -delete
+          # Sign + attach the macOS/Linux update manifest (UPDATE.md).
+          # Without the secret the release still ships — auto-update simply
+          # finds no manifest and stays silent (apps never fail on that).
+          KEY_FILE="$(mktemp)"
+          if [ -n "${UPDATE_ED25519_PRIVATE_KEY:-}" ]; then
+            printf '%s\n' "$UPDATE_ED25519_PRIVATE_KEY" > "$KEY_FILE"
+            bash scripts/make-update-manifest.sh "${{ github.ref_name }}" dist "$KEY_FILE"
+            rm -f "$KEY_FILE"
+          else
+            echo "::warning::UPDATE_ED25519_PRIVATE_KEY is not set — update-manifest.json not generated; macOS/Linux clients stay on the current version"
+          fi
           find dist -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\0' | sort -z | xargs -0 sha256sum > dist/SHA256SUMS
           (cd dist && sha256sum --check SHA256SUMS)
           PREV_TAG="$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo "")"

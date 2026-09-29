@@ -101,6 +101,11 @@ struct TasklyCommands: Commands {
             Toggle(state.t("menuDarkMode"), isOn: Binding(
                 get: { state.theme.isDark },
                 set: { state.theme.isDark = $0 }))
+            Divider()
+            Button(state.t("menuCheckUpdates")) {
+                Task { await state.checkForUpdates(manual: true) }
+            }
+            .disabled(state.updateInProgress)
         }
     }
 

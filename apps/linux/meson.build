@@ -10,6 +10,8 @@ vala_deps = [
   dependency('libadwaita-1'),
   dependency('sqlite3'),
   dependency('libnotify'),
+  dependency('json-glib-1.0'),
+  dependency('libsoup-3.0'),
 ]
 
 sources = files(
@@ -23,6 +25,7 @@ sources = files(
   'src/cli.vala',
   'src/cliinstaller.vala',
   'src/reminder.vala',
+  'src/updater.vala',
   'src/ui.vala',
   'src/dialogs.vala',
   'src/taskly.vala',
@@ -35,6 +38,7 @@ i18n_resources = [
 
 executable('taskly', sources,
   vala_args: ['--target-glib=2.72', '--pkg=posix'],
+  c_args: ['-DPREFIX="@0@"'.format(get_option('prefix'))],
   dependencies: vala_deps,
   install: true)
 

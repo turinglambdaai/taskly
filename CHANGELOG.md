@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Online updates on all three platforms** (contract: `shared/spec/UPDATE.md`)
+  — silent check at launch (≥4 h throttle, config `last-update-check`) plus
+  a `Settings ▸ 检查更新… / Check for Updates…` menu item everywhere.
+  Windows: Velopack over GitHub Releases with delta packages (launch +
+  manual check, dialog → install & restart). macOS: zero-dependency
+  updater — signed `update-manifest.json` from the latest release
+  (Ed25519 via CryptoKit), artifact sha256, atomic in-place bundle swap
+  with rollback, then relaunch. Linux: same manifest feed over libsoup-3,
+  sha256 verification, in-place prefix replace when writable, otherwise
+  the releases page opens. Release pipeline now ships the macOS zip, a
+  signed manifest and `manifest.sig` on every tag (signed only when the
+  `UPDATE_ED25519_PRIVATE_KEY` secret is configured; keys via
+  `scripts/update-keys.sh`, manifest via `scripts/make-update-manifest.sh`).
 - **Golden CLI suite** (`shared/cli-golden/`): 61 shared cases pinning
   identical argv → identical stdout/stderr/exit code across platforms,
   each run against a fresh seeded database; macOS runner

@@ -69,6 +69,15 @@ public final class AppState {
     @ObservationIgnored private var transientDeadline: Task<Void, Never>?
     var languageChangedToken = 0
 
+    /// Online updates (shared/spec/UPDATE.md): silent check after launch
+    /// (≥4 h throttle via config last-update-check), manual check from the
+    /// Settings menu.
+    @ObservationIgnored let updates = UpdateService()
+    /// Set while an update download is in flight (menu item shows progress).
+    var updateInProgress = false
+    /// Task launched from init; keeps the throttled launch check alive.
+    @ObservationIgnored private var launchUpdateTask: Task<Void, Never>?
+
     // Sheets / dialogs
     var listEditSheet: ListEditContext?
     var taskDetailContext: TaskItem?
@@ -124,6 +133,81 @@ public final class AppState {
                 MainWindowView.pruneEmptyMenus()
             }
         }
+
+        // Throttled silent check shortly after launch (UPDATE.md triggers).
+        launchUpdateTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else { return }
+            await self?.checkForUpdates(manual: false)
+        }
+    }
+
+    // MARK: - Online updates (shared/spec/UPDATE.md)
+
+    /// 4-hour throttle window for the silent launch check.
+    private static let updateThrottle: TimeInterval = 4 * 60 * 60
+
+    /// Manual (menu) or silent (launch) check. Silent mode: dev copies,
+    /// network failures and "up to date" never surface. Manual mode:
+    /// reports every outcome. A found update always asks before installing.
+    func checkForUpdates(manual: Bool) async {
+        guard !updateInProgress else { return }
+        let last = TimeInterval(config.get("last-update-check", "0")) ?? 0
+        if !manual, Date().timeIntervalSince1970 - last < Self.updateThrottle {
+            return
+        }
+        config.set("last-update-check", String(Int(Date().timeIntervalSince1970)))
+        config.save()
+
+        do {
+            switch try await updates.check() {
+            case .upToDate:
+                if manual { flashStatus(i18n.t("updateUpToDate")) }
+            case .available(let manifest):
+                presentUpdateOffer(manifest)
+            }
+        } catch UpdateService.UpdateError.notInstalled {
+            if manual { flashStatus(i18n.t("updateNotInstalled")) }
+        } catch {
+            if manual {
+                presentUpdateError(i18n.format("updateCheckFailed", error.localizedDescription))
+            }
+            // Silent failures stay invisible (offline is normal).
+        }
+    }
+
+    /// Confirmation dialog, then download → verify → swap → relaunch.
+    private func presentUpdateOffer(_ manifest: UpdateService.Manifest) {
+        let alert = NSAlert()
+        alert.messageText = i18n.t("updateAvailableTitle")
+        alert.informativeText = i18n.format("updateAvailableBody", manifest.version)
+        alert.addButton(withTitle: i18n.t("updateRestart"))
+        alert.addButton(withTitle: i18n.t("dialogCancel"))
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        updateInProgress = true
+        flashStatus(i18n.t("updateDownloading"))
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.updates.downloadAndInstall(manifest)
+                // downloadAndInstall terminates the app on success; this
+                // line only runs if terminate was refused (unit tests).
+                self.updateInProgress = false
+            } catch {
+                self.updateInProgress = false
+                self.presentUpdateError(
+                    i18n.format("updateInstallFailed", error.localizedDescription))
+            }
+        }
+    }
+
+    private func presentUpdateError(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.addButton(withTitle: i18n.t("dialogConfirm"))
+        alert.runModal()
+        refreshStatusPersistent()
     }
 
     // MARK: - Status line
