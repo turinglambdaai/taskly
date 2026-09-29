@@ -1,4 +1,4 @@
-﻿name: Native Release
+name: Native Release
 
 # Tag-triggered release pipeline for the native apps. Tag `vX.Y.Z` to build
 # and attach artifacts to a GitHub Release.
@@ -54,7 +54,7 @@ jobs:
           ln -s /Applications /tmp/dist/pkg/Applications
           hdiutil create -volname Taskly -srcfolder /tmp/dist/pkg \
             -ov -format UDZO "Taskly-${{ github.ref_name }}-macos.dmg"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos-dmg
           path: Taskly-*.dmg
@@ -111,7 +111,7 @@ jobs:
             exit 1
           fi
           ls -la vpk-dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-zip
           path: |
@@ -149,7 +149,7 @@ jobs:
         working-directory: apps/linux
         run: |
           tar -czf "../../Taskly-${{ github.ref_name }}-linux-x64.tar.gz" -C staging .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-tarball
           path: Taskly-*.tar.gz

@@ -95,7 +95,7 @@ jobs:
             "packaging/macos/dmg/spec.json" \
             "taskly-${{ env.VERSION }}-macos-${{ matrix.arch }}.dmg"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: taskly-macos-${{ matrix.arch }}
           path: '*.dmg'
@@ -149,7 +149,7 @@ jobs:
             Write-Host "Renamed: $($src.Name) -> $dst"
           }
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: taskly-windows-x64
           path: 'taskly-*-windows-x64.exe'
@@ -235,7 +235,7 @@ jobs:
           dpkg-deb --root-owner-group --build "$STAGING" "taskly-${{ env.VERSION }}-linux-x64.deb"
           ls -la *.deb
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: taskly-linux-x64
           path: |
