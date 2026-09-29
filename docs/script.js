@@ -1,12 +1,11 @@
 /**
- * Taskly — interactions, i18n, and live release links.
+ * Taskly — interactions and i18n.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
     initSmoothScrolling();
     initScrollAnimations();
     initLanguageSwitcher();
-    initReleaseLinks();
 });
 
 // Smooth scrolling for in-page anchors.
@@ -68,11 +67,11 @@ const translations = {
 const pageMetadata = {
     en: {
         title: 'Taskly — Organize your life',
-        description: 'Taskly is a clean, focused task manager with keyboard-friendly scheduling shortcuts, an AI-friendly CLI, and native apps for macOS, Windows, and Linux.'
+        description: 'Taskly is a clean, focused task manager with keyboard-friendly scheduling shortcuts and an AI-friendly CLI. The v1 native apps are archived — Taskly is being rebuilt on Rivet: one Racket core driving native WinUI 3, SwiftUI, and GTK4 hosts.'
     },
     zh: {
         title: 'Taskly — 简洁专注的任务管理器',
-        description: 'Taskly 是一款简洁、专注的任务管理器，支持键盘友好的时间安排快捷语法、面向 AI 的 CLI，以及 macOS、Windows 和 Linux 原生应用。'
+        description: 'Taskly 是一款简洁、专注的任务管理器，支持键盘友好的时间安排快捷语法与面向 AI 的 CLI。v1 原生实现已归档，正在以 Rivet 重建：一个 Racket 核心驱动 WinUI 3、SwiftUI 与 GTK4 原生宿主。'
     }
 };
 
@@ -147,45 +146,5 @@ function applyLanguage(lang, persist) {
         document.title = metadata.title;
         const description = document.querySelector('meta[name="description"]');
         if (description) description.setAttribute('content', metadata.description);
-    }
-}
-
-// Fetch the latest GitHub release and point each platform card at the right asset.
-// Falls back gracefully to the releases page if the API is unreachable.
-async function initReleaseLinks() {
-    const assetMatchers = {
-        'dl-macos': name => /macos\.dmg$/i.test(name),
-        'dl-windows': name => /windows-x64\.zip$/i.test(name),
-        'dl-linux': name => /linux-x64\.tar\.gz$/i.test(name),
-    };
-
-    const versionBadge = document.getElementById('ver-badge');
-
-    try {
-        const res = await fetch('https://api.github.com/repos/turinglambdaai/taskly/releases/latest', {
-            headers: { 'Accept': 'application/vnd.github+json' }
-        });
-        if (!res.ok) return;
-
-        const release = await res.json();
-
-        // Version badge.
-        if (versionBadge && release.tag_name) {
-            versionBadge.textContent = release.tag_name;
-        }
-
-        // Resolve each platform's preferred asset.
-        for (const [id, match] of Object.entries(assetMatchers)) {
-            const card = document.getElementById(id);
-            if (!card) continue;
-
-            const asset = (release.assets || []).find(a => match(a.name));
-            if (asset && asset.browser_download_url) {
-                card.href = asset.browser_download_url;
-            }
-        }
-    } catch (err) {
-        // Network/CORS/offline — keep the fallback href (releases page).
-        console.warn('Taskly: could not fetch latest release, using fallback link.');
     }
 }
