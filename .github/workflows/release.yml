@@ -74,7 +74,7 @@ jobs:
           node-version: '20'
 
       - name: Setup Python for background generation
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
