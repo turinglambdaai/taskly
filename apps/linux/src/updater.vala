@@ -189,11 +189,13 @@ public class Updater : Object {
         if (!platforms.has_member("linux")) {
             throw new UpdaterError.BAD_MANIFEST("manifest has no linux artifact");
         }
-        var linux = platforms.get_object_member("linux");
+        // Not named `linux`: gcc defines it as a macro, valac's generated
+        // C would expand and fail to compile.
+        var linux_art = platforms.get_object_member("linux");
         return Manifest() {
             version = obj.get_string_member("version"),
-            url = linux.get_string_member("url"),
-            sha256 = linux.get_string_member("sha256"),
+            url = linux_art.get_string_member("url"),
+            sha256 = linux_art.get_string_member("sha256"),
         };
     }
 
