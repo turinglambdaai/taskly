@@ -65,3 +65,6 @@ taskly-noise/
 noise-app-template/
 .zcode/
 packaging/macos/dmg/background*.png
+
+## Rivet build artifacts
+.rivet/

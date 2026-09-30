@@ -1,6 +1,8 @@
 #lang racket/base
 
 (require rivet/backend
+         racket/path
+         "config.rkt"
          "model.rkt"
          "service.rkt")
 
@@ -36,6 +38,16 @@
   ([counts : SmartCounts]
    [lists : (List TodoList)]
    [tasks : (List Task)]))
+
+;; Host preferences resolved from config.ini. Strings are kept in the config
+;; vocabulary ("zh"/"en", "system"/"light"/"dark", "0"/"1") so hosts never
+;; re-parse the file or re-validate the values.
+(define-record Settings
+  ([language : String]
+   [theme : String]
+   [close-to-tray : String]
+   [last-selected-list-id : Int64]
+   [database-path : String]))
 
 (define (nullable value)
   (if value value (void)))
@@ -84,6 +96,15 @@
                (list-ref counts 1)
                (list-ref counts 2)
                (list-ref counts 3)))
+
+(define (settings->dto)
+  (define config (read-config))
+  (Settings
+   (config-language config)
+   (config-theme config)
+   (config-close-to-tray config)
+   (config-last-selected-list-id config)
+   (path->string (resolve-database-path #f config))))
 
 (define (snapshot->dto service #:view [view 'all] #:list-id [list-id #f]
                        #:show-completed [show-completed #f])

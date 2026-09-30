@@ -1,37 +1,221 @@
 <Window
     x:Class="RivetHost.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Taskly">
 
-    <Grid Padding="32">
-        <StackPanel
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Spacing="16"
-            Width="320">
+    <Grid x:Name="RootGrid">
+        <Grid.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.ThemeDictionaries>
+                    <ResourceDictionary x:Key="Light">
+                        <SolidColorBrush x:Key="TasklySidebarBrush" Color="#F3F2F1" />
+                        <SolidColorBrush x:Key="TasklyDividerBrush" Color="#E1DFDD" />
+                        <SolidColorBrush x:Key="TasklySelectedBrush" Color="#E8E4E0" />
+                        <SolidColorBrush x:Key="TasklyHoverBrush" Color="#EBE9E7" />
+                        <SolidColorBrush x:Key="TasklyAccentBrush" Color="#C94F30" />
+                        <SolidColorBrush x:Key="TasklyDueTodayBrush" Color="#C4501B" />
+                        <SolidColorBrush x:Key="TasklyDueTomorrowBrush" Color="#B0681E" />
+                        <SolidColorBrush x:Key="TasklyOverdueBrush" Color="#D13438" />
+                        <SolidColorBrush x:Key="TasklySecondaryTextBrush" Color="#797775" />
+                        <SolidColorBrush x:Key="TasklyMutedTextBrush" Color="#A19F9D" />
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="Dark">
+                        <SolidColorBrush x:Key="TasklySidebarBrush" Color="#272424" />
+                        <SolidColorBrush x:Key="TasklyDividerBrush" Color="#3B3939" />
+                        <SolidColorBrush x:Key="TasklySelectedBrush" Color="#3A3736" />
+                        <SolidColorBrush x:Key="TasklyHoverBrush" Color="#332F2F" />
+                        <SolidColorBrush x:Key="TasklyAccentBrush" Color="#E8704F" />
+                        <SolidColorBrush x:Key="TasklyDueTodayBrush" Color="#F2913D" />
+                        <SolidColorBrush x:Key="TasklyDueTomorrowBrush" Color="#D8A24E" />
+                        <SolidColorBrush x:Key="TasklyOverdueBrush" Color="#FF6B6E" />
+                        <SolidColorBrush x:Key="TasklySecondaryTextBrush" Color="#A8A5A3" />
+                        <SolidColorBrush x:Key="TasklyMutedTextBrush" Color="#7A7775" />
+                    </ResourceDictionary>
+                </ResourceDictionary.ThemeDictionaries>
+            </ResourceDictionary>
+        </Grid.Resources>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Menu bar -->
+        <MenuBar Grid.Row="0">
+            <MenuBarItem Title="File" x:Name="MenuFile">
+                <MenuFlyoutItem x:Name="MenuNewDatabase" Click="OnNewDatabase" />
+                <MenuFlyoutItem x:Name="MenuOpenDatabase" Click="OnOpenDatabase" />
+                <MenuFlyoutItem x:Name="MenuCloseDatabase" Click="OnCloseDatabase" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="MenuExit" Click="OnExit" />
+            </MenuBarItem>
+            <MenuBarItem Title="Settings" x:Name="MenuSettings">
+                <MenuFlyoutItem x:Name="MenuLangZh" Click="OnLangZh" />
+                <MenuFlyoutItem x:Name="MenuLangEn" Click="OnLangEn" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="MenuThemeSystem" Click="OnThemeSystem" />
+                <MenuFlyoutItem x:Name="MenuThemeLight" Click="OnThemeLight" />
+                <MenuFlyoutItem x:Name="MenuThemeDark" Click="OnThemeDark" />
+            </MenuBarItem>
+            <MenuBarItem Title="Help" x:Name="MenuHelp">
+                <MenuFlyoutItem x:Name="MenuAbout" Click="OnAbout" />
+            </MenuBarItem>
+        </MenuBar>
+
+        <!-- Body: sidebar | task pane -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280" MinWidth="220" MaxWidth="420" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Sidebar: search on top (Reminders parity), then lists -->
+            <Grid Grid.Column="0" Background="{ThemeResource TasklySidebarBrush}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBox
+                    x:Name="SearchBox"
+                    Grid.Row="0"
+                    Margin="12,12,12,4"
+                    TextChanged="OnSearchTextChanged" />
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock
+                            x:Name="SmartListsHeader"
+                            Margin="16,8,16,4"
+                            FontSize="12"
+                            Foreground="{ThemeResource TasklyMutedTextBrush}" />
+                        <ListView
+                            x:Name="SmartList"
+                            SelectionMode="Single"
+                            SelectionChanged="OnSmartListSelectionChanged" />
+                        <TextBlock
+                            x:Name="MyListsHeader"
+                            Margin="16,12,16,4"
+                            FontSize="12"
+                            Foreground="{ThemeResource TasklyMutedTextBrush}" />
+                        <ListView
+                            x:Name="UserList"
+                            SelectionMode="Single"
+                            SelectionChanged="OnUserListSelectionChanged">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="MinHeight" Value="36" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                        </ListView>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <Button
+                    x:Name="NewListButton"
+                    Grid.Row="2"
+                    Margin="12,4,12,12"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="OnNewList" />
+            </Grid>
+
+            <Border
+                Grid.Column="1"
+                Width="1"
+                HorizontalAlignment="Center"
+                Background="{ThemeResource TasklyDividerBrush}" />
+
+            <!-- Task pane -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="24,16,24,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                        <TextBlock
+                            x:Name="PaneTitle"
+                            FontSize="26"
+                            FontWeight="SemiBold" />
+                        <TextBlock
+                            x:Name="PaneCount"
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,0,5"
+                            FontSize="14"
+                            Foreground="{ThemeResource TasklySecondaryTextBrush}" />
+                    </StackPanel>
+                    <CheckBox
+                        x:Name="ShowCompletedCheck"
+                        Grid.Column="1"
+                        VerticalAlignment="Bottom"
+                        Checked="OnShowCompletedChanged"
+                        Unchecked="OnShowCompletedChanged" />
+                </Grid>
+
+                <Grid Grid.Row="1">
+                    <!-- Normal view -->
+                    <StackPanel>
+                        <TextBox
+                            x:Name="NewTaskBox"
+                            Margin="24,4,24,8"
+                            KeyDown="OnNewTaskKeyDown" />
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ListView
+                                x:Name="TaskList"
+                                Margin="16,0,16,16"
+                                SelectionMode="Single">
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="MinHeight" Value="44" />
+                                        <Setter Property="Padding" Value="8,2" />
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                            </ListView>
+                        </ScrollViewer>
+                    </StackPanel>
+
+                    <!-- Search results -->
+                    <ScrollViewer
+                        x:Name="SearchPane"
+                        Visibility="Collapsed"
+                        VerticalScrollBarVisibility="Auto">
+                        <ListView
+                            x:Name="SearchResults"
+                            Margin="24,8,24,16">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="MinHeight" Value="44" />
+                                    <Setter Property="Padding" Value="8,2" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                        </ListView>
+                    </ScrollViewer>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- Status bar -->
+        <Border Grid.Row="2" Background="{ThemeResource TasklySidebarBrush}">
             <TextBlock
-                Text="Rivet"
-                FontSize="32"
-                FontWeight="SemiBold" />
-            <TextBlock
-                Text="Racket + WinUI 3"
-                Opacity="0.65" />
-            <InfoBar
-                x:Name="StatusBar"
-                IsOpen="True"
-                IsClosable="False"
-                Severity="Informational"
-                Message="Starting embedded Racket CS…" />
-            <TextBlock
-                x:Name="CountText"
-                Text="Count: 0"
-                FontSize="24" />
-            <Button
-                x:Name="IncrementButton"
-                Content="Increment in Racket"
-                IsEnabled="False"
-                HorizontalAlignment="Stretch"
-                Click="Increment_Click" />
-        </StackPanel>
+                x:Name="StatusText"
+                Margin="12,4"
+                FontSize="12"
+                Foreground="{ThemeResource TasklySecondaryTextBrush}"
+                TextTrimming="CharacterEllipsis" />
+        </Border>
     </Grid>
 </Window>

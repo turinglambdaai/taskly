@@ -1,6 +1,8 @@
 #lang racket/base
 
 (require rivet/backend
+         racket/string
+         "config.rkt"
          "model.rkt"
          "rivet-schema.rkt"
          "service.rkt")
@@ -107,6 +109,29 @@
   (define deleted? (service-delete-list! service id))
   (when deleted? (publish! service))
   deleted?)
+
+(define-rpc (default_database : String)
+  (path->string (resolve-database-path)))
+
+(define-rpc (get_settings : Settings)
+  (settings->dto))
+
+;; Keys and values are validated here so hosts can persist preferences
+;; without each one re-implementing the config grammar.
+(define allowed-settings
+  '(("language" ("zh" "en"))
+    ("theme" ("system" "light" "dark"))
+    ("close-to-tray" ("0" "1"))))
+
+(define-rpc (set_setting [key : String] [value : String] : Settings)
+  (define normalized-key (string-downcase (string-trim key)))
+  (unless (assoc normalized-key allowed-settings)
+    (error 'set_setting "unknown setting: ~a" normalized-key))
+  (unless (member value (cadr (assoc normalized-key allowed-settings)))
+    (error 'set_setting "invalid value for ~a: ~a" normalized-key value))
+  (define config (read-config))
+  (write-config! (hash-set config normalized-key value))
+  (settings->dto))
 
 ;; Native embedded hosts pass anonymous pipe file descriptors here.
 (define (start in-fd out-fd)
