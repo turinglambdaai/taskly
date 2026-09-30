@@ -96,3 +96,14 @@
   direction; the dotnet path was evaluated and rejected — PRs #50/#51)
 - Strict stdout/protocol-channel behavior
 - C# codegen that handles domain types named `Task`
+
+## Status 2026-10-01 — filing upstream
+
+The five library asks (items 2 and 4-7) are being filed as issues on
+turinglambdaai/rivet (numbers to be recorded here once created). Item 3
+(single-entity lookup) is application-level work once item 2 lands — it
+does not need its own rivet issue.
+
+⚠️ `recovered/taskly-m1` **no longer exists on the remote** (verified
+2026-10-01). The surviving named-record implementation is this repo's
+`racket/taskly/rivet-schema.rkt` — treat it as the reference for the port.
