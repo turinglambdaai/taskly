@@ -97,12 +97,19 @@
 - Strict stdout/protocol-channel behavior
 - C# codegen that handles domain types named `Task`
 
-## Status 2026-10-01 — filing upstream
+## Status 2026-10-01 — filed upstream
 
-The five library asks (items 2 and 4-7) are being filed as issues on
-turinglambdaai/rivet (numbers to be recorded here once created). Item 3
-(single-entity lookup) is application-level work once item 2 lands — it
-does not need its own rivet issue.
+| Item | Rivet issue |
+|---|---|
+| 2 · named records / Optional / nested types | [#92](https://github.com/turinglambdaai/rivet/issues/92) |
+| 4 · layer-attributed diagnostics | [#93](https://github.com/turinglambdaai/rivet/issues/93) |
+| 7 · cross-bridge debugging | [#94](https://github.com/turinglambdaai/rivet/issues/94) |
+| 5 · Linux host strategy | [#95](https://github.com/turinglambdaai/rivet/issues/95) |
+| 6 · measure / budgets tooling | [#96](https://github.com/turinglambdaai/rivet/issues/96) |
+
+Item 3 (single-entity lookup) is application-level work once item 2 lands
+— it does not need its own rivet issue. Application-side workarounds stay
+documented in place until the issues close.
 
 ⚠️ `recovered/taskly-m1` **no longer exists on the remote** (verified
 2026-10-01). The surviving named-record implementation is this repo's

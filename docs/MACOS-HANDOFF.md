@@ -8,7 +8,7 @@
 | 仓库 | 分支 | 用途 |
 |---|---|---|
 | `turinglambdaai/taskly` | `experiment/taskly-rivet`（开发主线） | Rivet 项目布局：`rivet.rktd` + `racket/taskly/`（Racket 领域核心，M0 ✅）+ `app/backend.rkt`（Rivet 后端入口）+ `windows/`（C++/WinRT 宿主）+ `macos-host/`（SwiftUI 宿主脚手架） |
-| `turinglambdaai/rivet` | `main` | ⚠️ 旧交接里说的 `recovered/taskly-m1` 分支已从远端消失（2026-10-01 核实）；named-record 层当前唯一存活的实现在本仓库 `racket/taskly/rivet-schema.rkt`，向上游移植进度见 RIVET-LIB-BACKLOG 与 rivet 仓库 issue |
+| `turinglambdaai/rivet` | `main` | ⚠️ 旧交接里说的 `recovered/taskly-m1` 分支已从远端消失（2026-10-01 核实）；named-record 层当前唯一存活的实现在本仓库 `racket/taskly/rivet-schema.rkt`，向上游移植已立 issue：turinglambdaai/rivet#92（进度见 RIVET-LIB-BACKLOG 状态表） |
 
 `main`（taskly）= 删除前的原生三平台实现，仅作历史安全网；Rivet 分支才是主线。
 
