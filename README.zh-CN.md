@@ -1,5 +1,11 @@
 # Taskly
 
+> **⚠ 已归档（v1 原生版本线）。** 活跃开发已迁移到
+> [`experiment/taskly-rivet`](https://github.com/turinglambdaai/taskly/tree/experiment/taskly-rivet)
+> 分支 —— Taskly 正在以 [Rivet](https://github.com/turinglambdaai/rivet) 重建。
+> `main` 仅描述已归档的原生实现，只接收修复。
+> 迁移决策见该分支的 [docs/RIVET-MIGRATION.md](docs/RIVET-MIGRATION.md)。
+
 一个专注、原生的任务管理器。同一产品、同一 SQLite 数据文件、同一 agent CLI —— 每个平台都用原生技术实现。
 
 **English** · [中文](README.zh-CN.md)

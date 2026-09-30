@@ -1,5 +1,8 @@
 # AGENTS.md
 
+> **本分支已归档。** 活跃开发在 `experiment/taskly-rivet`（Rivet 重建）；
+> 本文件的 native 布局描述只适用于本归档分支。不要在这里加功能。
+
 指引给 AI agent（及开发者）：如何理解、构建、运行、改动 Taskly。
 
 ## 这是什么
