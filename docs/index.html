@@ -30,7 +30,7 @@
                 <li><a href="#features" data-en="Features" data-zh="功能">Features</a></li>
                 <li><a href="manual.html" data-en="Manual" data-zh="手册">Manual</a></li>
                 <li><a href="#cli" data-en="CLI" data-zh="命令行">CLI</a></li>
-                <li><a href="#rebuild" data-en="Rebuild" data-zh="重建">Rebuild</a></li>
+                <li><a href="#release" data-en="Release" data-zh="发布">Release</a></li>
 
                 <!-- Language Dropdown -->
                 <li class="lang-dropdown-wrapper">
@@ -57,7 +57,7 @@
     <!-- Hero -->
     <section class="hero" id="overview">
         <div class="container">
-            <span class="eyebrow animate-on-scroll" data-en="Open source · Local-first · Rebuilding on Rivet" data-zh="开源 · 本地优先 · Rivet 重构中">Open source · Local-first · Rebuilding on Rivet</span>
+            <span class="eyebrow animate-on-scroll" data-en="Open source · Local-first · Native on every desktop" data-zh="开源 · 本地优先 · 每个桌面都原生">Open source · Local-first · Native on every desktop</span>
             <h1 class="animate-on-scroll">
                 <span data-en="Organize your life," data-zh="规划你的生活，">Organize your life,</span>
                 <span class="accent" data-en="one task at a time." data-zh="一次一件。">one task at a time.</span>
@@ -69,7 +69,7 @@
             </p>
 
             <div class="hero-buttons animate-on-scroll">
-                <a href="#rebuild" class="btn btn-primary" data-en="Follow the rebuild" data-zh="关注重建进展">Follow the rebuild</a>
+                <a href="https://github.com/turinglambdaai/taskly/releases/latest" class="btn btn-primary" data-en="Download Taskly" data-zh="下载 Taskly">Download Taskly</a>
                 <a href="https://github.com/turinglambdaai/taskly" class="btn btn-secondary" data-en="View on GitHub" data-zh="在 GitHub 查看">View on GitHub</a>
             </div>
 
@@ -333,58 +333,64 @@
         </div>
     </section>
 
-    <!-- Rebuild Status Section -->
-    <section id="rebuild">
+    <!-- Release Section -->
+    <section id="release">
         <div class="container text-center">
-            <span class="eyebrow animate-on-scroll" data-en="Rebuild status" data-zh="重建进行时">Rebuild status</span>
-            <h2 class="section-title animate-on-scroll" data-en="The rebuild is underway." data-zh="Taskly 正在重建。">The rebuild is underway.</h2>
-            <p class="section-subtitle animate-on-scroll" data-en="The v1 native apps are archived. Taskly is being rebuilt on Rivet — one Racket core driving first-party native hosts in WinUI 3, SwiftUI, and GTK4. No downloads until the new build ships; watch the repo in the meantime."
-                data-zh="v1 原生实现已归档。Taskly 正在以 Rivet 重建：一个 Racket 核心驱动 WinUI 3 / SwiftUI / GTK4 三套第一方原生宿主。新版发布前不提供下载，欢迎先在 GitHub 关注进展。">
-                The v1 native apps are archived. Taskly is being rebuilt on Rivet — one Racket core driving first-party native hosts in WinUI 3, SwiftUI, and GTK4.
+            <span class="eyebrow animate-on-scroll" data-en="Release" data-zh="发布">Release</span>
+            <h2 class="section-title animate-on-scroll" data-en="v1 is ready." data-zh="v1 已经就绪。">v1 is ready.</h2>
+            <p class="section-subtitle animate-on-scroll" data-en="The native v1 ships on all three desktops — SwiftUI, WinUI 3, and GTK4 — with in-app updates everywhere, a JSON CLI in every binary, and a shared behavioral contract enforced in CI. Download, install, and it keeps itself up to date."
+                data-zh="原生 v1 覆盖三大桌面——SwiftUI、WinUI 3、GTK4——每个平台都有应用内自动更新，每个二进制都内置 JSON CLI，行为契约由 CI 强制校验。下载安装后，应用会自己保持最新。">
+                The native v1 ships on all three desktops — SwiftUI, WinUI 3, and GTK4 — with in-app updates everywhere.
             </p>
 
             <div class="bento-grid">
                 <div class="bento-card animate-on-scroll">
                     <div class="card-icon">✅</div>
-                    <h3 data-en="M0–M2 · Shipped" data-zh="M0–M2 · 已交付">M0–M2 · Shipped</h3>
-                    <p data-en="The shared Racket core: domain logic and SQLite storage, typed DTOs with generated clients, and in-process RPC across hosts."
-                        data-zh="共享 Racket 核心：领域逻辑与 SQLite 存储、类型化 DTO 与客户端代码生成、跨宿主进程内 RPC 全部打通。">
-                        The shared Racket core: domain logic and SQLite storage, typed DTOs with generated clients, and in-process RPC.
+                    <h3 data-en="Three native apps · Shipped" data-zh="三端原生 · 已交付">Three native apps · Shipped</h3>
+                    <p data-en="SwiftUI on macOS, WinUI 3 on Windows, GTK4/libadwaita on Linux — zero shared runtime code, zero third-party UI dependencies, first-party feel on every desktop."
+                        data-zh="macOS 用 SwiftUI，Windows 用 WinUI 3，Linux 用 GTK4/libadwaita——零共享运行时、零第三方 UI 依赖，每个平台都是第一方的原生手感。">
+                        SwiftUI on macOS, WinUI 3 on Windows, GTK4 on Linux — first-party native on every desktop.
                     </p>
                 </div>
                 <div class="bento-card animate-on-scroll">
-                    <div class="card-icon">🔨</div>
-                    <h3 data-en="M3 · In progress" data-zh="M3 · 进行中">M3 · In progress</h3>
-                    <p data-en="Windows parity — a C++/WinRT host: the XAML interface carries over, code-behind rewritten in C++."
-                        data-zh="Windows 对齐——C++/WinRT 宿主：XAML 界面沿用，代码后置以 C++ 重写。">
-                        Windows parity — a C++/WinRT host: the XAML interface carries over, code-behind rewritten in C++.
+                    <div class="card-icon">🔄</div>
+                    <h3 data-en="In-app updates · Everywhere" data-zh="应用内更新 · 全平台">In-app updates · Everywhere</h3>
+                    <p data-en="Silent checks at launch plus a manual check in Settings. Updates are signature-verified before install and never touch your data — fast iteration without reinstalling."
+                        data-zh="启动时静默检查 + 设置里手动检查。更新安装前先验签，绝不碰你的数据——快速迭代，无需重装。">
+                        Signature-verified in-app updates on all three platforms — no more reinstalling.
                     </p>
                 </div>
                 <div class="bento-card animate-on-scroll">
-                    <div class="card-icon">🍎</div>
-                    <h3 data-en="M4–M5 · Planned" data-zh="M4–M5 · 计划中">M4–M5 · Planned</h3>
-                    <p data-en="macOS on a SwiftUI host — the first platform where the full Rivet stack runs — then Linux on GTK4."
-                        data-zh="macOS 采用 SwiftUI 宿主——Rivet 全栈最先跑通的平台——随后是 GTK4 的 Linux。">
-                        macOS on a SwiftUI host, then Linux on GTK4.
+                    <div class="card-icon">🤖</div>
+                    <h3 data-en="Agent CLI · Built in" data-zh="Agent CLI · 内置">Agent CLI · Built in</h3>
+                    <p data-en="Every binary doubles as a headless CLI: `taskly add "Buy milk" --due tomorrow --json`. Stable JSON output and exit codes, pinned by a 61-case golden test suite."
+                        data-zh="每个二进制都是无头 CLI：`taskly add "买牛奶" --due tomorrow --json`。稳定的 JSON 输出与退出码，由 61 条 golden 测试套件钉死。">
+                        GUI and CLI in one binary — stable JSON output, pinned by golden tests.
                     </p>
                 </div>
                 <div class="bento-card animate-on-scroll">
-                    <div class="card-icon">📦</div>
-                    <h3 data-en="M6–M7 · Planned" data-zh="M6–M7 · 计划中">M6–M7 · Planned</h3>
-                    <p data-en="The JSON CLI moves into the Racket core, then release engineering: installers, signing, and updates."
-                        data-zh="JSON CLI 移入 Racket 核心，随后是发布工程：安装器、签名与更新。">
-                        The JSON CLI moves into the Racket core, then release engineering.
+                    <div class="card-icon">📄</div>
+                    <h3 data-en="Open core · AGPL-3.0" data-zh="开放核心 · AGPL-3.0">Open core · AGPL-3.0</h3>
+                    <p data-en="The desktop core is open source — free to use, fork, and study. The data format and CLI are documented contracts, not accidents."
+                        data-zh="桌面核心开源——自由使用、分叉与研究。数据格式与 CLI 都是成文的契约，而非偶然。">
+                        The desktop core is open source; the contracts are documented.
                     </p>
                 </div>
             </div>
 
             <div class="download-cta">
-                <a href="https://github.com/turinglambdaai/taskly" class="btn btn-primary">
-                    <span data-en="Watch on GitHub" data-zh="在 GitHub 关注">Watch on GitHub</span>
+                <a href="https://github.com/turinglambdaai/taskly/releases/latest" class="btn btn-primary">
+                    <span data-en="Download from Releases" data-zh="从 Releases 下载">Download from Releases</span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
-                <a href="RIVET-MIGRATION.md" class="btn btn-secondary" data-en="Migration notes" data-zh="重构架构说明">Migration notes</a>
+                <a href="https://github.com/turinglambdaai/taskly/tree/main/docs" class="btn btn-secondary" data-en="Read the manual" data-zh="阅读手册">Read the manual</a>
             </div>
+
+            <p class="section-subtitle animate-on-scroll" style="margin-top:24px; font-size:14px;"
+                data-en="v1 is in maintenance mode — fixes only. Active development happens on the experiment/taskly-rivet branch, where a shared Racket core (Rivet) drives the same native hosts."
+                data-zh="v1 进入维护模式（仅修复）。活跃开发已转移到 experiment/taskly-rivet 分支：共享 Racket 核心（Rivet）驱动同一批原生宿主。">
+                v1 is in maintenance mode; active development happens on the experiment/taskly-rivet branch.
+            </p>
         </div>
     </section>
 

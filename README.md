@@ -22,7 +22,7 @@ macOS notification crashes of 0.6.x were the last straw).
 
 | Platform | Stack | Status | Build |
 |---|---|---|---|
-| macOS 14+ | Swift 6 + SwiftUI | ✅ build + 24 tests + CLI smoke verified | [apps/macos](apps/macos) |
+| macOS 14+ | Swift 6 + SwiftUI | ✅ build + 31 tests + golden CLI suite verified | [apps/macos](apps/macos) |
 | Windows 10+ | WinUI 3 (Windows App SDK) + .NET 10 | source complete, CI build | [apps/windows](apps/windows) |
 | Linux | Vala + GTK4 / libadwaita (compiles to C/GObject) | ✅ native build + contract tests verified | [apps/linux](apps/linux) |
 | iOS / iPadOS (next) | reuses the macOS SwiftUI codebase | planned | — |
@@ -38,6 +38,11 @@ until the native 1.0 GA.
   custom lists with emoji icons and colors, quick add with natural-language
   dates (`@10am`, `+1d`, `tomorrow`), due-task OS notifications, bilingual
   zh/en (live switch), macOS Reminders neutral palette, light/dark.
+- **In-app updates on every platform** — silent check at launch plus a
+  manual check in Settings; updates are signature-verified before install
+  and never touch your data (Windows via Velopack with delta packages,
+  macOS/Linux via a signed release manifest). Contract:
+  [UPDATE](shared/spec/UPDATE.md).
 - **One data file** — your tasks live in a single SQLite file
   (`~/.taskly/tasks.db`, WAL) you can drop into iCloud/OneDrive/Dropbox for
   sync. The format is documented and stable: [DATA-FORMAT](shared/spec/DATA-FORMAT.md).
@@ -52,9 +57,9 @@ Download from [Releases](https://github.com/turinglambdaai/taskly/releases/lates
 
 | Platform | Download | Updates |
 |---|---|---|
-| macOS 14+ (universal) | `Taskly-<version>-macos.dmg` | reinstall the newer DMG |
-| Windows 10+ x64 | the Velopack `*-Setup.exe` installer (recommended) or the portable `Taskly-<version>-windows-x64.zip` | installed builds update in-app; portable builds are manual |
-| Linux x64 | `Taskly-<version>-linux-x64.tar.gz` | reinstall the newer tarball |
+| macOS 14+ (universal) | `Taskly-<version>-macos.dmg` | in-app (signed manifest) |
+| Windows 10+ x64 | the Velopack `*-Setup.exe` installer (recommended) or the portable `Taskly-<version>-windows-x64.zip` | installed builds update in-app (with delta packages); portable builds are manual |
+| Linux x64 | `Taskly-<version>-linux-x64.tar.gz` | in-app (signed manifest) when the install prefix is writable, otherwise a releases-page prompt |
 
 Every release carries a `SHA256SUMS` manifest and Sigstore build provenance
 (`gh attestation verify <file> -R turinglambdaai/taskly`).
@@ -76,7 +81,8 @@ taskly/
 ```
 
 The three apps share **no code**. They share the contract (`shared/spec/`),
-and CI enforces it: identical CLI JSON/exit codes, byte-identical i18n, one
+and CI enforces it: identical CLI JSON/exit codes (pinned by the 61-case
+golden suite in `shared/cli-golden/`), byte-identical i18n, one
 DB schema (user_version 4) with lockstep migrations.
 
 ### Build

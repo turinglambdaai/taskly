@@ -18,7 +18,7 @@ Taskly v1 是对基于 Avalonia 的 0.6.x 版本的完全原生重写。每个�
 
 | 平台 | 技术栈 | 状态 | 目录 |
 |---|---|---|---|
-| macOS 14+ | Swift 6 + SwiftUI | ✅ 已验证：构建 + 24 个测试 + CLI 冒烟 | [apps/macos](apps/macos) |
+| macOS 14+ | Swift 6 + SwiftUI | ✅ 已验证：构建 + 31 个测试 + golden CLI 套件 | [apps/macos](apps/macos) |
 | Windows 10+ | WinUI 3 (Windows App SDK) + .NET 10 | 源码完成，CI 构建 | [apps/windows](apps/windows) |
 | Linux | Vala + GTK4 / libadwaita（编译为 C/GObject） | ✅ 原生构建 + 契约测试已验证 | [apps/linux](apps/linux) |
 | iOS / iPadOS（下一步） | 复用 macOS SwiftUI 代码库 | 计划中 | — |
@@ -29,6 +29,7 @@ Taskly v1 是对基于 Avalonia 的 0.6.x 版本的完全原生重写。每个�
 ## 每个应用都包含
 
 - **仿 macOS 提醒事项 UI** —— 智能视图（今天 / 计划 / 全部 / 完成）、emoji 图标 + 彩色的自定义列表、自然语言日期快速添加（`@10am`、`+1d`、`tomorrow`）、系统级到期通知、中英双语（运行时切换）、提醒事项式中性配色、明暗双主题。
+- **全平台应用内更新** —— 启动时静默检查 + 设置中手动检查；更新安装前先验签，绝不触碰你的数据（Windows 走 Velopack 含增量包，macOS/Linux 走签名发布清单）。契约：[UPDATE](shared/spec/UPDATE.md)。
 - **单一数据文件** —— 所有任务存于一个 SQLite 文件（`~/.taskly/tasks.db`，WAL 模式），放进 iCloud / OneDrive / Dropbox 即可多设备同步。格式文档化且稳定：[DATA-FORMAT](shared/spec/DATA-FORMAT.md)。
 - **同一二进制内的 agent CLI** —— `taskly list|add|update|done|rm|search|…`，支持 `--json`、稳定退出码、无头运行。规格：[CLI-SPEC](shared/spec/CLI-SPEC.md)。通过应用菜单（工具 ▸ 安装命令行工具）或 `taskly install-cli` 安装。
 
@@ -38,9 +39,9 @@ Taskly v1 是对基于 Avalonia 的 0.6.x 版本的完全原生重写。每个�
 
 | 平台 | 下载 | 更新方式 |
 |---|---|---|
-| macOS 14+（通用二进制） | `Taskly-<version>-macos.dmg` | 重新安装新版 DMG |
-| Windows 10+ x64 | 推荐 Velopack 的 `*-Setup.exe` 安装器；也可选便携版 `Taskly-<version>-windows-x64.zip` | 安装版支持应用内更新；便携版手动替换 |
-| Linux x64 | `Taskly-<version>-linux-x64.tar.gz` | 重新安装新版压缩包 |
+| macOS 14+（通用二进制） | `Taskly-<version>-macos.dmg` | 应用内更新（签名清单） |
+| Windows 10+ x64 | 推荐 Velopack 的 `*-Setup.exe` 安装器；也可选便携版 `Taskly-<version>-windows-x64.zip` | 安装版应用内更新（含增量包）；便携版手动替换 |
+| Linux x64 | `Taskly-<version>-linux-x64.tar.gz` | 应用内更新（签名清单；安装目录不可写时提示打开发布页） |
 
 每个 Release 附带 `SHA256SUMS` 校验清单与 Sigstore 构建溯源证明
 （`gh attestation verify <文件> -R turinglambdaai/taskly`）。
