@@ -203,7 +203,10 @@ jobs:
           else
             echo "::warning::UPDATE_ED25519_PRIVATE_KEY is not set — update-manifest.json not generated; macOS/Linux clients stay on the current version"
           fi
-          find dist -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\0' | sort -z | xargs -0 sha256sum > dist/SHA256SUMS
+          # -printf '%f' emits bare names, so hash from inside dist/ —
+          # from the repo root sha256sum would resolve nothing.
+          (cd dist && find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\0' \
+            | sort -z | xargs -0 sha256sum) > dist/SHA256SUMS
           (cd dist && sha256sum --check SHA256SUMS)
           PREV_TAG="$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo "")"
           if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
