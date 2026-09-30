@@ -1,4 +1,4 @@
-name: Native Release
+﻿name: Native Release
 
 # Tag-triggered release pipeline for the native apps. Tag `vX.Y.Z` to build
 # and attach artifacts to a GitHub Release.
@@ -103,10 +103,17 @@ jobs:
           # Borrowed from brainfuel: fetch the previous Velopack feed so pack
           # can produce a small delta package for existing installations.
           PREV=0
-          vpk download github \
+          # vpk download exits 0 even when no previous release exists — only
+          # treat it as "previous feed available" if packages were actually
+          # downloaded (first release ships full package without deltas).
+          if vpk download github \
             --repoUrl "https://github.com/${GITHUB_REPOSITORY}" \
             --outputDir Releases --channel win --token "$GH_TOKEN" \
-            && PREV=1 || echo "::warning::no previous Velopack feed; shipping full package only"
+            && compgen -G "Releases/*.nupkg" > /dev/null; then
+            PREV=1
+          else
+            echo "::warning::no previous Velopack feed; shipping full package only"
+          fi
           vpk pack --packId Taskly --packVersion "$VER" \
             --packDir publish/win-x64 --mainExe Taskly.exe --packTitle Taskly \
             --channel win --outputDir Releases
