@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [1.0.0] - 2026-09-30
 ### Added
 - **Online updates on all three platforms** (contract: `shared/spec/UPDATE.md`)
   — silent check at launch (≥4 h throttle, config `last-update-check`) plus
@@ -27,50 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`apps/macos/scripts/golden-cli.sh`) replaces the old grep-based smoke
   step in `native.yml`. Windows/Linux runners adopt the same fixture.
 
-### Changed
-- **macOS menu bar aligned to PRODUCT-SPEC §8**: About moved from the app
-  menu to Help (replacing the dead "Taskly Help" placeholder), the
-  duplicate system View menu and window-tabbing items are gone
-  (`NSWindow.allowsAutomaticWindowTabbing = false`), File's system
-  Close/Close All no longer collide with Close Database's Cmd+W, and the
-  Tahoe window-tiling group is suppressed. Leftover empty system menu
-  shells are pruned on launch and after each menu closes. The Edit menu
-  keeps only standard editing commands plus the system text-input items.
-- **macOS UI realigned to DESIGN-TOKENS**: smart views are now the contract's
-  34px neutral chips (2×2 grid, radius 8, 8px gaps) with colored SF Symbol
-  glyphs, 13px labels and quiet 12px counts — replacing the oversized
-  saturated tiles; all emoji glyphs (tiles, due-date/time chips, empty
-  states) replaced with SF Symbols; list rows and the selected state use
-  surface cards with a quiet selection fill (no accent focus ring); the
-  Completed token returns to spec gray `#8E8E93`; task rows get the 44px
-  min height, a centered 20px list-color checkbox, and a meta line that
-  leads with the owning list (dot + name) in multi-list views; the info
-  button sits at 45% opacity until row hover; quick add is the contract's
-  36px with radius 10; window default size is 1280×880.
-
-### Fixed
-- **macOS: crash on every GUI launch on macOS 26** — `AppState.init` read
-  the bare `NSApp` global, which is still nil while SwiftUI (macOS 26)
-  constructs the App struct before creating `NSApplication`; the force
-  unwrap trapped before the first frame (EXC_BREAKPOINT). Both the
-  appearance getter and the KVO registration now use
-  `NSApplication.shared`, which creates the app object on first touch.
-  Regression test `AppStateInitTests` reproduces the nil environment.
-- macOS CLI: `add` echoed the built task without the joined `listName`,
-  and `update --list` echoed the **previous** list's name after a move —
-  both now read the stored row back (CLI-SPEC pins the echo).
-- macOS CLI: `lists --json` always reported `pendingCount: 0` (the
-  computed count was dropped on the JSON path; the human-readable path
-  was correct).
-
-## [1.0.0] - 2026-09-27
-
-The first release of the native rewrite (SwiftUI / WinUI 3 / GTK4-libadwaita,
-zero shared runtime code, one behavioral contract in `shared/spec/`). The
-Avalonia line (≤ 0.7.0) is retired; releases before this one belong to a
-different architecture and are no longer published.
-
-### Added
 - **Task-row context menu** (spec §5): right-click a row for toggle
   completed, delete (no confirmation from the row, per contract), and
   move to list ▸ — the Windows GUI previously had no delete path.
@@ -105,6 +60,26 @@ different architecture and are no longer published.
   `~/.taskly/crash.log` (opt-in Sentry remains the commercial plan).
 
 ### Changed
+- **macOS menu bar aligned to PRODUCT-SPEC §8**: About moved from the app
+  menu to Help (replacing the dead "Taskly Help" placeholder), the
+  duplicate system View menu and window-tabbing items are gone
+  (`NSWindow.allowsAutomaticWindowTabbing = false`), File's system
+  Close/Close All no longer collide with Close Database's Cmd+W, and the
+  Tahoe window-tiling group is suppressed. Leftover empty system menu
+  shells are pruned on launch and after each menu closes. The Edit menu
+  keeps only standard editing commands plus the system text-input items.
+- **macOS UI realigned to DESIGN-TOKENS**: smart views are now the contract's
+  34px neutral chips (2×2 grid, radius 8, 8px gaps) with colored SF Symbol
+  glyphs, 13px labels and quiet 12px counts — replacing the oversized
+  saturated tiles; all emoji glyphs (tiles, due-date/time chips, empty
+  states) replaced with SF Symbols; list rows and the selected state use
+  surface cards with a quiet selection fill (no accent focus ring); the
+  Completed token returns to spec gray `#8E8E93`; task rows get the 44px
+  min height, a centered 20px list-color checkbox, and a meta line that
+  leads with the owning list (dot + name) in multi-list views; the info
+  button sits at 45% opacity until row hover; quick add is the contract's
+  36px with radius 10; window default size is 1280×880.
+
 - License finalized: desktop core AGPL-3.0 (was Apache-2.0), open-core model.
 - Release engineering: canonical root `VERSION` file with a release
   preflight that fails the pipeline on cross-platform version drift;
@@ -121,6 +96,25 @@ different architecture and are no longer published.
   width the month rail yields to the day-group time line.
 
 ### Fixed
+- **macOS: crash on every GUI launch on macOS 26** — `AppState.init` read
+  the bare `NSApp` global, which is still nil while SwiftUI (macOS 26)
+  constructs the App struct before creating `NSApplication`; the force
+  unwrap trapped before the first frame (EXC_BREAKPOINT). Both the
+  appearance getter and the KVO registration now use
+  `NSApplication.shared`, which creates the app object on first touch.
+  Regression test `AppStateInitTests` reproduces the nil environment.
+- macOS CLI: `add` echoed the built task without the joined `listName`,
+  and `update --list` echoed the **previous** list's name after a move —
+  both now read the stored row back (CLI-SPEC pins the echo).
+- macOS CLI: `lists --json` always reported `pendingCount: 0` (the
+  computed count was dropped on the JSON path; the human-readable path
+  was correct).
+
+The first release of the native rewrite (SwiftUI / WinUI 3 / GTK4-libadwaita,
+zero shared runtime code, one behavioral contract in `shared/spec/`). The
+Avalonia line (≤ 0.7.0) is retired; releases before this one belong to a
+different architecture and are no longer published.
+
 - **Windows: crash on entering the calendar view** — a synchronous
   PropertyChanged between the year and month assignments let the month grid
   render with month `0` and `DateTime` threw inside XAML layout (native
