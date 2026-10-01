@@ -101,7 +101,7 @@
 
 | Item | Rivet issue |
 |---|---|
-| 2 · named records / Optional / nested types | [#92](https://github.com/turinglambdaai/rivet/issues/92) |
+| 2 · named records / Optional / nested types | ✅ 已由 rivet main 解决（PR #72 + #78）；[#92](https://github.com/turinglambdaai/rivet/issues/92) 已附应用侧验证后关闭（56 测试对 linked main 全绿） |
 | 4 · layer-attributed diagnostics | [#93](https://github.com/turinglambdaai/rivet/issues/93) |
 | 7 · cross-bridge debugging | [#94](https://github.com/turinglambdaai/rivet/issues/94) |
 | 5 · Linux host strategy | [#95](https://github.com/turinglambdaai/rivet/issues/95) |
@@ -111,6 +111,8 @@ Item 3 (single-entity lookup) is application-level work once item 2 lands
 — it does not need its own rivet issue. Application-side workarounds stay
 documented in place until the issues close.
 
-⚠️ `recovered/taskly-m1` **no longer exists on the remote** (verified
-2026-10-01). The surviving named-record implementation is this repo's
-`racket/taskly/rivet-schema.rkt` — treat it as the reference for the port.
+Post-script: `recovered/taskly-m1` never needed recovering — rivet main
+landed M1 via #72/#78, and this repo's `racket/taskly/rivet-schema.rkt`
+turned out to be plain app-level schema declarations on the library API
+(not a shim), verified by 56 green core tests against linked main.
+Item 3 (single-entity RPC) is now unblocked as ordinary application work.

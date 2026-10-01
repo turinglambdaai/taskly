@@ -8,7 +8,7 @@
 | 仓库 | 分支 | 用途 |
 |---|---|---|
 | `turinglambdaai/taskly` | `experiment/taskly-rivet`（开发主线） | Rivet 项目布局：`rivet.rktd` + `racket/taskly/`（Racket 领域核心，M0 ✅）+ `app/backend.rkt`（Rivet 后端入口）+ `windows/`（C++/WinRT 宿主）+ `macos-host/`（SwiftUI 宿主脚手架） |
-| `turinglambdaai/rivet` | `main` | ⚠️ 旧交接里说的 `recovered/taskly-m1` 分支已从远端消失（2026-10-01 核实）；named-record 层当前唯一存活的实现在本仓库 `racket/taskly/rivet-schema.rkt`，向上游移植已立 issue：turinglambdaai/rivet#92（进度见 RIVET-LIB-BACKLOG 状态表） |
+| `turinglambdaai/rivet` | `main` | named-record API 已进 rivet main（PR #72 + #78；issue #92 已验证关闭）——**不再需要切任何 rivet 分支**，linked main 即可 |
 
 `main`（taskly）= 删除前的原生三平台实现，仅作历史安全网；Rivet 分支才是主线。
 
@@ -46,7 +46,7 @@ raco rivet build     # 或 raco rivet dev（开发循环：改完自动重建+�
 1. **跑通 hello 宿主**：`raco rivet build && raco rivet dev`——验证当前 rivet 的 macOS 宿主在本机可构建可启动（9/21 的崩溃发生在 Windows；macOS 宿主 + 当前 rivet 很可能直接通过）
 2. **接 Taskly 后端**：`rivet.rktd` 的 backend 已指向 `racket/taskly/backend.rkt`（真实 Taskly 领域层，非 hello）。`raco rivet dev` 应启动一个带真实 SQLite 数据的 SwiftUI 窗口
 3. **移植 Taskly SwiftUI UI**：旧原生实现的完整 UI 在 git 历史（`git show main:apps/macos/Sources/Taskly/Views/MainWindowView.swift` 等）——Reminders 式布局、chips、主题系统都在里面。`macos-host/Sources/RivetHost/ContentView.swift` 是移植目标；数据源从 SQLite 直连改为 GeneratedBackend.swift 的类型化客户端（backend.rkt 的 RPC 面：open_database/load_snapshot/add_task/update_task/...）
-4. **给 rivet 提 PR（第一个）**：把 named-record API（define-record/Optional/嵌套记录）从本仓库 `racket/taskly/rivet-schema.rkt` 移植进 rivet main——这是 taskly Racket 核心对 rivet main 的唯一硬依赖（backlog P1；原 `recovered/taskly-m1` 分支已从远端消失，勿再寻找）
+4. ~~给 rivet 提 PR：移植 named-record API~~ **已完成**——rivet main 经 PR #72/#78 自带 define-record/Optional/嵌套/枚举（issue #92 已验证关闭），racket/taskly 直接用库 API
 5. **M6**：把 agent-facing CLI（原 C# CliEngine，CLI-SPEC 契约）用 Racket 重写（领域层已在 Racket，很薄）
 
 ### 已知坑（前人踩过，别再踩）
