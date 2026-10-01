@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Task detail sheet redesigned as the spec'd immersive editor**
+  (DESIGN-TOKENS): no dialog title — the task text is the title (18px
+  semibold borderless); borderless notes with a tertiary placeholder;
+  date/time as rounded chips (accent border when set, hollow "add" chips
+  otherwise) opening a graphical calendar and a 5-minute-step HH:mm
+  picker; bottom row of red-text Delete, plain Cancel, accent-filled
+  Save. Fixed: clearing the date no longer leaves a stale dueTime on
+  save. List edit sheet aligned to the same design language.
+
 ## [1.0.0] - 2026-09-30
 ### Added
 - **Online updates on all three platforms** (contract: `shared/spec/UPDATE.md`)
