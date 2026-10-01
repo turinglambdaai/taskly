@@ -116,3 +116,29 @@ landed M1 via #72/#78, and this repo's `racket/taskly/rivet-schema.rkt`
 turned out to be plain app-level schema declarations on the library API
 (not a shim), verified by 56 green core tests against linked main.
 Item 3 (single-entity RPC) is now unblocked as ordinary application work.
+
+## Addendum 2026-10-01 — distribution automation (winget)
+
+Discovered while wiring 5 products (brainfuel, movebit, podlens, payback,
+hackdigest) to winget: each repo now carries a copy-pasted
+`.github/workflows/winget.yml` + `packaging/winget/` seed manifests
+(schema 1.6.0, metadata extracted with `komac analyze --hash`); first
+submissions are open as microsoft/winget-pkgs #444829–#444833. Rivet apps
+get their MSI from `raco rivet release`, so the winget surface applies to
+every future rivet app (taskly rivet line, fulcrum, the
+brainfuel/movebit/syncpilot/pdfgist rewrites).
+
+### 10. Winget distribution scaffold in rivet — filed upstream [#121](https://github.com/turinglambdaai/rivet/issues/121)
+- The winget workflow + seed-manifest template is identical across
+  products except identifier / installers-regex / descriptions. Each new
+  rivet app re-copies it by hand.
+- Ask: `raco rivet winget-init` writing the workflow + seed manifests from
+  `rivet.rktd` metadata, or `raco rivet release` emitting winget seed
+  manifests alongside the MSI. Needs a publisher field (see 10a) to render
+  `AppsAndFeaturesEntries` faithfully.
+
+### 10a. MSI Manufacturer defect — filed upstream
+- `rivet-cli/installer.rkt` sets WiX `Manufacturer` to the reverse-DNS
+  identifier → ARP shows `site.jrtx.podlens` as podlens's publisher.
+- Filed: [#112](https://github.com/turinglambdaai/rivet/issues/112) —
+  `Manufacturer := publisher ?? display-name`.

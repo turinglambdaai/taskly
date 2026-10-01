@@ -54,16 +54,15 @@
 ## List-palette presets (fixed order, iOS system colors)
 
 `#007AFF` `#FF3B30` `#FF9500` `#FFCC00` `#4CD964` `#5AC8FA` `#5856D6`
-`#FF2D55` `#8E8E93` `#C7C7CC`
+`#FF2D55` `#8E8E93` `#C7C7CC` `#A2845E` `#00C7BE`
 
-## Emoji categories (fixed order, 6 × 8)
+## Emoji categories (fixed order, 8 × 12)
 
-1. 📋 📝 ✅ 🎯 💡 📌 🔖 📎
-2. 🏠 🏢 💼 📱 💻 🎨 📚 🎓
-3. ❤️ ⭐ 🌟 🔥 💪 🎉 🎊 🏆
-4. 🛒 🛍️ 🍔 ☕ 🍕 🥤 🎮 🎬
-5. ✈️ 🚗 🚴 🏃 ⚽ 🏀 🎸 🎵
-6. 💰 💳 📊 📈 💼 📧 📅 ⏰
+The catalog is single-sourced in `shared/emoji.json` (category id, display
+order, emojis; synced to platform copies by `scripts/sync-i18n.sh`).
+Category ids in display order: `frequent`, `people`, `nature`, `food`,
+`activity`, `travel`, `objects`, `symbols` — localized names via i18n
+`emojiCat_<id>`.
 
 ## Geometry & type
 
@@ -75,7 +74,6 @@
 | menu bar / status bar height | 32 / 28 |
 | smart-list chip | 2×2 grid of 34px chips (radius 8, 8px gaps): neutral surface fill + 1px divider, horizontal content = colored glyph (14px, view semantic color) + 13px label + quiet 12px count right; checked = quiet selection fill (VSM), hover = hover fill; saturated color never fills the chip — color lives on the glyph (macOS Reminders language) |
 | list row | card: surface fill + 1px divider border, radius 8, padding 8,5; 20px round color dot with the emoji inside (11px), name 13px, gray count right — compact, aligned with the sidebar icon column |
-| list icon size | 32 (round) |
 | checkbox size | 20px ring in the task's list color (accent fallback); completed = list-color fill with a white check |
 | task row | 44px min height, padding 16,9; text 14px; meta 12px with the owning list name (list-colored dot + name) shown in multi-list views; info button at 45% opacity, full on row hover |
 | corner radius (rows/cards) | 8 / 10 / 12 |

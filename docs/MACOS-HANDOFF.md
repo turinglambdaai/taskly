@@ -43,9 +43,9 @@ raco rivet build     # 或 raco rivet dev（开发循环：改完自动重建+�
 
 ### macOS 端任务（你的 MacBook 上的工作顺序）
 
-1. **跑通 hello 宿主**：`raco rivet build && raco rivet dev`——验证当前 rivet 的 macOS 宿主在本机可构建可启动（9/21 的崩溃发生在 Windows；macOS 宿主 + 当前 rivet 很可能直接通过）
-2. **接 Taskly 后端**：`rivet.rktd` 的 backend 已指向 `racket/taskly/backend.rkt`（真实 Taskly 领域层，非 hello）。`raco rivet dev` 应启动一个带真实 SQLite 数据的 SwiftUI 窗口
-3. **移植 Taskly SwiftUI UI**：旧原生实现的完整 UI 在 git 历史（`git show main:apps/macos/Sources/Taskly/Views/MainWindowView.swift` 等）——Reminders 式布局、chips、主题系统都在里面。`macos-host/Sources/RivetHost/ContentView.swift` 是移植目标；数据源从 SQLite 直连改为 GeneratedBackend.swift 的类型化客户端（backend.rkt 的 RPC 面：open_database/load_snapshot/add_task/update_task/...）
+1. ~~**跑通 hello 宿主**~~ 已完成
+2. ~~**接 Taskly 后端**~~ 已完成
+3. ~~**移植 Taskly SwiftUI UI**~~ **已完成（2026-10-02）**——Reminders 式全量 UI 落在 `macos-host/Sources/RivetHost/`：智能视图/清单增删改/快速添加（解析预览）/行内展开/多选/键盘流/撤销横幅/搜索/明暗主题/中英切换；数据面全部走 GeneratedBackend.swift 类型化客户端。`raco rivet build && raco rivet dev` 即可运行。待做：提醒通知调度（ReminderService 对应物）、菜单栏速添、CLI 安装菜单项
 4. ~~给 rivet 提 PR：移植 named-record API~~ **已完成**——rivet main 经 PR #72/#78 自带 define-record/Optional/嵌套/枚举（issue #92 已验证关闭），racket/taskly 直接用库 API
 5. **M6**：把 agent-facing CLI（原 C# CliEngine，CLI-SPEC 契约）用 Racket 重写（领域层已在 Racket，很薄）
 

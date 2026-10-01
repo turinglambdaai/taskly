@@ -15,7 +15,7 @@ UI 薄壳。
 | 平台宿主 | 技术栈 | 目录 | 状态 |
 |---|---|---|---|
 | Windows | C++/WinRT 宿主 + 嵌入式 Racket CS | `windows/` | M3 首个可运行（Taskly UI 跑在后端上） |
-| macOS | SwiftUI 宿主 + 类型化客户端 | `macos-host/` | 移植中（见 `docs/MACOS-HANDOFF.md`） |
+| macOS | SwiftUI 宿主 + 类型化客户端 | `macos-host/` | M4 首个可运行（Reminders 式 UI 全量移植，见 `docs/MACOS-HANDOFF.md`） |
 | Linux | GTK4 宿主 + 嵌入式 Racket CS | `linux/` | 首个可运行（智能视图/清单/增删改/快速添加） |
 | agent CLI | Racket（领域层已就绪） | `racket/taskly/` | M6 待做—— rivet 分支尚无 CLI；日常 CLI 仍用 v1 原生应用 |
 
@@ -53,14 +53,14 @@ rivet 仓库）；需要可嵌入 Racket CS（libracketcs.a + 3 个 boot 文件�
 | `shared/spec/DATA-FORMAT.md` | SQLite schema v4、列↔字段映射、日期存储格式（`yyyy-MM-dd`/`HH:mm`/ISO-8601 本地时区）、WAL、`~/.taskly/config.ini`、默认「工作」列表（color = -4104388） |
 | `shared/spec/CLI-SPEC.md` | CLI 子命令、`--json` 字段名与顺序、退出码 0/1/2/3/4、`--due` 语法全集（M6 实现的验收标准） |
 | `shared/spec/PRODUCT-SPEC.md` | 视图/过滤/排序、任务行与详情交互、提醒调度、验证上限（1000/100/200/年份 1900–2100） |
-| `shared/spec/DESIGN-TOKENS.md` | 暖色板（Pampas #F4F3EE + Crail #C15F3C，明暗两套）、10 色 iOS 调色板、6×8 emoji 分类 |
+| `shared/spec/DESIGN-TOKENS.md` | Reminders 中性色板（系统蓝 accent #007AFF，明暗两套）、12 色 iOS 调色板、8×12 emoji 分类 |
 | `rivet.rktd` | Rivet 应用清单：backend 入口 `app/backend.rkt`、协议 v1、平台最低版本 |
-| `shared/i18n/{zh,en}.json` | 全部用户可见文案（约 121 键），平台副本必须逐字节一致 |
+| `shared/i18n/{zh,en}.json` | 全部用户可见文案（约 139 键），平台副本必须逐字节一致 |
 
 ## 改动契约（不要破坏）
 
 - **DB schema**：`user_version = 4`。加列必须 bump 版本 + 更新 DATA-FORMAT.md + 三平台同一 release
-- **RPC 面**：`racket/taskly/backend.rkt` 的 define-rpc 是宿主的唯一数据通道（open_database / load_snapshot / add_task / update_task / set_completed / delete_task / search_tasks / create_list / update_list / delete_list / get_settings / set_setting + `changed` 事件）。改签名 = 三端宿主 + 生成客户端同步改
+- **RPC 面**：`racket/taskly/backend.rkt` 的 define-rpc 是宿主的唯一数据通道（open_database / close_database / default_database / load_snapshot / add_task / update_task / update_task_text / set_completed / delete_task / search_tasks / create_list / update_list / delete_list / get_settings / set_setting + `changed` 事件）。改签名 = 三端宿主 + 生成客户端同步改
 - **CLI JSON 字段与退出码**（M6 时）：task 对象 `id, listId, listName, text, completed, dueDate, dueTime, notes, createdAt`；错误走 stderr `{"ok":false,"error":…,"exitCode:N}`
 - **默认数据**：新库种下名为 `工作`（硬编码中文）的列表，icon `📋`，color ARGB int（有符号）
 - **`~/.taskly/` 路径约定**：GUI/CLI/云盘同步都依赖它

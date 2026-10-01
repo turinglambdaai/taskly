@@ -125,12 +125,20 @@
 
 (define-rpc (set_setting [key : String] [value : String] : Settings)
   (define normalized-key (string-downcase (string-trim key)))
-  (unless (assoc normalized-key allowed-settings)
+  ;; Integer-as-string per DATA-FORMAT §7; sidebar selection persists here.
+  (unless (or (assoc normalized-key allowed-settings)
+              (string=? normalized-key "last-selected-list-id"))
     (error 'set_setting "unknown setting: ~a" normalized-key))
-  (unless (member value (cadr (assoc normalized-key allowed-settings)))
-    (error 'set_setting "invalid value for ~a: ~a" normalized-key value))
+  (cond
+    [(assoc normalized-key allowed-settings)
+     (unless (member value (cadr (assoc normalized-key allowed-settings)))
+       (error 'set_setting "invalid value for ~a: ~a" normalized-key value))]
+    [else
+     (define parsed (string->number (string-trim value)))
+     (unless (and parsed (exact-integer? parsed))
+       (error 'set_setting "invalid value for ~a: ~a" normalized-key value))])
   (define config (read-config))
-  (write-config! (hash-set config normalized-key value))
+  (write-config! (hash-set config normalized-key (string-trim value)))
   (settings->dto))
 
 ;; Native embedded hosts pass anonymous pipe file descriptors here.

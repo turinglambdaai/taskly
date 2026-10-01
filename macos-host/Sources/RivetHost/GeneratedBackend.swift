@@ -3,7 +3,15 @@ import Foundation
 import RivetRuntime
 
 public enum RivetGeneratedError: Error { case typeMismatch(String); case unknownEvent(String) }
-public enum RivetGeneratedConfig { public static let moduleName = "backend"; public static let entryName = "start" }
+public enum RivetGeneratedConfig {
+    public static let moduleName = "backend"
+    public static let entryName = "start"
+    public static let displayName = "taskly"
+    public static let version = "0.1.0"
+    public static let build: Int64 = 1
+    public static let identifier = "app.taskly.Taskly"
+    public static let releaseChannel = "stable"
+}
 
 public struct Settings: Sendable {
     public let language: String
