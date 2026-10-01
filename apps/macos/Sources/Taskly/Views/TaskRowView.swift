@@ -302,10 +302,6 @@ struct TaskRowView: View {
     // MARK: - Inline expansion (ⓘ / Return / double-click)
 
     private func expand() {
-        expandedText = task.text
-        expandedNotes = task.notes
-        expandedDueDate = task.dueDate
-        expandedDueTime = task.dueTime
         state.expandedTaskID = task.id
         state.selectedTaskIDs = [task.id]
         state.selectionAnchorIndex = index
@@ -384,6 +380,12 @@ struct TaskRowView: View {
         }
         .padding(.vertical, 2)
         .onAppear {
+            // Buffer init lives here (not in expand()) so every entry path —
+            // ⓘ, Return, double-click — starts from the task's real values.
+            expandedText = task.text
+            expandedNotes = task.notes
+            expandedDueDate = task.dueDate
+            expandedDueTime = task.dueTime
             titleFocused = true
         }
         .onDisappear {

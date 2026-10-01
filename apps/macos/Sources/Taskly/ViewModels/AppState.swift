@@ -557,6 +557,9 @@ public final class AppState {
     /// Click: plain selects one row, ⌘ toggles membership, ⇧ extends the
     /// range from the anchor. Any click collapses an expanded row.
     func clickSelectTask(_ id: Int, index: Int, command: Bool, shift: Bool) {
+        // Reminders behavior: clicking a row dismisses text-field focus
+        // (search / quick add) so the keyboard flow takes over immediately.
+        NSApp.keyWindow?.makeFirstResponder(nil)
         expandedTaskID = nil
         if command {
             if selectedTaskIDs.contains(id) {
