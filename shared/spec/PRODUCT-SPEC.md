@@ -93,6 +93,7 @@ place in a cloud-synced folder; agent-facing CLI in the same binary.
 - Completed tasks render under a collapsible "已完成 N" section header
   (chevron + count) whenever completed tasks are displayed.
 - Sidebar: double-click a list renames it (opens the edit sheet).
+- Quick add: accent + button, focus-highlighted border, live parse-preview chip (typing a schedule shows the parsed date/time before Enter).
 - Not in v1.x: swipe gestures, subtasks (Tab indent), multi-drag.
 
 ## 6. Detail dialog

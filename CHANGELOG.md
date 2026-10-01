@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a sidebar list to rename; right-click gains 详细信息 and 自定日期….
 
 ### Changed
+- **Quick add redesigned**: accent + button, focus-highlighted border, and
+  a live parse-preview chip — typing `明天买菜` / `standup @9am` shows the
+  parsed schedule (今天 / 明天 / 10月8日 · 09:00) before Enter.
 - **Task detail sheet redesigned as the spec'd immersive editor**
   (DESIGN-TOKENS): no dialog title — the task text is the title (18px
   semibold borderless); borderless notes with a tertiary placeholder;

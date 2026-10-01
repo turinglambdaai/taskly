@@ -7,7 +7,6 @@ import SwiftUI
 struct TaskPaneView: View {
     @Environment(AppState.self) private var state
     @FocusState private var quickAddFocused: Bool
-    @State private var completedCollapsed = false
     @State private var keyMonitor: Any?
 
     var body: some View {
@@ -95,29 +94,106 @@ struct TaskPaneView: View {
     private var inputArea: some View {
         @Bindable var state = state
         return VStack(spacing: 8) {
-            // Quick add — the pane's single, prominent input
-            HStack {
+            // Quick add — accent plus button, focus-highlighted border, and
+            // a live preview chip whenever the text parses to a schedule.
+            HStack(spacing: 10) {
+                Button {
+                    state.quickAdd(state.quickAddText)
+                } label: {
+                    ZStack {
+                        Circle().fill(state.theme.accent)
+                        Image(systemName: "plus")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+                    .frame(width: 22, height: 22)
+                    .opacity(state.quickAddText.trimmingCharacters(in: .whitespaces).isEmpty ? 0.45 : 1)
+                }
+                .buttonStyle(.plain)
+                .help(state.t("taskListInputHint"))
+
                 TextField(state.t("taskListInputHint"), text: $state.quickAddText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 14))
+                    .focused($quickAddFocused)
                     .onSubmit {
                         state.quickAdd(state.quickAddText)
                     }
-                if !state.quickAddText.isEmpty {
-                    Text("↩")
-                        .font(.system(size: 12))
-                        .foregroundStyle(state.theme.tertiaryText)
+
+                if let preview = schedulePreview {
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 10))
+                        Text(preview)
+                            .font(.system(size: 12))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .foregroundStyle(state.theme.accent)
+                    .background(state.theme.accent.opacity(0.08), in: Capsule())
+                    .transition(.opacity)
                 }
             }
-            .padding(.horizontal, 12)
-            .frame(height: 36)
-            .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 10))
+            .padding(.horizontal, 10)
+            .frame(height: 40)
+            .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 12))
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(state.theme.inputBorder, lineWidth: 1))
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(
+                        quickAddFocused ? state.theme.accent : state.theme.inputBorder,
+                        lineWidth: quickAddFocused ? 1.5 : 1))
+            .animation(.easeOut(duration: 0.12), value: quickAddFocused)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+    }
+
+    /// Live parse of the quick-add text (same grammar as state.quickAdd):
+    /// "明天买菜" → 明天, "练习 @10am" → 今天 10:00. Nil when no schedule.
+    private var schedulePreview: String? {
+        let raw = state.quickAddText
+        guard !raw.isEmpty else { return nil }
+        let parser = DateParser()
+        let (_, command) = parser.extractTimeCommand(raw)
+        guard let command, let parsed = parser.parse(command) else { return nil }
+        let isDateOnly = !command.hasPrefix("@")
+            && ["d", "w", "M"].contains(String(command.suffix(1)))
+        let dueDate = DateParser.extractDateOnly(parsed)
+        let dueTime = isDateOnly ? nil : DateParser.extractTimeOnly(parsed)
+        guard dueDate != nil || dueTime != nil else { return nil }
+
+        var label = ""
+        if let dueDate {
+            label = Self.previewDateText(
+                dueDate,
+                todayLabel: state.t("navToday"),
+                tomorrowLabel: state.t("dateTomorrow"),
+                yesterdayLabel: state.t("dateYesterday"))
+        }
+        if let dueTime {
+            label += label.isEmpty ? dueTime : " " + dueTime
+        }
+        return label.isEmpty ? nil : label
+    }
+
+    /// Relative word when adjacent-day, localized short date otherwise.
+    private static func previewDateText(
+        _ isoDate: String, todayLabel: String, tomorrowLabel: String,
+        yesterdayLabel: String) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: isoDate) else { return isoDate }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let day = calendar.startOfDay(for: date)
+        if day == today { return todayLabel }
+        if day == calendar.date(byAdding: .day, value: 1, to: today) { return tomorrowLabel }
+        if day == calendar.date(byAdding: .day, value: -1, to: today) { return yesterdayLabel }
+        let out = DateFormatter()
+        out.locale = Locale.current
+        out.setLocalizedDateFormatFromTemplate("MMMd")
+        return out.string(from: date)
     }
 
     private var taskList: some View {
@@ -149,11 +225,11 @@ struct TaskPaneView: View {
         if !completed.isEmpty {
             Button {
                 withAnimation(.easeInOut(duration: 0.15)) {
-                    completedCollapsed.toggle()
+                    state.completedCollapsed.toggle()
                 }
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: completedCollapsed ? "chevron.right" : "chevron.down")
+                    Image(systemName: state.completedCollapsed ? "chevron.right" : "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(state.theme.secondaryText)
                     Text(state.t("subtitleCompleted").replaceCompletions(completed.count))
@@ -168,7 +244,7 @@ struct TaskPaneView: View {
             .buttonStyle(.plain)
             .padding(.top, 6)
 
-            if !completedCollapsed {
+            if !state.completedCollapsed {
                 ForEach(Array(completed.enumerated()), id: \.element.id) { index, task in
                     TaskRowView(task: task, index: incomplete.count + index)
                 }

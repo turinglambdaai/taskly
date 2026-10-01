@@ -94,6 +94,8 @@ public final class AppState {
     /// Last keyboard modifiers (flagsChanged) — click gestures read this to
     /// apply ⌘-toggle / ⇧-extend, since SpatialTapGesture carries none.
     @ObservationIgnored var lastModifierFlags: NSEvent.ModifierFlags = []
+    /// Completed section collapsed (hidden rows are skipped by ↑/↓).
+    var completedCollapsed = false
 
     let reminder: ReminderService
 
@@ -585,7 +587,17 @@ public final class AppState {
         let anchorOption = selectionAnchorIndex
             ?? tasks.firstIndex(where: { selectedTaskIDs.contains($0.id) })
         let anchor = anchorOption ?? (delta > 0 ? -1 : tasks.count)
-        let target = max(0, min(tasks.count - 1, anchor + delta))
+        var target = max(0, min(tasks.count - 1, anchor + delta))
+        // Hidden rows (collapsed completed section) are not navigable:
+        // clamp to the last/first visible (incomplete) row instead.
+        if completedCollapsed, tasks[target].completed {
+            let incomplete = tasks.enumerated().filter { !$0.element.completed }
+            guard let visible = (delta > 0
+                ? incomplete.last.map(\.offset)
+                : incomplete.first.map(\.offset))
+            else { return }
+            target = visible
+        }
         let id = tasks[target].id
         if extend, let anchorOption {
             let lo = min(anchorOption, target)

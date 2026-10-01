@@ -30,6 +30,7 @@ struct ListEditSheet: View {
                     RoundedRectangle(cornerRadius: 10)
                         .strokeBorder(state.theme.inputBorder, lineWidth: 1))
                 .focused($nameFocused)
+                .onExitCommand { dismiss() }
 
             HStack(spacing: 24) {
                 // Icon
