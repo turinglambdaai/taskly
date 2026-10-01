@@ -1,6 +1,10 @@
+import AppKit
 import SwiftUI
 
-/// Full task editor (ⓘ button). Save / Delete (confirm) / Cancel.
+/// Immersive task editor (DESIGN-TOKENS "Task detail dialog"): no dialog
+/// title — the task text is the title; borderless fields; date/time as
+/// rounded chips (accent border when set, hollow "add" chips when empty);
+/// bottom row = red text Delete · spacer · plain Cancel · accent-filled Save.
 struct TaskDetailSheet: View {
     @Environment(AppState.self) private var state
     @Environment(\.dismiss) private var dismiss
@@ -11,6 +15,9 @@ struct TaskDetailSheet: View {
     @State private var dueDate: String?
     @State private var dueTime: String?
     @State private var confirmDelete = false
+    @State private var showDatePopover = false
+    @State private var showTimePopover = false
+    @FocusState private var titleFocused: Bool
 
     init(task: TaskItem) {
         original = task
@@ -21,106 +28,79 @@ struct TaskDetailSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(state.t("dialogTaskDetail"))
-                .font(.system(size: 15, weight: .semibold))
+        VStack(alignment: .leading, spacing: 12) {
+            // The task text is the title: 18px semibold, borderless.
+            TextField("", text: $text, axis: .vertical)
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(state.theme.onSurface)
+                .lineLimit(1...3)
+                .textFieldStyle(.plain)
+                .focused($titleFocused)
 
-            // Task text
-            VStack(alignment: .leading, spacing: 4) {
-                Text(state.t("labelTask"))
-                    .font(.system(size: 12))
-                    .foregroundStyle(state.theme.secondaryText)
-                TextEditor(text: $text)
-                    .font(.system(size: 14))
-                    .frame(height: 64)
-                    .scrollContentBackground(.hidden)
-                    .padding(6)
-                    .background(state.theme.surface)
-                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(state.theme.inputBorder))
-            }
-
-            // Notes
-            VStack(alignment: .leading, spacing: 4) {
-                Text(state.t("labelNotes"))
-                    .font(.system(size: 12))
-                    .foregroundStyle(state.theme.secondaryText)
-                TextEditor(text: $notes)
-                    .font(.system(size: 13))
-                    .frame(height: 72)
-                    .scrollContentBackground(.hidden)
-                    .padding(6)
-                    .background(state.theme.surface)
-                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(state.theme.inputBorder))
-            }
-
-            // Date + time
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(state.t("labelDate"))
-                        .font(.system(size: 12))
-                        .foregroundStyle(state.theme.secondaryText)
-                    HStack {
-                        DatePicker(
-                            "",
-                            selection: dateBinding,
-                            in: dateRange,
-                            displayedComponents: .date)
-                        .labelsHidden()
-                        if dueDate != nil {
-                            Button(state.t("dialogClear")) { dueDate = nil }
-                                .buttonStyle(.link)
-                                .font(.system(size: 12))
-                        }
-                    }
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(state.t("labelTime"))
-                        .font(.system(size: 12))
-                        .foregroundStyle(state.theme.secondaryText)
-                    HStack {
-                        if dueDate != nil {
-                            DatePicker("", selection: timeBinding, displayedComponents: .hourAndMinute)
-                                .labelsHidden()
-                            Button(state.t("dialogClear")) { dueTime = nil }
-                                .buttonStyle(.link)
-                                .font(.system(size: 12))
-                        } else {
-                            Text(state.t("labelAddTime"))
-                                .font(.system(size: 12))
-                                .foregroundStyle(state.theme.tertiaryText)
-                        }
-                    }
+            // Date + time chips (accent border when set, hollow when empty).
+            HStack(spacing: 8) {
+                dateChip
+                if dueDate != nil {
+                    timeChip
                 }
             }
+
+            Divider().overlay(state.theme.divider)
+
+            // Notes: 13px borderless multiline, tertiary placeholder.
+            TextField(state.t("hintAddNotes"), text: $notes, axis: .vertical)
+                .font(.system(size: 13))
+                .foregroundStyle(state.theme.onSurface)
+                .lineLimit(2...6)
+                .textFieldStyle(.plain)
 
             Spacer(minLength: 0)
 
-            // Buttons
-            HStack {
-                Button(role: .destructive) {
+            // Bottom row: red text delete · spacer · plain cancel · filled save.
+            HStack(spacing: 12) {
+                Button {
                     confirmDelete = true
                 } label: {
                     Text(state.t("taskDelete"))
+                        .font(.system(size: 13))
                         .foregroundStyle(Palette.danger)
                 }
+                .buttonStyle(.plain)
                 .keyboardShortcut(.delete, modifiers: [.command])
+
                 Spacer()
-                Button(state.t("dialogCancel")) {
+
+                Button {
                     dismiss()
+                } label: {
+                    Text(state.t("dialogCancel"))
+                        .font(.system(size: 13))
+                        .foregroundStyle(state.theme.secondaryText)
                 }
+                .buttonStyle(.plain)
                 .keyboardShortcut(.cancelAction)
-                Button(state.t("dialogSave")) {
+
+                Button {
                     save()
+                } label: {
+                    Text(state.t("dialogSave"))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 5)
+                        .background(state.theme.accent, in: RoundedRectangle(cornerRadius: 7))
                 }
+                .buttonStyle(.plain)
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
-                .tint(state.theme.accent)
+                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .opacity(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.4 : 1)
             }
         }
         .padding(20)
-        .frame(width: 450)
+        .frame(width: 480)
         .background(state.theme.background)
+        .onAppear { titleFocused = true }
+        .onExitCommand { dismiss() }
         .confirmationDialog(
             state.t("taskDeleteConfirm"),
             isPresented: $confirmDelete,
@@ -133,8 +113,69 @@ struct TaskDetailSheet: View {
         } message: {
             Text(state.t("taskDeleteConfirmContent"))
         }
-
     }
+
+    // MARK: - Chips
+
+    private var dateChip: some View {
+        EditChip(
+            icon: "calendar",
+            label: dueDate.map { Self.dateText($0) } ?? "+ \(state.t("labelAddDate"))",
+            active: dueDate != nil,
+            isActive: $showDatePopover) {
+            showTimePopover = false
+        } content: {
+            VStack(spacing: 10) {
+                DatePicker(
+                    "", selection: dateBinding,
+                    in: Self.dateRange,
+                    displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                    .frame(width: 300)
+                HStack {
+                    Spacer()
+                    Button(state.t("dialogClear")) {
+                        // Clearing the date clears the time with it.
+                        dueDate = nil
+                        dueTime = nil
+                        showDatePopover = false
+                    }
+                    .font(.system(size: 12))
+                    .foregroundStyle(state.theme.secondaryText)
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(12)
+        }
+    }
+
+    private var timeChip: some View {
+        EditChip(
+            icon: "clock",
+            label: dueTime.map { $0 } ?? "+ \(state.t("labelAddTime"))",
+            active: dueTime != nil,
+            isActive: $showTimePopover) {
+            showDatePopover = false
+        } content: {
+            VStack(spacing: 10) {
+                TimePickerControl(selection: timeBinding)
+                HStack {
+                    Spacer()
+                    Button(state.t("dialogClear")) {
+                        dueTime = nil
+                        showTimePopover = false
+                    }
+                    .font(.system(size: 12))
+                    .foregroundStyle(state.theme.secondaryText)
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(12)
+        }
+    }
+
+    // MARK: - Save
 
     private func save() {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -143,15 +184,13 @@ struct TaskDetailSheet: View {
         updated.text = trimmed
         updated.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes
         updated.dueDate = dueDate
-        updated.dueTime = dueTime
+        // A time without a date is not representable; drop it with the date.
+        updated.dueTime = (dueDate == nil) ? nil : dueTime
         state.saveTask(updated)
         dismiss()
     }
 
-    private var dateRange: ClosedRange<Date> {
-        Calendar.current.date(from: DateComponents(year: 1900, month: 1, day: 1))!
-            ... Calendar.current.date(from: DateComponents(year: 2100, month: 12, day: 31))!
-    }
+    // MARK: - Bindings / formatting
 
     private var dateBinding: Binding<Date> {
         Binding(
@@ -161,8 +200,132 @@ struct TaskDetailSheet: View {
 
     private var timeBinding: Binding<Date> {
         Binding(
-            get: { DateParser.asTime(dueTime) },
+            get: {
+                if let dueTime {
+                    return DateParser.asTime(dueTime)
+                }
+                // Adding a time: start at the current minute rounded to the
+                // nearest 5 (PRODUCT-SPEC §7).
+                let now = Date()
+                let calendar = Calendar.current
+                let minute = calendar.component(.minute, from: now)
+                let rounded = min(((minute + 2) / 5) * 5, 55)
+                return calendar.date(
+                    bySettingHour: calendar.component(.hour, from: now),
+                    minute: rounded, second: 0, of: now) ?? now
+            },
             set: { dueTime = DateParser.string(from: $0, format: "HH:mm") })
+    }
+
+    static let dateRange: ClosedRange<Date> = {
+        Calendar.current.date(from: DateComponents(year: 1900, month: 1, day: 1))!
+            ... Calendar.current.date(from: DateComponents(year: 2100, month: 12, day: 31))!
+    }()
+
+    /// "M月d日" (zh) / "MMM d" (en) for the chip label.
+    static func dateText(_ isoDate: String) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: isoDate) else { return isoDate }
+        let out = DateFormatter()
+        out.locale = Locale.current
+        out.setLocalizedDateFormatFromTemplate("MMMd")
+        return out.string(from: date)
+    }
+}
+
+/// Rounded chip used by the editor: hollow (divider border, tertiary text)
+/// when unset; accent border + tint when set. Clicking toggles a popover.
+private struct EditChip<PopoverContent: View>: View {
+    @Environment(AppState.self) private var state
+    let icon: String
+    let label: String
+    let active: Bool
+    @Binding var isActive: Bool
+    /// Opens with this chip, closing any sibling popover.
+    let onOpen: () -> Void
+    @ViewBuilder let content: PopoverContent
+
+    var body: some View {
+        Button {
+            if isActive {
+                isActive = false
+            } else {
+                onOpen()
+                isActive = true
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 11))
+                Text(label)
+                    .font(.system(size: 13))
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 26)
+            .foregroundStyle(active ? state.theme.accent : state.theme.tertiaryText)
+            .background(
+                active ? state.theme.accent.opacity(0.08) : Color.clear,
+                in: Capsule())
+            .overlay(
+                Capsule().strokeBorder(
+                    active ? state.theme.accent : state.theme.divider,
+                    lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $isActive, arrowEdge: .bottom) {
+            content
+        }
+    }
+}
+
+/// HH:mm picker with the contract's 5-minute steps (PRODUCT-SPEC §7):
+/// hour 00-23 dropdown + minute 00/05/…/55 dropdown.
+private struct TimePickerControl: View {
+    @Binding var selection: Date
+    @State private var hour: Int
+    @State private var minute: Int
+
+    init(selection: Binding<Date>) {
+        _selection = selection
+        let calendar = Calendar.current
+        _hour = State(initialValue: calendar.component(.hour, from: selection.wrappedValue))
+        let rawMinute = calendar.component(.minute, from: selection.wrappedValue)
+        _minute = State(initialValue: (rawMinute / 5) * 5)
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Picker("", selection: $hour) {
+                ForEach(0..<24, id: \.self) { value in
+                    Text(String(format: "%02d", value)).tag(value)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .frame(width: 78)
+
+            Text(":")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+
+            Picker("", selection: $minute) {
+                ForEach(Array(stride(from: 0, to: 60, by: 5)), id: \.self) { value in
+                    Text(String(format: "%02d", value)).tag(value)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .frame(width: 78)
+        }
+        .onChange(of: hour) { _, _ in commit() }
+        .onChange(of: minute) { _, _ in commit() }
+    }
+
+    private func commit() {
+        selection = Calendar.current.date(
+            bySettingHour: hour, minute: minute, second: 0, of: selection) ?? selection
     }
 }
 
@@ -177,6 +340,7 @@ struct ListEditSheet: View {
     @State private var color: Int?
     @State private var emojiPickerVisible = false
     @State private var colorPickerVisible = false
+    @FocusState private var nameFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -184,9 +348,17 @@ struct ListEditSheet: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(state.theme.onSurface)
 
+            // Quiet input: surface fill + 1px input border (quick-add language).
             TextField(state.t("dialogInputListName"), text: $name)
                 .font(.system(size: 14))
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 10)
+                .frame(height: 32)
+                .background(state.theme.surface, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(state.theme.inputBorder, lineWidth: 1))
+                .focused($nameFocused)
 
             HStack(spacing: 24) {
                 // Icon
@@ -211,8 +383,9 @@ struct ListEditSheet: View {
                         }
                         if icon != nil {
                             Button(state.t("dialogClearIcon")) { icon = nil }
-                                .buttonStyle(.link)
                                 .font(.system(size: 12))
+                                .foregroundStyle(state.theme.secondaryText)
+                                .buttonStyle(.plain)
                         }
                     }
                 }
@@ -242,22 +415,40 @@ struct ListEditSheet: View {
                         }
                         if color != nil {
                             Button(state.t("dialogClearColor")) { color = nil }
-                                .buttonStyle(.link)
                                 .font(.system(size: 12))
+                                .foregroundStyle(state.theme.secondaryText)
+                                .buttonStyle(.plain)
                         }
                     }
                 }
             }
 
-            HStack {
+            HStack(spacing: 12) {
                 Spacer()
-                Button(state.t("dialogCancel")) { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-                Button(state.t("dialogConfirm")) { commit() }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .tint(state.theme.accent)
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button {
+                    dismiss()
+                } label: {
+                    Text(state.t("dialogCancel"))
+                        .font(.system(size: 13))
+                        .foregroundStyle(state.theme.secondaryText)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.cancelAction)
+
+                Button {
+                    commit()
+                } label: {
+                    Text(state.t("dialogConfirm"))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 5)
+                        .background(state.theme.accent, in: RoundedRectangle(cornerRadius: 7))
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.defaultAction)
+                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                .opacity(name.trimmingCharacters(in: .whitespaces).isEmpty ? 0.4 : 1)
             }
         }
         .padding(20)
@@ -269,7 +460,9 @@ struct ListEditSheet: View {
                 icon = list.icon
                 color = list.color
             }
+            nameFocused = true
         }
+        .onExitCommand { dismiss() }
     }
 
     private var editing: Bool {
