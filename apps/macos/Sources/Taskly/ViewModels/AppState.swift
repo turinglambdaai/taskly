@@ -54,8 +54,12 @@ public final class AppState {
     var isConnected = false
 
     // UI state
-    /// Row the user clicked (Reminders-style quiet selection highlight).
-    var selectedTaskID: Int?
+    /// Selected rows (Reminders-style: click selects, ⌘ toggles, ⇧ extends).
+    var selectedTaskIDs: Set<Int> = []
+    /// Anchor for ⇧-extend navigation.
+    var selectionAnchorIndex: Int?
+    /// Row expanded inline for detail editing (Reminders-style ⓘ).
+    var expandedTaskID: Int?
     var searchText = ""
     var quickAddText = ""
     /// Incremented by View menu → New Task; TaskPaneView focuses the
@@ -80,9 +84,16 @@ public final class AppState {
 
     // Sheets / dialogs
     var listEditSheet: ListEditContext?
-    var taskDetailContext: TaskItem?
     var confirmContext: ConfirmContext?
     var aboutVisible = false
+
+    /// Transient delete banner with a one-step undo (Reminders-style).
+    var undoBannerText: String?
+    @ObservationIgnored var undoBannerAction: (() -> Void)?
+    @ObservationIgnored private var undoBannerTask: Task<Void, Never>?
+    /// Last keyboard modifiers (flagsChanged) — click gestures read this to
+    /// apply ⌘-toggle / ⇧-extend, since SpatialTapGesture carries none.
+    @ObservationIgnored var lastModifierFlags: NSEvent.ModifierFlags = []
 
     let reminder: ReminderService
 
@@ -502,10 +513,107 @@ public final class AppState {
     }
 
     func deleteTask(_ task: TaskItem) {
-        _ = try? tasksRepository.deleteTask(task.id)
+        deleteTasks([task])
+    }
+
+    /// Batch delete with one combined undo banner. When the deleted row is
+    /// part of the active selection, the whole selection is the target.
+    func deleteTasks(_ tasks: [TaskItem]) {
+        guard !tasks.isEmpty else { return }
+        for task in tasks {
+            _ = try? tasksRepository.deleteTask(task.id)
+            selectedTaskIDs.remove(task.id)
+            if expandedTaskID == task.id {
+                expandedTaskID = nil
+            }
+        }
         refreshCounts()
         refresh()
-        flashStatus(i18n.t("statusTaskDeleted"))
+        let text = tasks.count == 1
+            ? i18n.format("bannerTaskDeleted", tasks[0].text)
+            : i18n.format("bannerTasksDeleted", tasks.count)
+        showUndoBanner(text) { [weak self] in
+            self?.restoreTasks(tasks)
+        }
+    }
+
+    /// One-step undo for delete: re-adds the tasks (each receives a new
+    /// id — position/order follows the current view's sort).
+    private func restoreTasks(_ tasks: [TaskItem]) {
+        do {
+            for task in tasks {
+                _ = try tasksRepository.addTask(task)
+            }
+            refreshCounts()
+            refresh()
+        } catch {
+            flashStatus(error.localizedDescription)
+        }
+        dismissUndoBanner()
+    }
+
+    // MARK: - Row selection (Reminders-style multi-select)
+
+    /// Click: plain selects one row, ⌘ toggles membership, ⇧ extends the
+    /// range from the anchor. Any click collapses an expanded row.
+    func clickSelectTask(_ id: Int, index: Int, command: Bool, shift: Bool) {
+        expandedTaskID = nil
+        if command {
+            if selectedTaskIDs.contains(id) {
+                selectedTaskIDs.remove(id)
+            } else {
+                selectedTaskIDs.insert(id)
+            }
+            selectionAnchorIndex = index
+        } else if shift, let anchor = selectionAnchorIndex {
+            let lo = min(anchor, index)
+            let hi = max(anchor, index)
+            selectedTaskIDs = Set(tasks[lo...hi].map(\.id))
+        } else {
+            selectedTaskIDs = [id]
+            selectionAnchorIndex = index
+        }
+    }
+
+    /// ↑/↓ from the keyboard monitor. Plain moves the single selection;
+    /// ⇧ extends the range from the anchor.
+    func keyboardMoveSelection(_ delta: Int, extend: Bool) {
+        guard !tasks.isEmpty else { return }
+        let anchorOption = selectionAnchorIndex
+            ?? tasks.firstIndex(where: { selectedTaskIDs.contains($0.id) })
+        let anchor = anchorOption ?? (delta > 0 ? -1 : tasks.count)
+        let target = max(0, min(tasks.count - 1, anchor + delta))
+        let id = tasks[target].id
+        if extend, let anchorOption {
+            let lo = min(anchorOption, target)
+            let hi = max(anchorOption, target)
+            selectedTaskIDs = Set(tasks[lo...hi].map(\.id))
+        } else {
+            selectedTaskIDs = [id]
+        }
+        selectionAnchorIndex = target
+    }
+
+    func clearTaskSelection() {
+        selectedTaskIDs = []
+        selectionAnchorIndex = nil
+    }
+
+    func showUndoBanner(_ text: String, undo: @escaping () -> Void) {
+        undoBannerTask?.cancel()
+        undoBannerText = text
+        undoBannerAction = undo
+        undoBannerTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            guard !Task.isCancelled else { return }
+            self?.dismissUndoBanner()
+        }
+    }
+
+    func dismissUndoBanner() {
+        undoBannerTask?.cancel()
+        undoBannerText = nil
+        undoBannerAction = nil
     }
 
     func moveTask(_ task: TaskItem, to list: TodoList) {

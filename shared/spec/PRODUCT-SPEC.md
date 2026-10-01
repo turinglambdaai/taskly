@@ -75,6 +75,26 @@ place in a cloud-synced folder; agent-facing CLI in the same binary.
 - Context menu: Toggle Completed, Delete, and Move to List ▸ (other lists,
   `{icon} {name}`) when they exist.
 
+## 5b. Task interactions (Reminders parity)
+
+- Hover: quiet row fill (hover token), quick-schedule chips (今天 / 明天)
+  and the info button surface on hover only.
+- Selection: click selects; ⌘-click toggles; ⇧-click and ⇧↑/⇧↓ extend a
+  range; Esc clears; any click on another row collapses an expanded row.
+- Keyboard: ↑/↓ move the selection, Return expands the selected row in
+  place, Esc collapses (then clears selection). While a text field has
+  focus, all keys pass through untouched.
+- Inline expansion (ⓘ / Return / double-click): the row expands in place —
+  title (15px semibold borderless), date/time chips (5-minute time steps),
+  borderless notes — edits commit on collapse; no modal sheet.
+- Delete: no confirmation from the row; instead a transient banner shows
+  the deleted task with a one-step 撤销 (undo re-adds the task; the
+  restored task receives a new id). Banner auto-dismisses after ~6 s.
+- Completed tasks render under a collapsible "已完成 N" section header
+  (chevron + count) whenever completed tasks are displayed.
+- Sidebar: double-click a list renames it (opens the edit sheet).
+- Not in v1.x: swipe gestures, subtasks (Tab indent), multi-drag.
+
 ## 6. Detail dialog
 
 450px: task text (multiline), notes (multiline), date + time buttons with

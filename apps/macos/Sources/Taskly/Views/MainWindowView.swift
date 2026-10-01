@@ -33,11 +33,6 @@ struct MainWindowView: View {
             DispatchQueue.main.async { Self.pruneEmptyMenus() }
         }
         .sheet(item: Binding(
-            get: { state.taskDetailContext },
-            set: { state.taskDetailContext = $0 })) { task in
-            TaskDetailSheet(task: task)
-        }
-        .sheet(item: Binding(
             get: { state.listEditSheet },
             set: { state.listEditSheet = $0 })) { context in
             ListEditSheet(context: context)
@@ -303,6 +298,10 @@ private struct ListRowView: View {
         .contentShape(RoundedRectangle(cornerRadius: 8))
         .onTapGesture {
             state.select(.list(list.id))
+        }
+        .onTapGesture(count: 2) {
+            // Reminders: double-click a list renames it in place.
+            state.listEditSheet = ListEditContext(mode: .edit(list))
         }
         .contextMenu {
             Button(state.t("dialogEditList")) {

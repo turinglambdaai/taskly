@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Reminders-parity task interactions**: hover reveals the row fill plus
+  one-click 今天/明天 schedule chips; ⌘/⇧ multi-select with batch context
+  actions (complete/schedule/delete/move apply to the whole selection —
+  deletes show a single undo banner); ↑/↓ keyboard navigation with
+  ⇧-extend, Return expands the selected row, Esc collapses/clears; the
+  info button expands the row **in place** (title, date/time chips,
+  borderless notes — edits commit on collapse) instead of a modal sheet;
+  completed tasks group under a collapsible "已完成 N" header; double-click
+  a sidebar list to rename; right-click gains 详细信息 and 自定日期….
+
 ### Changed
 - **Task detail sheet redesigned as the spec'd immersive editor**
   (DESIGN-TOKENS): no dialog title — the task text is the title (18px
