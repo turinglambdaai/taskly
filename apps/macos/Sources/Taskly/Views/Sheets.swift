@@ -160,28 +160,53 @@ struct ListEditSheet: View {
 
 private struct EmojiPickerGrid: View {
     @Binding var selection: String?
+    @Environment(AppState.self) private var state
     @Environment(\.dismiss) private var dismiss
+    @State private var categoryId = Palette.emojiCategoryIds.first ?? "frequent"
 
     var body: some View {
         VStack(spacing: 10) {
-            ForEach(Array(Palette.emojiCategories.enumerated()), id: \.offset) { _, row in
-                HStack(spacing: 6) {
-                    ForEach(row, id: \.self) { emoji in
+            // Category tabs (Reminders-level coverage: 8 × 12).
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 4) {
+                    ForEach(Palette.emojiCategoryIds, id: \.self) { id in
                         Button {
-                            selection = emoji
-                            dismiss()
+                            categoryId = id
                         } label: {
-                            Text(emoji)
-                                .font(.system(size: 20))
-                                .frame(width: 34, height: 34)
+                            Text(state.t("emojiCat_" + id))
+                                .font(.system(size: 12, weight: categoryId == id ? .semibold : .regular))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .foregroundStyle(categoryId == id ? state.theme.accent : state.theme.secondaryText)
                                 .background(
-                                    selection == emoji
-                                        ? Color.accentColor.opacity(0.25)
-                                        : Color.clear,
-                                    in: RoundedRectangle(cornerRadius: 6))
+                                    categoryId == id ? state.theme.accent.opacity(0.1) : Color.clear,
+                                    in: Capsule())
                         }
                         .buttonStyle(.plain)
                     }
+                }
+                .padding(.horizontal, 2)
+            }
+
+            let emojis = Palette.emojiCategories[categoryId] ?? []
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.fixed(34), spacing: 4), count: 6),
+                spacing: 4) {
+                ForEach(emojis, id: \.self) { emoji in
+                    Button {
+                        selection = emoji
+                        dismiss()
+                    } label: {
+                        Text(emoji)
+                            .font(.system(size: 20))
+                            .frame(width: 34, height: 34)
+                            .background(
+                                selection == emoji
+                                    ? Color.accentColor.opacity(0.25)
+                                    : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }

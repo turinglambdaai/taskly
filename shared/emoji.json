@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "note": "List icon emoji catalog — single source for all platforms (synced by scripts/sync-i18n.sh). Category display names live in shared/i18n as emojiCat_<id>. Windows 10 font-safe emoji only.",
+  "categories": [
+    { "id": "frequent", "emojis": ["📋", "📝", "✅", "🎯", "💡", "📌", "🔖", "📎", "📅", "⏰", "🔔", "🗒️"] },
+    { "id": "people",   "emojis": ["😀", "😊", "🤔", "😴", "🥳", "😎", "🤠", "🧑", "💼", "🧠", "👀", "🙌"] },
+    { "id": "nature",   "emojis": ["🐱", "🐶", "🐼", "🦊", "🐢", "🐬", "🌸", "🌵", "🌈", "🌙", "⭐", "☀️"] },
+    { "id": "food",     "emojis": ["🍎", "🍌", "🍕", "🍔", "🍜", "🍣", "☕", "🍵", "🍺", "🍰", "🥗", "🍱"] },
+    { "id": "activity", "emojis": ["⚽", "🏀", "🎮", "🎬", "🎵", "🎸", "🚴", "🏊", "⛷️", "🧘", "🎉", "🎁"] },
+    { "id": "travel",   "emojis": ["🚗", "✈️", "🚄", "🛳️", "🏠", "🏢", "🏔️", "🏖️", "🗼", "🗽", "🎡", "🏕️"] },
+    { "id": "objects",  "emojis": ["💻", "📱", "💰", "💳", "📚", "🛒", "🎧", "🔑", "💊", "🛠️", "📦", "🖊️"] },
+    { "id": "symbols",  "emojis": ["❤️", "💙", "🔥", "✨", "⚡", "💧", "🚩", "❌", "⚠️", "💯", "🔴", "🟦"] }
+  ]
+}

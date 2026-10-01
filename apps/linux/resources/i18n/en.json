@@ -110,6 +110,11 @@
   "updateRestart": "Update and restart",
   "updateCheckFailed": "Update check failed: {0}",
   "updatePortable": "This portable copy can't auto-update — please re-download from the releases page.",
+  "bannerTaskDeleted": "Deleted “{0}”",
+  "bannerUndo": "Undo",
+  "bannerTasksDeleted": "Deleted {0} tasks",
+  "contextMenuDetails": "Details",
+  "contextMenuCustomDate": "Custom Date…",
   "updateDownloading": "Downloading the new version…",
   "updateReadyBody": "The new version is ready — Taskly will restart to install it.",
   "updateInstallFailed": "Installing the update failed: {0}. Your current version is unaffected.",
@@ -124,5 +129,13 @@
   "toastComplete": "Complete",
   "toastSnooze": "Remind later",
   "settingsCloseToTray": "Close to tray (reminders keep working)",
-  "trayTip": "Taskly keeps running in the background — reminders stay on."
+  "trayTip": "Taskly keeps running in the background — reminders stay on.",
+  "emojiCat_frequent": "Frequent",
+  "emojiCat_people": "People",
+  "emojiCat_nature": "Nature",
+  "emojiCat_food": "Food",
+  "emojiCat_activity": "Activity",
+  "emojiCat_travel": "Travel",
+  "emojiCat_objects": "Objects",
+  "emojiCat_symbols": "Symbols"
 }

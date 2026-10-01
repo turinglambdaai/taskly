@@ -129,5 +129,13 @@
   "toastComplete": "Complete",
   "toastSnooze": "Remind later",
   "settingsCloseToTray": "Close to tray (reminders keep working)",
-  "trayTip": "Taskly keeps running in the background — reminders stay on."
+  "trayTip": "Taskly keeps running in the background — reminders stay on.",
+  "emojiCat_frequent": "Frequent",
+  "emojiCat_people": "People",
+  "emojiCat_nature": "Nature",
+  "emojiCat_food": "Food",
+  "emojiCat_activity": "Activity",
+  "emojiCat_travel": "Travel",
+  "emojiCat_objects": "Objects",
+  "emojiCat_symbols": "Symbols"
 }

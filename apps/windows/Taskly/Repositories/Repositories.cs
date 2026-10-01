@@ -1,4 +1,7 @@
-﻿using Taskly.Data;
+﻿using System.IO;
+using System.Linq;
+using System.Text.Json;
+using Taskly.Data;
 using Taskly.Models;
 using Taskly.Services;
 
@@ -136,22 +139,50 @@ public sealed class ListRepository
     }
 }
 
-/// <summary>Preset palette + emoji categories (fixed order, contract).</summary>
+/// <summary>Preset palette + emoji categories (fixed order, contract).
+/// Emoji data loads from Strings/emoji.json — the synced single source
+/// (shared/emoji.json); category display names live in the i18n tables
+/// as emojiCat_&lt;id&gt;.</summary>
 public static class ListPalette
 {
     public static readonly string[] Colors =
     {
         "#007AFF", "#FF3B30", "#FF9500", "#FFCC00", "#4CD964",
         "#5AC8FA", "#5856D6", "#FF2D55", "#8E8E93", "#C7C7CC",
+        "#A2845E", "#00C7BE",
     };
 
-    public static readonly string[][] EmojiCategories =
+    /// <summary>Category ids in display order.</summary>
+    public static readonly string[] EmojiCategoryIds =
     {
-        new[] { "📋", "📝", "✅", "🎯", "💡", "📌", "🔖", "📎" },
-        new[] { "🏠", "🏢", "💼", "📱", "💻", "🎨", "📚", "🎓" },
-        new[] { "❤️", "⭐", "🌟", "🔥", "💪", "🎉", "🎊", "🏆" },
-        new[] { "🛒", "🛍️", "🍔", "☕", "🍕", "🥤", "🎮", "🎬" },
-        new[] { "✈️", "🚗", "🚴", "🏃", "⚽", "🏀", "🎸", "🎵" },
-        new[] { "💰", "💳", "📊", "📈", "💼", "📧", "📅", "⏰" },
+        "frequent", "people", "nature", "food",
+        "activity", "travel", "objects", "symbols",
     };
+
+    /// <summary>categoryId → emojis, parsed once from Strings/emoji.json.</summary>
+    public static readonly IReadOnlyDictionary<string, string[]> EmojiCategories = LoadEmojiCategories();
+
+    private static IReadOnlyDictionary<string, string[]> LoadEmojiCategories()
+    {
+        var map = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "Strings", "emoji.json");
+            var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+            foreach (var category in document.RootElement.GetProperty("categories").EnumerateArray())
+            {
+                var id = category.GetProperty("id").GetString() ?? string.Empty;
+                var emojis = category.GetProperty("emojis")
+                    .EnumerateArray()
+                    .Select(e => e.GetString() ?? string.Empty)
+                    .ToArray();
+                map[id] = emojis;
+            }
+        }
+        catch
+        {
+            // Missing/corrupt catalog → empty grids, never a crash.
+        }
+        return map;
+    }
 }

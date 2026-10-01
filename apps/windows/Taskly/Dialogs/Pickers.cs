@@ -19,23 +19,46 @@ public sealed class EmojiPickerDialog : ContentDialog
         Title = Taskly.Services.I18nService.Instance.T("dialogSelectIcon");
         CloseButtonText = Taskly.Services.I18nService.Instance.T("dialogCancel");
 
-        var grid = new Grid();
-        for (var r = 0; r < ListPalette.EmojiCategories.Length; r++)
-        {
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
-        }
+        var i18n = Taskly.Services.I18nService.Instance;
+        var root = new StackPanel { Spacing = 10 };
 
-        for (var r = 0; r < ListPalette.EmojiCategories.Length; r++)
+        // Category tabs (8 × 12 catalog from Strings/emoji.json).
+        var categoryCombo = new ComboBox { MinWidth = 160, HorizontalAlignment = HorizontalAlignment.Stretch };
+        foreach (var id in ListPalette.EmojiCategoryIds)
         {
-            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
-            foreach (var emoji in ListPalette.EmojiCategories[r])
+            categoryCombo.Items.Add(i18n.T("emojiCat_" + id));
+        }
+        categoryCombo.SelectedIndex = 0;
+        root.Children.Add(categoryCombo);
+
+        var emojiGrid = new Grid { ColumnSpacing = 4, RowSpacing = 4 };
+        for (var r = 0; r < 2; r++)
+        {
+            emojiGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        }
+        for (var c = 0; c < 6; c++)
+        {
+            emojiGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        }
+        root.Children.Add(emojiGrid);
+
+        void ReloadEmojis()
+        {
+            emojiGrid.Children.Clear();
+            var index = System.Math.Max(0, categoryCombo.SelectedIndex);
+            var id = ListPalette.EmojiCategoryIds[index];
+            if (!ListPalette.EmojiCategories.TryGetValue(id, out var emojis))
             {
+                return;
+            }
+            for (var i = 0; i < emojis.Length; i++)
+            {
+                var emoji = emojis[i];
                 var button = new Button
                 {
                     Content = emoji,
                     FontSize = 18,
                     Padding = new Thickness(6, 4, 6, 4),
-                    Background = emoji == current ? new SolidColorBrush(Windows.UI.Color.FromArgb(0x40, 0xC1, 0x5F, 0x3C)) : null,
                 };
                 var captured = emoji;
                 button.Click += (_, _) =>
@@ -43,14 +66,15 @@ public sealed class EmojiPickerDialog : ContentDialog
                     SelectedEmoji = captured;
                     Hide();
                 };
-                row.Children.Add(button);
+                Grid.SetRow(button, i / 6);
+                Grid.SetColumn(button, i % 6);
+                emojiGrid.Children.Add(button);
             }
-
-            Grid.SetRow(row, r);
-            grid.Children.Add(row);
         }
+        categoryCombo.SelectionChanged += (_, _) => ReloadEmojis();
+        ReloadEmojis();
 
-        Content = new ScrollViewer { Content = grid, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        Content = new ScrollViewer { Content = root, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     }
 
     public async System.Threading.Tasks.Task<bool> ShowAsyncSafe(Microsoft.UI.Xaml.XamlRoot root)
@@ -97,6 +121,24 @@ public sealed class ColorPickerDialog : ContentDialog
         }
 
         Content = wrap;
+    }
+
+    private static ItemsPanelTemplate CreateWrapPanel()
+    {
+        var xaml = """<ItemsPanelTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
+            <controls:WrapPanel Orientation='Horizontal' HorizontalSpacing='4' VerticalSpacing='4'
+                xmlns:controls='using:Microsoft.UI.Xaml.Controls'/>
+        </ItemsPanelTemplate>""";
+        return (ItemsPanelTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(xaml);
+    }
+
+    private static DataTemplate MakeEmojiTemplate()
+    {
+        var xaml = """<DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
+            <TextBlock Text='{Binding}' FontSize='18'
+                Padding='6,4,6,4' Tag='{Binding}'/>
+        </DataTemplate>""";
+        return (DataTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(xaml);
     }
 
     public async System.Threading.Tasks.Task<bool> ShowAsyncSafe(Microsoft.UI.Xaml.XamlRoot root)

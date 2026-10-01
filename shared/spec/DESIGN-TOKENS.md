@@ -54,16 +54,21 @@
 ## List-palette presets (fixed order, iOS system colors)
 
 `#007AFF` `#FF3B30` `#FF9500` `#FFCC00` `#4CD964` `#5AC8FA` `#5856D6`
-`#FF2D55` `#8E8E93` `#C7C7CC`
+`#FF2D55` `#8E8E93` `#C7C7CC` `#A2845E` `#00C7BE`
 
-## Emoji categories (fixed order, 6 × 8)
+## Emoji catalog (single source: `shared/emoji.json`)
 
-1. 📋 📝 ✅ 🎯 💡 📌 🔖 📎
-2. 🏠 🏢 💼 📱 💻 🎨 📚 🎓
-3. ❤️ ⭐ 🌟 🔥 💪 🎉 🎊 🏆
-4. 🛒 🛍️ 🍔 ☕ 🍕 🥤 🎮 🎬
-5. ✈️ 🚗 🚴 🏃 ⚽ 🏀 🎸 🎵
-6. 💰 💳 📊 📈 💼 📧 📅 ⏰
+8 categories × 12 emoji, synced to all platforms by `scripts/sync-i18n.sh`
+(the data file is `shared/emoji.json`; category display names live in the
+i18n tables as `emojiCat_<id>`). Windows 10 font-safe emoji only.
+Categories in order: frequent · people · nature · food · activity ·
+travel · objects · symbols.
+
+## List editor picker contract
+
+List editing shows a **tabbed category grid** for the icon and a **swatch
+row/grid** for the color — the same catalog, category order and palette on
+every platform. Never a text dropdown of hex values.
 
 ## Geometry & type
 

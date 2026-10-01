@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **List icon/color pickers upgraded to a shared catalog** (all platforms):
+  emoji data now lives in `shared/emoji.json` (8 categories × 12,
+  Windows 10 font-safe) synced like i18n, with localized category tabs;
+  the color palette grows 10 → 12 presets (brown `#A2845E`, mint
+  `#00C7BE`). macOS gains a tabbed emoji picker; Linux replaces its
+  emoji/hex-value text dropdowns with a tabbed FlowBox grid and color
+  swatches; Windows switches categories via a dropdown over the same
+  catalog. DESIGN-TOKENS documents the picker contract.
 - **Reminders-parity task interactions**: hover reveals the row fill plus
   one-click 今天/明天 schedule chips; ⌘/⇧ multi-select with batch context
   actions (complete/schedule/delete/move apply to the whole selection —

@@ -46,19 +46,40 @@ public enum Palette {
     /// List-color presets (fixed order, iOS system colors).
     public static let listColorsHex: [UInt32] = [
         0x007AFF, 0xFF3B30, 0xFF9500, 0xFFCC00, 0x4CD964, 0x5AC8FA,
-        0x5856D6, 0xFF2D55, 0x8E8E93, 0xC7C7CC,
+        0x5856D6, 0xFF2D55, 0x8E8E93, 0xC7C7CC, 0xA2845E, 0x00C7BE,
     ]
     public static let listColors: [Color] = listColorsHex.map { Color(hex: $0) }
 
-    /// Emoji picker categories (fixed order, 6 × 8).
-    public static let emojiCategories: [[String]] = [
-        ["📋", "📝", "✅", "🎯", "💡", "📌", "🔖", "📎"],
-        ["🏠", "🏢", "💼", "📱", "💻", "🎨", "📚", "🎓"],
-        ["❤️", "⭐", "🌟", "🔥", "💪", "🎉", "🎊", "🏆"],
-        ["🛒", "🛍️", "🍔", "☕", "🍕", "🥤", "🎮", "🎬"],
-        ["✈️", "🚗", "🚴", "🏃", "⚽", "🏀", "🎸", "🎵"],
-        ["💰", "💳", "📊", "📈", "💼", "📧", "📅", "⏰"],
+    /// Emoji catalog ids in display order (names via i18n emojiCat_<id>;
+    /// emoji data loads from the synced shared/emoji.json bundle resource).
+    public static let emojiCategoryIds: [String] = [
+        "frequent", "people", "nature", "food",
+        "activity", "travel", "objects", "symbols",
     ]
+
+    /// [categoryId → emojis], parsed once from shared/emoji.json.
+    public static let emojiCategories: [String: [String]] = {
+        var map: [String: [String]] = [:]
+        if let url = Bundle.module.url(forResource: "emoji", withExtension: "json"),
+           let data = try? Data(contentsOf: url),
+           let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let categories = root["categories"] as? [[String: Any]] {
+            for category in categories {
+                if let id = category["id"] as? String,
+                   let emojis = category["emojis"] as? [String] {
+                    map[id] = emojis
+                }
+            }
+        }
+        if map.isEmpty {
+            // Catalog missing → legacy flat set as one category.
+            map["frequent"] = [
+                "📋", "📝", "✅", "🎯", "💡", "📌", "🔖", "📎",
+                "🏠", "🏢", "💼", "📱", "💻", "🎨", "📚", "🎓",
+            ]
+        }
+        return map
+    }()
 
     // Geometry
     public static let sidebarWidth: CGFloat = 280

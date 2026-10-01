@@ -129,5 +129,13 @@
   "toastComplete": "完成",
   "toastSnooze": "稍后提醒",
   "settingsCloseToTray": "关闭时最小化到托盘（提醒继续）",
-  "trayTip": "Taskly 仍在后台运行，提醒不会错过。"
+  "trayTip": "Taskly 仍在后台运行，提醒不会错过。",
+  "emojiCat_frequent": "常用",
+  "emojiCat_people": "人物",
+  "emojiCat_nature": "自然",
+  "emojiCat_food": "食物",
+  "emojiCat_activity": "活动",
+  "emojiCat_travel": "旅行",
+  "emojiCat_objects": "物品",
+  "emojiCat_symbols": "符号"
 }

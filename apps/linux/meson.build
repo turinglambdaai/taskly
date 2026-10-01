@@ -34,6 +34,7 @@ sources = files(
 i18n_resources = [
   'resources/i18n/zh.json',
   'resources/i18n/en.json',
+  'resources/emoji.json',
 ]
 
 executable('taskly', sources,

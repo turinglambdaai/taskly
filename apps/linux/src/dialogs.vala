@@ -243,40 +243,113 @@ public class ListEditDialog : Object {
 
         var icon_label = new Gtk.Label(i18n.t("dialogListIcon"));
         icon_label.halign = Gtk.Align.START;
-        var icon_combo = new Gtk.ComboBoxText();
+
+        // Icon: category switcher + FlowBox grid (catalog: resources/emoji.json).
+        if (load_emoji_category("frequent") == null) {
+            // Catalog missing → legacy flat set as a single category.
+            seed_emoji_category("frequent", (string[]) EMOJI_ALL);
+        }
         string? current_icon = existing != null ? existing.icon : null;
-        var icon_active = "";
-        foreach (var emoji in EMOJI_ALL) {
-            icon_combo.append(emoji, emoji);
-            if (current_icon != null && current_icon == emoji) {
-                icon_active = emoji;
+        var icon_result = new string?[1];
+        icon_result[0] = current_icon;
+
+        var icon_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 8);
+        var switcher = new Gtk.StackSwitcher();
+        switcher.halign = Gtk.Align.START;
+        var stack = new Gtk.Stack();
+        switcher.set_stack(stack);
+        var first_category = true;
+        foreach (var category_id in EMOJI_CATEGORY_IDS) {
+            var emojis = load_emoji_category(category_id);
+            if (emojis == null || emojis.length == 0) {
+                continue;
+            }
+            var flow = new Gtk.FlowBox();
+            flow.max_children_per_line = 6;
+            flow.min_children_per_line = 6;
+            flow.selection_mode = Gtk.SelectionMode.SINGLE;
+            flow.homogeneous = true;
+            var flow_index = 0;
+            foreach (var emoji in emojis) {
+                var label = new Gtk.Label(emoji);
+                label.width_chars = 2;
+                var flow_child = new Gtk.FlowBoxChild();
+                flow_child.set_child(label);
+                flow.append(flow_child);
+                if (current_icon != null && current_icon == emoji) {
+                    flow.select_child(flow_child);
+                }
+                var captured = emoji;
+                flow.child_activated.connect(() => {
+                    icon_result[0] = captured;
+                });
+                flow_index++;
+            }
+            var page = new Gtk.Box(Gtk.Orientation.VERTICAL, 4);
+            page.append(flow);
+            var clear_btn = new Gtk.Button.with_label(i18n.t("dialogClearIcon"));
+            clear_btn.halign = Gtk.Align.END;
+            clear_btn.add_css_class("flat");
+            clear_btn.clicked.connect(() => {
+                icon_result[0] = null;
+                flow.unselect_all();
+            });
+            page.append(clear_btn);
+            var page_name = i18n.t("emojiCat_" + category_id);
+            stack.add_titled(page, category_id, page_name);
+            if (first_category) {
+                first_category = false;
             }
         }
-        icon_combo.append("", i18n.t("dialogClearIcon"));
-        icon_combo.active_id = icon_active.length > 0 ? icon_active : "";
+        icon_box.append(switcher);
+        icon_box.append(stack);
 
         var color_label = new Gtk.Label(i18n.t("dialogListColor"));
         color_label.halign = Gtk.Align.START;
-        var color_combo = new Gtk.ComboBoxText();
         var current_color = existing != null && existing.color != null
             ? (uint32) existing.color : 0xFF000000u | 0x007AFF;
-        var color_active = "";
+        var color_result = new uint32?[1];
+        color_result[0] = current_color;
+        var color_flow = new Gtk.FlowBox();
+        color_flow.max_children_per_line = 12;
+        color_flow.min_children_per_line = 12;
+        color_flow.selection_mode = Gtk.SelectionMode.SINGLE;
+        color_flow.homogeneous = true;
         foreach (var rgb in LIST_COLORS_RGB) {
-            var id_str = "FF" + rgb;
             var value = 0xFF000000u | strtoul_hex32(rgb);
-            color_combo.append(id_str, "#" + rgb);
+            var swatch = new Gtk.Label("");
+            swatch.width_chars = 2;
+            // 圆点着色
+            var css = new Gtk.CssProvider();
+            css.load_from_data(
+                ("* { background: #%06X; border-radius: 12px; }").printf(value & 0xFFFFFF).data);
+            swatch.get_style_context().add_provider(
+                css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
+            var flow_child = new Gtk.FlowBoxChild();
+            flow_child.set_child(swatch);
+            color_flow.append(flow_child);
             if (current_color == value) {
-                color_active = id_str;
+                color_flow.select_child(flow_child);
             }
+            var captured = value;
+            color_flow.child_activated.connect(() => {
+                color_result[0] = captured;
+            });
         }
-        color_combo.append("", i18n.t("dialogClearColor"));
-        color_combo.active_id = color_active.length > 0 ? color_active : "";
+        var color_clear = new Gtk.Button.with_label(i18n.t("dialogClearColor"));
+        color_clear.halign = Gtk.Align.END;
+        color_clear.add_css_class("flat");
+        color_clear.clicked.connect(() => {
+            color_result[0] = null;
+            color_flow.unselect_all();
+        });
 
         content.append(name_entry);
         content.append(icon_label);
-        content.append(icon_combo);
+        content.append(icon_box);
         content.append(color_label);
-        content.append(color_combo);
+        content.append(color_flow);
+        content.append(color_clear);
 
         var buttons = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8);
         var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
@@ -299,12 +372,10 @@ public class ListEditDialog : Object {
                 return; // blank name keeps the dialog open (reference behavior)
             }
 
-            var icon_id = icon_combo.active_id;
-            string? icon = (icon_id != null && icon_id.length > 0) ? icon_id : null;
-            var color_id = color_combo.active_id;
+            string? icon = icon_result[0];
             int32? color = null;
-            if (color_id != null && color_id.length > 0) {
-                color = (int32) strtoul_hex32(color_id);
+            if (color_result[0] != null) {
+                color = (int32) color_result[0];
             }
             try {
                 if (creating) {
