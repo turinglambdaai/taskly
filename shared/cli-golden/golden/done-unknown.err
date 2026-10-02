@@ -1,0 +1,5 @@
+{
+  "ok": false,
+  "error": "Task not found: 999",
+  "exitCode": 3
+}

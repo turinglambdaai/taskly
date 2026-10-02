@@ -3,6 +3,8 @@
 (require rivet/backend
          racket/string
          "config.rkt"
+         "date-parser.rkt"
+         "errors.rkt"
          "model.rkt"
          "rivet-schema.rkt"
          "service.rkt")
@@ -112,6 +114,26 @@
 
 (define-rpc (default_database : String)
   (path->string (resolve-database-path)))
+
+;; Canonical quick-add/date-expression parsing (CLI-SPEC `--due` grammar).
+;; Returns `yyyy-MM-dd` for pure-date intents, `yyyy-MM-dd HH:mm:ss`
+;; otherwise — the 10-char shape IS the pure-date signal. Unparseable input
+;; raises the validation error; hosts decide how to surface it.
+(define-rpc (parse_due [expression : String] : String)
+  (define-values (d t) (parse-due-expression expression))
+  (if t (format "~a ~a:00" d t) d))
+
+(define-rpc (parse_quick_add [text : String] : QuickAddParse)
+  (if (string=? (string-trim text) "")
+      (QuickAddParse text (void) (void))
+      (let-values ([(clean command) (extract-quick-add-command text)])
+        (if (not command)
+            (QuickAddParse clean (void) (void))
+            (with-handlers
+                ([exn:fail:taskly?
+                  (lambda (_) (QuickAddParse clean (void) (void)))])
+              (let-values ([(d t) (parse-due-expression command)])
+                (QuickAddParse clean (nullable d) (nullable t))))))))
 
 (define-rpc (get_settings : Settings)
   (settings->dto))

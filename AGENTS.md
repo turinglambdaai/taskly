@@ -17,7 +17,7 @@ UI 薄壳。
 | Windows | C++/WinRT 宿主 + 嵌入式 Racket CS | `windows/` | M3 首个可运行（Taskly UI 跑在后端上） |
 | macOS | SwiftUI 宿主 + 类型化客户端 | `macos-host/` | M4 首个可运行（Reminders 式 UI 全量移植，见 `docs/MACOS-HANDOFF.md`） |
 | Linux | GTK4 宿主 + 嵌入式 Racket CS | `linux/` | 首个可运行（智能视图/清单/增删改/快速添加） |
-| agent CLI | Racket（领域层已就绪） | `racket/taskly/` | M6 待做—— rivet 分支尚无 CLI；日常 CLI 仍用 v1 原生应用 |
+| agent CLI | Racket（`racket/taskly/cli.rkt`） | `racket/taskly/` | M6 完成—— golden 套件 61/61；宿主内嵌双模式打包归 M7 |
 
 架构决策与里程碑（M0–M7）：`docs/RIVET-MIGRATION.md`。
 
@@ -37,6 +37,9 @@ raco rivet dev          # 开发循环：改完自动重建 + 启动
 
 # 3) 领域核心测试（三平台同套件）
 raco test racket/
+
+# 3b) CLI golden 套件（61 例，字节级对照 CLI-SPEC）
+python3 shared/cli-golden/runner.py --binary <taskly-cli>
 
 # 4) i18n 单源同步与校验（shared/i18n → 各平台资源）
 scripts/sync-i18n.sh --check
@@ -60,7 +63,7 @@ rivet 仓库）；需要可嵌入 Racket CS（libracketcs.a + 3 个 boot 文件�
 ## 改动契约（不要破坏）
 
 - **DB schema**：`user_version = 4`。加列必须 bump 版本 + 更新 DATA-FORMAT.md + 三平台同一 release
-- **RPC 面**：`racket/taskly/backend.rkt` 的 define-rpc 是宿主的唯一数据通道（open_database / close_database / default_database / load_snapshot / add_task / update_task / update_task_text / set_completed / delete_task / search_tasks / create_list / update_list / delete_list / get_settings / set_setting + `changed` 事件）。改签名 = 三端宿主 + 生成客户端同步改
+- **RPC 面**：`racket/taskly/backend.rkt` 的 define-rpc 是宿主的唯一数据通道（open_database / close_database / default_database / load_snapshot / add_task / update_task / update_task_text / set_completed / delete_task / search_tasks / create_list / update_list / delete_list / get_settings / set_setting / parse_due / parse_quick_add + `changed` 事件）。改签名 = 三端宿主 + 生成客户端同步改
 - **CLI JSON 字段与退出码**（M6 时）：task 对象 `id, listId, listName, text, completed, dueDate, dueTime, notes, createdAt`；错误走 stderr `{"ok":false,"error":…,"exitCode:N}`
 - **默认数据**：新库种下名为 `工作`（硬编码中文）的列表，icon `📋`，color ARGB int（有符号）
 - **`~/.taskly/` 路径约定**：GUI/CLI/云盘同步都依赖它

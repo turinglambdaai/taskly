@@ -49,6 +49,14 @@
    [last-selected-list-id : Int64]
    [database-path : String]))
 
+;; Canonical quick-add split (parse_quick_add): the cleaned text plus the
+;; due date/time the trailing command expressed. Every host calls this
+;; instead of keeping its own grammar — one quick-add language everywhere.
+(define-record QuickAddParse
+  ([text : String]
+   [due-date : (Optional String)]
+   [due-time : (Optional String)]))
+
 (define (nullable value)
   (if value value (void)))
 

@@ -154,8 +154,11 @@ struct TaskPaneView: View {
                     .onSubmit {
                         model.quickAdd(model.quickAddText)
                     }
+                    .onChange(of: model.quickAddText) { _, _ in
+                        model.quickAddTextChanged()
+                    }
 
-                if let preview = schedulePreview {
+                if let preview = model.quickAddPreview {
                     HStack(spacing: 4) {
                         Image(systemName: "calendar")
                             .font(.system(size: 10))
@@ -181,46 +184,6 @@ struct TaskPaneView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-    }
-
-    /// Live parse of the quick-add text (same grammar as model.quickAdd):
-    /// "买牛奶 @10am" → 今天 10:00, "买菜 +1d" → 明天. Nil when no schedule.
-    private var schedulePreview: String? {
-        let raw = model.quickAddText
-        guard !raw.isEmpty else { return nil }
-        let parser = DateParser()
-        let (_, command) = parser.extractTimeCommand(raw)
-        guard let command, let parsed = parser.parseDueExpression(command) else { return nil }
-
-        var label = Self.previewDateText(
-            parsed.dueDate,
-            todayLabel: model.t("navToday"),
-            tomorrowLabel: model.t("dateTomorrow"),
-            yesterdayLabel: model.t("dateYesterday"))
-        if let dueTime = parsed.dueTime {
-            label += label.isEmpty ? dueTime : " " + dueTime
-        }
-        return label.isEmpty ? nil : label
-    }
-
-    /// Relative word when adjacent-day, localized short date otherwise.
-    private static func previewDateText(
-        _ isoDate: String, todayLabel: String, tomorrowLabel: String,
-        yesterdayLabel: String) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd"
-        guard let date = formatter.date(from: isoDate) else { return isoDate }
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let day = calendar.startOfDay(for: date)
-        if day == today { return todayLabel }
-        if day == calendar.date(byAdding: .day, value: 1, to: today) { return tomorrowLabel }
-        if day == calendar.date(byAdding: .day, value: -1, to: today) { return yesterdayLabel }
-        let out = DateFormatter()
-        out.locale = Locale.current
-        out.setLocalizedDateFormatFromTemplate("MMMd")
-        return out.string(from: date)
     }
 
     private var taskList: some View {

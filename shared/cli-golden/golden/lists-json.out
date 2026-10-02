@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "name": "\u5de5\u4f5c",
+    "icon": "\ud83d\udccb",
+    "color": -16745729,
+    "pendingCount": 3
+  },
+  {
+    "id": 2,
+    "name": "Personal",
+    "icon": "\ud83c\udfe0",
+    "color": -13318311,
+    "pendingCount": 1
+  }
+]

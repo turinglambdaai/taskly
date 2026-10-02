@@ -41,6 +41,17 @@
      (check-equal? tonight-date "2026-09-20")
      (check-equal? tonight-time "20:00")
 
+     ;; Quick-add extraction: one grammar behind parse_quick_add for all hosts.
+     (define-values (qa-text qa-command) (extract-quick-add-command "买牛奶 @10am"))
+     (check-equal? qa-text "买牛奶")
+     (check-equal? qa-command "@10am")
+     (define-values (qa-2-text qa-2-command) (extract-quick-add-command "买菜 +1d"))
+     (check-equal? qa-2-text "买菜")
+     (check-equal? qa-2-command "+1d")
+     (define-values (qa-3-text qa-3-command) (extract-quick-add-command "no command"))
+     (check-equal? qa-3-text "no command")
+     (check-false qa-3-command)
+
      ;; Config and path resolution are now one implementation for all hosts.
      (define config (make-hash))
      (hash-set! config "language" "en")

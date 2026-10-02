@@ -1,0 +1,5 @@
+{
+  "ok": false,
+  "error": "Invalid hex color: \"#GGG\". Use #RRGGBB (6) or #AARRGGBB (8)",
+  "exitCode": 2
+}

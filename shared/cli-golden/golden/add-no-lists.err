@@ -1,0 +1,5 @@
+{
+  "ok": false,
+  "error": "No lists exist yet. Create one with `taskly mklist` first.",
+  "exitCode": 3
+}

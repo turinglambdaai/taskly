@@ -3,7 +3,9 @@
 > Stable agent-facing interface. Every platform binary is dual-mode:
 > **any** argument at launch routes to the CLI (the GUI toolkit is never
 > initialized); no arguments opens the GUI. Command output and exit codes
-> are identical across platforms — enforced by golden-output tests in CI.
+> are identical across platforms — enforced by golden-output tests in CI
+> (`shared/cli-golden/`, 61 cases; canonical implementation
+> `racket/taskly/cli.rkt`, the M6 Racket CLI).
 
 ```
 taskly <subcommand> [options] [--json] [--db PATH] [--quiet]
@@ -94,7 +96,7 @@ exit 0 either way. Non-json: `Deleted task N` / `Task N did not exist`.
 ### mklist "<name>"
 `--icon <emoji>` `--color #RRGGBB|AARRGGBB|<int>`. Name validation → exit 2.
 Color parsing: plain int → as-is; `#RRGGBB` → `0xFF000000|RGB`; 8-digit hex
-→ as-is; anything else → exit 2. Null icon/color get defaults (📋 / Crail).
+→ as-is; anything else → exit 2. Null icon/color get defaults (📋 / system blue `0xFF007AFF`).
 Output: list JSON / list row / quiet → id.
 
 ### rmlist <ID>

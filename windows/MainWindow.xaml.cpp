@@ -817,14 +817,31 @@ winrt::fire_and_forget MainWindow::AddTaskAsync(std::wstring const& text) {
   auto backend = backend_;
   try {
     rivet_app::API api(*backend);
-    // `changed` triggers the authoritative reload; the completion only
-    // surfaces failures.
-    (void)api.add_task_async(
-        winrt::to_string(text), std::nullopt, std::nullopt, std::nullopt,
-        std::nullopt,
-        [dispatcher, weak](rivet_app::Result<rivet_app::Task> result) {
+    // One quick-add grammar on every platform: the backend splits text +
+    // due (parse_quick_add); this host only forwards the result.
+    (void)api.parse_quick_add_async(
+        winrt::to_string(text),
+        [dispatcher, weak, backend](rivet_app::Result<rivet_app::QuickAddParse> parsed) {
           try {
-            result.get();
+            auto const parse = parsed.get();
+            rivet_app::API api(*backend);
+            // `changed` triggers the authoritative reload; the completion
+            // only surfaces failures.
+            (void)api.add_task_async(
+                parse.text, std::nullopt, parse.due_date, parse.due_time,
+                std::nullopt,
+                [dispatcher, weak](rivet_app::Result<rivet_app::Task> result) {
+                  try {
+                    result.get();
+                  } catch (std::exception const& e) {
+                    auto message = std::string(e.what());
+                    dispatcher.TryEnqueue([weak, message = std::move(message)] {
+                      if (auto window = weak.get()) {
+                        window->SetError(message);
+                      }
+                    });
+                  }
+                });
           } catch (std::exception const& e) {
             auto message = std::string(e.what());
             dispatcher.TryEnqueue([weak, message = std::move(message)] {

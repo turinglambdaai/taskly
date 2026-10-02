@@ -53,6 +53,7 @@ final class AppModel {
     private var started = false
     /// Monotonic token; stale async snapshot responses are dropped.
     private var reloadSequence = 0
+    private var previewSequence = 0
 
     // Data
     var lists: [TodoList] = []
@@ -71,6 +72,8 @@ final class AppModel {
     var expandedTaskID: Int64?
     var searchText = ""
     var quickAddText = ""
+    /// Live quick-add schedule preview (canonical parse via parse_due RPC).
+    var quickAddPreview: String?
     /// Incremented by View menu → New Task; TaskPaneView focuses the
     /// quick-add field on change.
     var quickAddFocusToken = 0
@@ -460,23 +463,13 @@ final class AppModel {
 
     // MARK: - Task operations
 
-    /// Quick add: extracts a trailing date/time command from the text
-    /// (CLI semantics: pure-date intent clears the time).
+    /// Quick add: the trailing date/time command is parsed canonically by
+    /// the backend `parse_due` RPC — one grammar on every platform
+    /// (pure-date intent clears the time).
     func quickAdd(_ rawText: String) {
         guard isConnected, let api else { return }
         let trimmed = rawText.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-
-        let parser = DateParser()
-        let (text, timeCommand) = parser.extractTimeCommand(trimmed)
-        var dueDate: String?
-        var dueTime: String?
-        if let command = timeCommand {
-            if let parsed = parser.parseDueExpression(command) {
-                dueDate = parsed.dueDate
-                dueTime = parsed.dueTime
-            }
-        }
 
         let listId: Int64
         if let id = currentView.listId {
@@ -490,19 +483,77 @@ final class AppModel {
 
         Swift.Task {
             do {
+                // One quick-add grammar on every platform: the backend
+                // splits text + due (parse_quick_add), we just store it.
+                let parsed = try await api.parse_quick_add(text: trimmed)
                 _ = try await api.add_task(
-                    text: text.isEmpty ? trimmed : text,
+                    text: parsed.text,
                     list_id: listId,
-                    due_date: dueDate,
-                    due_time: dueTime,
+                    due_date: parsed.due_date,
+                    due_time: parsed.due_time,
                     notes: nil)
-                quickAddText = ""
-                flashStatus(i18n.t("statusTaskAdded"))
-                reload()
+                await MainActor.run {
+                    quickAddText = ""
+                    quickAddPreview = nil
+                    flashStatus(i18n.t("statusTaskAdded"))
+                    reload()
+                }
             } catch {
                 flashStatus("\(error)")
             }
         }
+    }
+
+    /// Keystroke-driven preview: the same parse_quick_add RPC the commit
+    /// path uses, stale responses dropped by sequence.
+    func quickAddTextChanged() {
+        previewSequence += 1
+        let seq = previewSequence
+        let raw = quickAddText
+        guard !raw.isEmpty, let api else {
+            quickAddPreview = nil
+            return
+        }
+        Swift.Task { [weak self] in
+            guard let self, seq == self.previewSequence else { return }
+            guard let parsed = try? await api.parse_quick_add(text: raw),
+                  let dueDate = parsed.due_date else {
+                self.quickAddPreview = nil
+                return
+            }
+            await MainActor.run {
+                guard seq == self.previewSequence else { return }
+                var label = Self.previewDateText(
+                    dueDate,
+                    todayLabel: self.t("navToday"),
+                    tomorrowLabel: self.t("dateTomorrow"),
+                    yesterdayLabel: self.t("dateYesterday"))
+                if let dueTime = parsed.due_time {
+                    label += label.isEmpty ? dueTime : " " + dueTime
+                }
+                self.quickAddPreview = label
+            }
+        }
+    }
+
+    /// Relative word when adjacent-day, localized short date otherwise.
+    private static func previewDateText(
+        _ isoDate: String, todayLabel: String, tomorrowLabel: String,
+        yesterdayLabel: String) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: isoDate) else { return isoDate }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let day = calendar.startOfDay(for: date)
+        if day == today { return todayLabel }
+        if day == calendar.date(byAdding: .day, value: 1, to: today) { return tomorrowLabel }
+        if day == calendar.date(byAdding: .day, value: -1, to: today) { return yesterdayLabel }
+        let out = DateFormatter()
+        out.locale = Locale.current
+        out.setLocalizedDateFormatFromTemplate("MMMd")
+        return out.string(from: date)
     }
 
     func toggleCompleted(_ task: Task) {

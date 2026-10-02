@@ -225,12 +225,12 @@ reference are intact.
 
 - **M0 — shared Racket core + tests:** complete
 - **M1 — Rivet Record/DTO schema support:** complete
-- **M2 — Windows C# client + in-process Racket runtime + backend port:** implementation complete; dual-mode Taskly build is the remaining gate
-- **M3 — Windows runtime/UI parity:** next; run the existing WinUI product against the Rivet backend and remove behavioral differences, not the fallback yet
-- **M4 — macOS adapter and parity:** after Windows demonstrates product value
-- **M5 — Linux host decision and implementation:** after Windows/macOS evidence
-- **M6 — move CLI implementation to Racket and run one golden suite everywhere**
-- **M7 — release engineering, signing, updater, crash diagnostics and commercial checklist**
+- **M2 — Windows C# client + in-process Racket runtime + backend port:** complete (superseded by the C++/WinRT host)
+- **M3 — Windows runtime/UI parity:** first runnable done (Taskly UI over the embedded backend); parity against the v1 oracle is the remaining work (multi-select, keyboard flow, undo banner, completed section)
+- **M4 — macOS adapter and parity:** first runnable done — full Reminders-style UI ported (smart views, lists, quick add, inline expansion, multi-select, undo, search, themes); reminders notifications are the remaining spec item
+- **M5 — Linux host:** first runnable done; parity (search, inline edit, list rename) pending
+- **M6 — CLI in Racket:** complete — `racket/taskly/cli.rkt` passes the shared golden suite 61/61; quick-add grammar centralized behind `parse_quick_add` so all hosts share one parser
+- **M7 — release engineering, signing, updater, crash diagnostics and commercial checklist:** next
 
 No milestone is allowed to delete the stable native reference before its own
 parity gate is green.

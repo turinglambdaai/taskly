@@ -17,7 +17,7 @@
    (parameterize ([current-taskly-home temp-root])
      (define names
        (map (lambda (entry) (hash-ref entry 'name)) (record-schema)))
-     (check-equal? names '("Settings" "SmartCounts" "Snapshot" "Task" "TodoList"))
+     (check-equal? names '("QuickAddParse" "Settings" "SmartCounts" "Snapshot" "Task" "TodoList"))
 
      (define service (open-taskly-service (build-path temp-root "schema.db")))
      (define created (service-add-task! service "typed task" #:due-date "2026-09-20"))

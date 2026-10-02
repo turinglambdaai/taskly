@@ -448,14 +448,23 @@ void on_quick_add_activate(GtkEntry* entry, gpointer) {
   std::string const trimmed(text);
   if (trimmed.empty()) return;
 
-  std::optional<std::int64_t> list_id;
-  if (g_state.view.kind == ViewKind::List) list_id = g_state.view.list_id;
   gtk_editable_set_text(GTK_EDITABLE(entry), "");
-  g_state.api->add_task_async(
-      trimmed, list_id, std::nullopt, std::nullopt, std::nullopt,
-      [](rivet_app::Result<rivet_app::Task> result) {
-        on_result(std::move(result),
-                  [](rivet_app::Task const&) { g_state.set_subtitle(g_state.i18n->task_added); reload_snapshot(); });
+  // One quick-add grammar on every platform: the backend splits text +
+  // due (parse_quick_add); this host only forwards the result.
+  g_state.api->parse_quick_add_async(
+      trimmed,
+      [](rivet_app::Result<rivet_app::QuickAddParse> parsed) {
+        on_result(std::move(parsed), [](rivet_app::QuickAddParse const& parse) {
+          if (g_state.api == nullptr) return;
+          std::optional<std::int64_t> list_id;
+          if (g_state.view.kind == ViewKind::List) list_id = g_state.view.list_id;
+          g_state.api->add_task_async(
+              parse.text, list_id, parse.due_date, parse.due_time, std::nullopt,
+              [](rivet_app::Result<rivet_app::Task> result) {
+                on_result(std::move(result),
+                          [](rivet_app::Task const&) { g_state.set_subtitle(g_state.i18n->task_added); reload_snapshot(); });
+              });
+        });
       });
 }
 

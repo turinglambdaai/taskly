@@ -1,0 +1,11 @@
+[
+  {
+    "id": 6,
+    "listId": 1,
+    "listName": "\u5de5\u4f5c",
+    "text": "\u4eca\u5929\u7684\u4e8b",
+    "completed": false,
+    "dueDate": "{{today}}",
+    "createdAt": "{{now}}"
+  }
+]

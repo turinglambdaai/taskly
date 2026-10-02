@@ -11,7 +11,8 @@
 (provide parse-date-time
          parse-due-expression
          extract-date-only
-         extract-time-only)
+         extract-time-only
+         extract-quick-add-command)
 
 (define (pad2 n) (~r n #:min-width 2 #:pad-string "0"))
 (define (pad4 n) (~r n #:min-width 4 #:pad-string "0"))
@@ -146,6 +147,31 @@
 
 ;; CLI-facing parser. Returns two values: canonical due_date and due_time.
 ;; A pure-date expression intentionally returns #f for due_time.
+;; Trailing quick-add command split, mirroring the v1 ExtractTimeCommand:
+;; a trailing @time (with optional day modifier) or relative +N{m h d w M}.
+;; On a shape-valid but unparseable command the command is dropped
+;; silently (v1 GUI semantics — the CLI's --due path surfaces errors).
+(define (extract-quick-add-command text)
+  (define (trim-spaces s) (string-trim s " \t\n\r"))
+  (let loop ([s text] [command #f])
+    (define at-match
+      (regexp-match-positions
+       #px"(?i:@(?:now|\\d{1,2}(?::\\d{2})?(?:am|pm)?)(?:\\s+(?:tomorrow|tmw|mon|tue|wed|thu|fri|sat|sun))?)$"
+       s))
+    (cond
+      [at-match
+       (loop (trim-spaces (substring s 0 (car (car at-match))))
+             (substring s (car (car at-match))))]
+      [else
+       (define rel-match
+         (regexp-match-positions #px"(?:^|\\s)(\\+\\d+[mhdwM])(?:\\s|$)" s))
+       (if rel-match
+           (values (string-trim
+                    (string-append (substring s 0 (car (car rel-match)))
+                                   (substring s (cdr (car rel-match)))))
+                   (substring s (car (cadr rel-match)) (cdr (cadr rel-match))))
+           (values (string-trim s) command))])))
+
 (define (parse-due-expression input)
   (define original (string-trim input))
   (define normalized

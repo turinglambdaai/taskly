@@ -13,6 +13,17 @@ public enum RivetGeneratedConfig {
     public static let releaseChannel = "stable"
 }
 
+public struct QuickAddParse: Sendable {
+    public let text: String
+    public let due_date: String?
+    public let due_time: String?
+    public init(text: String, due_date: String?, due_time: String?) {
+        self.text = text
+        self.due_date = due_date
+        self.due_time = due_time
+    }
+}
+
 public struct Settings: Sendable {
     public let language: String
     public let theme: String
@@ -103,6 +114,7 @@ private func encode_SmartCounts(_ v: SmartCounts) -> RivetValue { .list([encode_
 private func encode__List_TodoList_(_ v: [TodoList]) -> RivetValue { .list(v.map(encode_TodoList)) }
 private func encode__List_Task_(_ v: [Task]) -> RivetValue { .list(v.map(encode_Task)) }
 private func encode_Snapshot(_ v: Snapshot) -> RivetValue { .list([encode_SmartCounts(v.counts), encode__List_TodoList_(v.lists), encode__List_Task_(v.tasks)]) }
+private func encode_QuickAddParse(_ v: QuickAddParse) -> RivetValue { .list([encode_String(v.text), encode__Optional_String_(v.due_date), encode__Optional_String_(v.due_time)]) }
 private func encode_Any(_ v: RivetValue) -> RivetValue { v }
 
 private func decode_String(_ v: RivetValue) throws -> String { guard case .string(let x) = v else { throw RivetGeneratedError.typeMismatch("String") }; return x }
@@ -118,6 +130,7 @@ private func decode_SmartCounts(_ v: RivetValue) throws -> SmartCounts { guard c
 private func decode__List_TodoList_(_ v: RivetValue) throws -> [TodoList] { guard case .list(let xs) = v else { throw RivetGeneratedError.typeMismatch("(List TodoList)") }; return try xs.map(decode_TodoList) }
 private func decode__List_Task_(_ v: RivetValue) throws -> [Task] { guard case .list(let xs) = v else { throw RivetGeneratedError.typeMismatch("(List Task)") }; return try xs.map(decode_Task) }
 private func decode_Snapshot(_ v: RivetValue) throws -> Snapshot { guard case .list(let xs) = v, xs.count == 3 else { throw RivetGeneratedError.typeMismatch("Snapshot") }; return Snapshot(counts: try decode_SmartCounts(xs[0]), lists: try decode__List_TodoList_(xs[1]), tasks: try decode__List_Task_(xs[2])) }
+private func decode_QuickAddParse(_ v: RivetValue) throws -> QuickAddParse { guard case .list(let xs) = v, xs.count == 3 else { throw RivetGeneratedError.typeMismatch("QuickAddParse") }; return QuickAddParse(text: try decode_String(xs[0]), due_date: try decode__Optional_String_(xs[1]), due_time: try decode__Optional_String_(xs[2])) }
 private func decode_Any(_ v: RivetValue) throws -> RivetValue { v }
 
 public enum RivetEvent: Sendable {
@@ -170,6 +183,14 @@ public struct RivetAPI: Sendable {
     public func open_database(path: String) async throws -> Snapshot {
         let result = try await client.call("open_database", arguments: [encode_String(path)])
         return try decode_Snapshot(result)
+    }
+    public func parse_due(expression: String) async throws -> String {
+        let result = try await client.call("parse_due", arguments: [encode_String(expression)])
+        return try decode_String(result)
+    }
+    public func parse_quick_add(text: String) async throws -> QuickAddParse {
+        let result = try await client.call("parse_quick_add", arguments: [encode_String(text)])
+        return try decode_QuickAddParse(result)
     }
     public func search_tasks(keyword: String) async throws -> [Task] {
         let result = try await client.call("search_tasks", arguments: [encode_String(keyword)])

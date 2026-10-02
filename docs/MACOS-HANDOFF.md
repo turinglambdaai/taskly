@@ -47,7 +47,7 @@ raco rivet build     # 或 raco rivet dev（开发循环：改完自动重建+�
 2. ~~**接 Taskly 后端**~~ 已完成
 3. ~~**移植 Taskly SwiftUI UI**~~ **已完成（2026-10-02）**——Reminders 式全量 UI 落在 `macos-host/Sources/RivetHost/`：智能视图/清单增删改/快速添加（解析预览）/行内展开/多选/键盘流/撤销横幅/搜索/明暗主题/中英切换；数据面全部走 GeneratedBackend.swift 类型化客户端。`raco rivet build && raco rivet dev` 即可运行。待做：提醒通知调度（ReminderService 对应物）、菜单栏速添、CLI 安装菜单项
 4. ~~给 rivet 提 PR：移植 named-record API~~ **已完成**——rivet main 经 PR #72/#78 自带 define-record/Optional/嵌套/枚举（issue #92 已验证关闭），racket/taskly 直接用库 API
-5. **M6**：把 agent-facing CLI（原 C# CliEngine，CLI-SPEC 契约）用 Racket 重写（领域层已在 Racket，很薄）
+5. ~~**M6**：把 agent-facing CLI 用 Racket 重写~~ **已完成（2026-10-02）**——`racket/taskly/cli.rkt`，`python3 shared/cli-golden/runner.py --binary <cli>` 61/61；快速添加语法已收口到后端 `parse_quick_add` RPC（三宿主共用一份解析）。剩余：macOS 提醒通知（PRODUCT-SPEC §9）、宿主内嵌 CLI 双模式打包（M7）、Windows/Linux 交互 parity（M3/M5）
 
 ### 已知坑（前人踩过，别再踩）
 
