@@ -37,9 +37,11 @@ struct TaskRowView: View {
         // Completion transition: strikethrough/color crossfade with the
         // checkbox pop (parity with the Windows AddDelete/pop pair).
         .animation(.easeOut(duration: 0.15), value: task.completed)
-        .frame(minHeight: 44, alignment: .center)
+        // Padding first so the 44pt bound is the row's TOTAL height
+        // (DESIGN-TOKENS task row) — a single-line task stays Reminders-dense.
         .padding(.horizontal, 16)
         .padding(.vertical, 9)
+        .frame(minHeight: 44, alignment: .center)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(rowFill))

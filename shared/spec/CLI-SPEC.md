@@ -37,7 +37,7 @@ Success JSON on **stdout**, 2-space indented, null fields omitted
 ```json
 { "id": 1, "listId": 1, "listName": "工作", "text": "买牛奶", "completed": false,
   "dueDate": "2026-09-16", "dueTime": "10:00", "notes": null, "createdAt": "..." }
-{ "id": 1, "name": "工作", "icon": "📋", "color": -4104388, "pendingCount": 3 }
+{ "id": 1, "name": "工作", "icon": "📋", "color": -16745729, "pendingCount": 3 }
 ```
 
 Human-readable (non-`--json`) task row: `%5d  [x| ]  text  🗓 dueDate[ dueTime]`;

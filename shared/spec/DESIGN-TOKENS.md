@@ -75,7 +75,7 @@ Category ids in display order: `frequent`, `people`, `nature`, `food`,
 | smart-list chip | 2×2 grid of 34px chips (radius 8, 8px gaps): neutral surface fill + 1px divider, horizontal content = colored glyph (14px, view semantic color) + 13px label + quiet 12px count right; checked = quiet selection fill (VSM), hover = hover fill; saturated color never fills the chip — color lives on the glyph (macOS Reminders language) |
 | list row | card: surface fill + 1px divider border, radius 8, padding 8,5; 20px round color dot with the emoji inside (11px), name 13px, gray count right — compact, aligned with the sidebar icon column |
 | checkbox size | 20px ring in the task's list color (accent fallback); completed = list-color fill with a white check |
-| task row | 44px min height, padding 16,9; text 14px; meta 12px with the owning list name (list-colored dot + name) shown in multi-list views; info button at 45% opacity, full on row hover |
+| task row | 44px min total height including padding 16,9; text 14px; meta 12px with the owning list name (list-colored dot + name) shown in multi-list views; info button at 45% opacity, full on row hover |
 | corner radius (rows/cards) | 8 / 10 / 12 |
 | content padding | 16, 8; sidebar item 12, 10 |
 | task text | 14px; list name 13px |

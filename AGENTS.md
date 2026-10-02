@@ -50,7 +50,7 @@ rivet 仓库）；需要可嵌入 Racket CS（libracketcs.a + 3 个 boot 文件�
 
 | 文档 | 内容 |
 |---|---|
-| `shared/spec/DATA-FORMAT.md` | SQLite schema v4、列↔字段映射、日期存储格式（`yyyy-MM-dd`/`HH:mm`/ISO-8601 本地时区）、WAL、`~/.taskly/config.ini`、默认「工作」列表（color = -4104388） |
+| `shared/spec/DATA-FORMAT.md` | SQLite schema v4、列↔字段映射、日期存储格式（`yyyy-MM-dd`/`HH:mm`/ISO-8601 本地时区）、WAL、`~/.taskly/config.ini`、默认「工作」列表（color = -16745729，0.7.0 起系统蓝；旧库陶土色 -4104388 兼容） |
 | `shared/spec/CLI-SPEC.md` | CLI 子命令、`--json` 字段名与顺序、退出码 0/1/2/3/4、`--due` 语法全集（M6 实现的验收标准） |
 | `shared/spec/PRODUCT-SPEC.md` | 视图/过滤/排序、任务行与详情交互、提醒调度、验证上限（1000/100/200/年份 1900–2100） |
 | `shared/spec/DESIGN-TOKENS.md` | Reminders 中性色板（系统蓝 accent #007AFF，明暗两套）、12 色 iOS 调色板、8×12 emoji 分类 |
