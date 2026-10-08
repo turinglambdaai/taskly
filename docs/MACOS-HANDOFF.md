@@ -39,7 +39,7 @@ raco rivet build     # 或 raco rivet dev（开发循环：改完自动重建+�
 
 ### 已完成（Windows 侧验证过）
 - M0：整个 Taskly 领域层的 Racket 实现（`racket/taskly/`，1055 行，SQLite v4 真实行为）三平台测试通过
-- Windows：C# WinUI 版已按「不破不立」删除（git 历史保留）；C++/WinRT 宿主骨架在 `windows/`（M3 重集成待做：vcxproj 需适配当前 rivet 的构建契约——见下方「已知坑」）
+- Windows：C++/WinRT 宿主在 `windows/`，`raco rivet build` 在 pinned rivet（f37908f）下直接通过（2026-10-08 CI 实证，「vcxproj 需适配」已过时）；CI 有 windows-host job 看守
 
 ### macOS 端任务（你的 MacBook 上的工作顺序）
 
