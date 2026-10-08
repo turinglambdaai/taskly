@@ -1,6 +1,6 @@
 # Taskly Architecture — Shared Racket Core + Native Platform Shells
 
-> Status: **Experimental on `experiment/taskly-rivet`**
+> Status: **Mainline** — the Rivet rebuild is the product line (single `main` branch).
 >
 > Stable releases continue from `main` until a platform passes the migration
 > gates in `docs/RIVET-MIGRATION.md`.

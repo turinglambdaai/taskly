@@ -37,7 +37,7 @@
   (RVT1 wire format unchanged: records encode as field-ordered lists;
   Optional delegates to inner). A reference implementation exists in the
   Taskly pilot's history (racket/taskly/rivet-schema.rkt era, taskly
-  branch experiment/taskly-rivet ~Sep 21).
+  the pre-merge Rivet branch (~Sep 21, since consolidated into main)).
 
 ### 3. Single-entity lookup RPC (`get-task-by-id`)
 - Discovered: 09-28 merge (RivetTasklyBackend.GetTaskByIdAsync).
