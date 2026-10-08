@@ -24,7 +24,7 @@ final class ReminderService {
     func start() {
         guard !started else { return }
         started = true
-        Swift.Task { [weak self] in
+        _Concurrency.Task { [weak self] in
             guard let self else { return }
             // Unavailable (no .app bundle, e.g. `raco rivet dev` runs) or
             // denied both mean the same thing: stay silent all session.
@@ -66,7 +66,7 @@ final class ReminderService {
         guard authorized, let model, model.isConnected else { return }
         let startup = startupCheckPending
         startupCheckPending = false
-        Swift.Task { [weak self] in
+        _Concurrency.Task { [weak self] in
             guard let self else { return }
             guard let snapshot = try? await model.currentSnapshotForReminders() else { return }
             await MainActor.run {
@@ -125,7 +125,7 @@ final class ReminderService {
     /// A failing transport must never take the app down: swallow for the
     /// session (PRODUCT-SPEC §9).
     private func show(title: String, body: String) {
-        Swift.Task {
+        _Concurrency.Task {
             try? await RivetNotifications.show(title: title, body: body)
         }
     }
