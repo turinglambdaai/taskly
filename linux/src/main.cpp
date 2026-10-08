@@ -24,6 +24,7 @@
 #include <optional>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -430,7 +431,11 @@ void on_result(rivet_app::Result<T> result, Then then) {
       return;
     }
     try {
-      then(result.get());
+      if constexpr (std::is_void_v<T>) {
+        then();
+      } else {
+        then(result.get());
+      }
     } catch (std::exception const& e) {
       set_status_error(e.what());
     }
@@ -640,7 +645,7 @@ void flash_status(std::string const& message) {
 
 void apply_css(Palette const& p) {
   auto* provider = gtk_css_provider_new();
-  std::string css = std::string("")
+  std::string css = ""
       ".taskly-sidebar { background: " + std::string(p.sidebar) + "; }\n"
       ".taskly-divider { background: " + p.divider + "; min-width: 1px; }\n"
       ".taskly-statusbar { background: " + p.sidebar +
@@ -691,7 +696,7 @@ void apply_css(Palette const& p) {
       ".preview-capsule { font-size: 12px; color: " + p.accent +
           "; background: " + p.selected + "; border-radius: 9px; "
           "padding: 2px 8px; }\n"
-      "infobar.banner-card { border-radius: 10px; border: 1px solid " +
+      "box.banner-card { border-radius: 10px; border: 1px solid " +
           std::string(p.divider) + "; background: " + p.surface + "; }\n"
       ".section-header { color: " + p.secondary +
           "; font-size: 13px; font-weight: 600; padding: 0 16px; }\n"
@@ -723,11 +728,19 @@ Palette const& system_palette() {
   g_free(scheme);
   g_object_unref(settings);
   g_settings_schema_unref(schema);
-  return dark ? kDark : kLight;
+  if (dark) return kDark;
+  // Without libadwaita, GTK4 picks its light/dark variant from the theme
+  // NAME, not the portal: a "-dark" theme forces dark widgets regardless.
+  gchar* theme_name = nullptr;
+  g_object_get(gtk_settings_get_default(), "gtk-theme-name", &theme_name,
+               nullptr);
+  bool const dark_widgets =
+      theme_name != nullptr && std::strstr(theme_name, "-dark") != nullptr;
+  g_free(theme_name);
+  return dark_widgets ? kDark : kLight;
 }
 
 void apply_theme(std::string const& theme) {
-  g_state.applied_theme = theme;
   bool const dark_pref = theme == "dark";
   Palette const& palette = dark_pref          ? kDark
                            : theme == "light" ? kLight
@@ -987,7 +1000,7 @@ void prompt_dialog(char const* title, char const* placeholder,
                    std::function<void(std::string const&)> on_ok) {
   auto* dialog = gtk_dialog_new_with_buttons(
       title, g_state.window,
-      GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+      static_cast<GtkDialogFlags>(GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT),
       tr("dialogCancel").c_str(), GTK_RESPONSE_CANCEL,
       tr("dialogConfirm").c_str(), GTK_RESPONSE_ACCEPT, nullptr);
   auto* content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -1036,7 +1049,7 @@ void confirm_dialog(char const* title, char const* body,
                     std::function<void()> on_ok) {
   auto* dialog = gtk_dialog_new_with_buttons(
       title, g_state.window,
-      GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+      static_cast<GtkDialogFlags>(GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT),
       tr("dialogCancel").c_str(), GTK_RESPONSE_CANCEL,
       tr("listDelete").c_str(), GTK_RESPONSE_ACCEPT, nullptr);
   auto* content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -1141,7 +1154,7 @@ void open_list_editor(
 
   auto* dialog = gtk_dialog_new_with_buttons(
       title, g_state.window,
-      GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+      static_cast<GtkDialogFlags>(GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT),
       tr("dialogCancel").c_str(), GTK_RESPONSE_CANCEL,
       tr("dialogSave").c_str(), GTK_RESPONSE_ACCEPT, nullptr);
   auto* content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -1262,21 +1275,19 @@ void on_editor_clear_due_clicked(GtkButton*, gpointer user_data) {
 void on_editor_calendar_day_selected(GtkCalendar* calendar,
                                      gpointer user_data) {
   auto* editor = static_cast<TaskEditor*>(user_data);
-  guint year = 0;
-  guint month = 0;
-  guint day = 0;
-  gtk_calendar_get_date(calendar, &year, &month, &day);
-  char buffer[11];
-  std::snprintf(buffer, sizeof(buffer), "%04u-%02u-%02u", year, month + 1,
-                day);
-  gtk_editable_set_text(GTK_EDITABLE(editor->date), buffer);
+  GDateTime* date = gtk_calendar_get_date(calendar);
+  gchar* iso = g_date_time_format(date, "%Y-%m-%d");
+  gtk_editable_set_text(GTK_EDITABLE(editor->date), iso);
+  g_free(iso);
+  g_date_time_unref(date);
 }
 
 // Expand (or collapse) the in-place editor underneath the row. When
 // `restore` is given, the fields are seeded from saved in-progress text
 // instead of the stored task (see rebuild_task_list's editor carry-over).
 void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
-                              bool expand, rivet_app::Task const* restore) {
+                              bool expand, bool focus_date,
+                              rivet_app::Task const* restore) {
   auto* revealer = GTK_REVEALER(
       g_object_get_data(G_OBJECT(row), "task-editor-revealer"));
   if (revealer == nullptr) {
@@ -1386,7 +1397,7 @@ void toggle_task_editor(GtkListBoxRow* row, std::int64_t id, bool focus_date) {
       g_object_get_data(G_OBJECT(row), "task-editor-revealer"));
   auto const expanded = revealer != nullptr &&
                         gtk_revealer_get_reveal_child(revealer);
-  set_task_editor_expanded(row, id, !expanded, nullptr);
+  set_task_editor_expanded(row, id, !expanded, focus_date, nullptr);
 }
 
 // Find the visible row for a task id and expand its editor.
@@ -1399,7 +1410,8 @@ void open_task_editor(std::int64_t id, bool focus_date) {
     auto const row_id = static_cast<std::int64_t>(GPOINTER_TO_INT(
         g_object_get_data(G_OBJECT(child), "task-id")));
     if (row_id == id) {
-      set_task_editor_expanded(GTK_LIST_BOX_ROW(child), id, true, nullptr);
+      set_task_editor_expanded(GTK_LIST_BOX_ROW(child), id, true,
+                               focus_date, nullptr);
       return;
     }
   }
@@ -1416,7 +1428,7 @@ void collapse_open_editor() {
         g_object_get_data(G_OBJECT(child), "task-id")));
     if (row_id == g_state.open_editor_id) {
       set_task_editor_expanded(GTK_LIST_BOX_ROW(child), row_id, false,
-                               nullptr);
+                               false, nullptr);
       return;
     }
   }
@@ -1461,7 +1473,7 @@ void show_task_menu(GtkWidget* row, gdouble x, gdouble y, bool user_list) {
     g_object_unref(task_section);
   }
 
-  auto* popover = gtk_popover_new_from_model(G_MENU_MODEL(menu));
+  auto* popover = gtk_popover_menu_new_from_model(G_MENU_MODEL(menu));
   g_object_unref(menu);
   gtk_widget_set_parent(popover, row);
   GdkRectangle point{static_cast<int>(x), static_cast<int>(y), 1, 1};
@@ -1517,7 +1529,7 @@ GtkWidget* make_task_row(rivet_app::Task const& task) {
 
   // Linux platform idiom (PRODUCT-SPEC §5): the stock CheckButton carries no
   // recolorable ring, so an 8px list-color dot precedes the row instead.
-  auto const* list = find_by_id(g_state.lists, task.list_id.value_or(0));
+  auto const* list = find_by_id(g_state.lists, task.list_id);
   auto* row_dot = gtk_label_new("");
   gtk_widget_add_css_class(row_dot, "row-dot");
   gtk_widget_set_valign(row_dot, GTK_ALIGN_CENTER);
@@ -1863,7 +1875,7 @@ void rebuild_task_list() {
     gtk_list_box_insert(g_state.task_list, row, -1);
     if (editor_carry && task.id == g_state.open_editor_id) {
       set_task_editor_expanded(GTK_LIST_BOX_ROW(row), task.id, true,
-                               &editor_snapshot);
+                               false, &editor_snapshot);
     }
   };
 
@@ -1954,22 +1966,6 @@ int on_undo_timeout(gpointer) {
   return G_SOURCE_REMOVE;
 }
 
-void on_banner_response(GtkInfoBar*, gint response, gpointer user_data) {
-  auto* task = static_cast<rivet_app::Task*>(user_data);
-  auto const timeout = banner_timeout();
-  if (response == 1) {
-    // Undo: re-add the deleted task with its original fields (new id).
-    add_task_full(*task);
-    delete task;
-    clear_banner(timeout);
-    flash_status(tr("statusTaskAdded"));
-  } else {
-    // Closed without undo: the deletion stands.
-    delete task;
-    clear_banner(timeout);
-  }
-}
-
 void show_undo_banner(rivet_app::Task const& deleted) {
   auto const previous_task = banner_task();
   auto const previous_timeout = banner_timeout();
@@ -1982,20 +1978,48 @@ void show_undo_banner(rivet_app::Task const& deleted) {
 
   auto* revealer = GTK_REVEALER(
       g_object_get_data(G_OBJECT(g_state.banner_box), "banner-revealer"));
-  auto* info = gtk_info_bar_new();
-  gtk_widget_add_css_class(info, "banner-card");
+  auto* card = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  gtk_widget_add_css_class(card, "banner-card");
+  gtk_widget_set_margin_start(card, 12);
+  gtk_widget_set_margin_end(card, 12);
+  gtk_widget_set_margin_top(card, 8);
+  gtk_widget_set_margin_bottom(card, 8);
   auto* message =
       gtk_label_new(format_positional(tr("bannerTaskDeleted"), deleted.text)
                         .c_str());
-  gtk_box_append(
-      GTK_BOX(gtk_info_bar_get_content_area(GTK_INFO_BAR(info))), message);
-  gtk_info_bar_add_button(GTK_INFO_BAR(info), tr("bannerUndo").c_str(), 1);
-  gtk_info_bar_set_show_close_button(GTK_INFO_BAR(info), TRUE);
+  gtk_label_set_ellipsize(GTK_LABEL(message), PANGO_ELLIPSIZE_END);
+  gtk_widget_set_hexpand(message, TRUE);
+  gtk_box_append(GTK_BOX(card), message);
+  auto* undo = gtk_button_new_with_label(tr("bannerUndo").c_str());
+  gtk_widget_add_css_class(undo, "flat");
+  gtk_widget_add_css_class(undo, "accent-toggle");
+  gtk_box_append(GTK_BOX(card), undo);
+  auto* close = gtk_button_new_from_icon_name("window-close-symbolic");
+  gtk_widget_add_css_class(close, "flat");
+  gtk_box_append(GTK_BOX(card), close);
 
   auto* task_copy = new rivet_app::Task(deleted);
-  g_signal_connect(info, "response", G_CALLBACK(on_banner_response),
-                   task_copy);
-  gtk_revealer_set_child(revealer, info);
+  g_signal_connect(
+      undo, "clicked",
+      G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+        auto* task = static_cast<rivet_app::Task*>(user_data);
+        auto const timeout = banner_timeout();
+        add_task_full(*task);
+        delete task;
+        clear_banner(timeout);
+        flash_status(tr("statusTaskAdded"));
+      }),
+      task_copy);
+  g_signal_connect(
+      close, "clicked",
+      G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+        auto* task = static_cast<rivet_app::Task*>(user_data);
+        auto const timeout = banner_timeout();
+        delete task;
+        clear_banner(timeout);
+      }),
+      task_copy);
+  gtk_revealer_set_child(revealer, card);
   gtk_revealer_set_reveal_child(revealer, TRUE);
 
   g_object_set_data(G_OBJECT(g_state.banner_box), "banner-task", task_copy);
@@ -2344,6 +2368,7 @@ void on_quick_add_changed(GtkEditable* editable, gpointer) {
       });
 }
 
+void on_quick_add_activate(GtkEntry* entry, gpointer);
 void on_quick_plus_clicked(GtkButton*, gpointer) {
   on_quick_add_activate(g_state.quick_add, nullptr);
 }
@@ -2375,7 +2400,7 @@ void on_quick_add_activate(GtkEntry* entry, gpointer) {
             [target](rivet_app::QuickAddParse const& parse) {
               rivet_app::Task seed{};
               seed.text = parse.text;
-              seed.list_id = target;
+              seed.list_id = *target;
               seed.due_date = parse.due_date;
               seed.due_time = parse.due_time;
               add_task_full(seed);
@@ -2427,9 +2452,9 @@ gboolean on_window_key_pressed(GtkEventControllerKey*, guint keyval,
 void open_database_at(std::string const& path) {
   if (g_state.api == nullptr || path.empty()) return;
   g_state.api->open_database_async(
-      path, [](rivet_app::Result<rivet_app::Snapshot> result) {
+      path, [path](rivet_app::Result<rivet_app::Snapshot> result) {
         on_result(std::move(result),
-                  [](rivet_app::Snapshot const& snapshot) {
+                  [path](rivet_app::Snapshot const& snapshot) {
                     g_state.current_counts = snapshot.counts;
                     g_state.lists = snapshot.lists;
                     g_state.tasks = snapshot.tasks;
@@ -2706,11 +2731,11 @@ void on_activate(GtkApplication* app, gpointer) {
   auto* title_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
   gtk_widget_set_hexpand(title_box, TRUE);
   auto* pane_title = gtk_label_new("");
-  gtk_label_set_xalign(pane_title, 0.0f);
+  gtk_label_set_xalign(GTK_LABEL(pane_title), 0.0f);
   gtk_widget_add_css_class(pane_title, "pane-title");
   gtk_box_append(GTK_BOX(title_box), pane_title);
   auto* pane_subtitle = gtk_label_new("");
-  gtk_label_set_xalign(pane_subtitle, 0.0f);
+  gtk_label_set_xalign(GTK_LABEL(pane_subtitle), 0.0f);
   gtk_widget_add_css_class(pane_subtitle, "pane-subtitle");
   gtk_box_append(GTK_BOX(title_box), pane_subtitle);
   gtk_box_append(GTK_BOX(header), title_box);
@@ -2812,7 +2837,7 @@ void on_activate(GtkApplication* app, gpointer) {
   gtk_widget_add_css_class(statusbar, "taskly-statusbar");
   auto* status_text = gtk_label_new("");
   gtk_label_set_ellipsize(GTK_LABEL(status_text), PANGO_ELLIPSIZE_END);
-  gtk_label_set_xalign(status_text, 0.0f);
+  gtk_label_set_xalign(GTK_LABEL(status_text), 0.0f);
   gtk_widget_set_margin_top(status_text, 4);
   gtk_widget_set_margin_bottom(status_text, 4);
   gtk_widget_set_margin_start(status_text, 12);
@@ -2839,7 +2864,7 @@ void on_activate(GtkApplication* app, gpointer) {
   g_state.empty_icon = GTK_LABEL(empty_icon);
   g_state.empty_text = GTK_LABEL(empty_text);
   g_state.sidebar_toggle = GTK_BUTTON(sidebar_toggle);
-  g_state.banner_box = banner_box;
+  g_state.banner_box = GTK_BOX(banner_box);
   g_state.status_text = GTK_LABEL(status_text);
 
   add_window_action(GTK_APPLICATION_WINDOW(window), "task-due-today",
