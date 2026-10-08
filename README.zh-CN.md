@@ -8,9 +8,9 @@
 
 一个专注、原生的任务管理器。同一产品、同一 SQLite 数据文件、同一 agent CLI —— 每个平台都用原生技术实现。
 
+[![Native CI](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 **English** · [中文](README.zh-CN.md)
 
-[![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE) [![Native CI](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml)
 
 ## 原生，而非跨平台
 
