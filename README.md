@@ -9,9 +9,9 @@
 A focused, native task manager. One product, one SQLite file, one agent CLI —
 implemented natively per platform.
 
+[![Native CI](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 **English** · [中文](README.zh-CN.md)
 
-[![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE) [![Native CI](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml)
 
 ## Native, not cross-platform
 
