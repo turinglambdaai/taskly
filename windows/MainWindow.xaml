@@ -71,21 +71,14 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- Sidebar: search on top (Reminders parity), then lists -->
+            <!-- Sidebar: lists (search lives in the pane header) -->
             <Grid Grid.Column="0" Background="{ThemeResource TasklySidebarBrush}">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <TextBox
-                    x:Name="SearchBox"
-                    Grid.Row="0"
-                    Margin="12,12,12,4"
-                    TextChanged="OnSearchTextChanged" />
-
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <TextBlock
                             x:Name="SmartListsHeader"
@@ -117,7 +110,7 @@
 
                 <Button
                     x:Name="NewListButton"
-                    Grid.Row="2"
+                    Grid.Row="1"
                     Margin="12,4,12,12"
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Left"
@@ -156,9 +149,17 @@
                             FontSize="14"
                             Foreground="{ThemeResource TasklySecondaryTextBrush}" />
                     </StackPanel>
+                    <TextBox
+                        x:Name="SearchBox"
+                        Grid.Column="1"
+                        Width="200"
+                        Height="32"
+                        Margin="0,0,12,0"
+                        VerticalAlignment="Bottom"
+                        TextChanged="OnSearchTextChanged" />
                     <CheckBox
                         x:Name="ShowCompletedCheck"
-                        Grid.Column="1"
+                        Grid.Column="2"
                         VerticalAlignment="Bottom"
                         Checked="OnShowCompletedChanged"
                         Unchecked="OnShowCompletedChanged" />
