@@ -61,7 +61,7 @@ public final class UpdateService {
     /// Test-only embedded-key override (release env signs with the real key).
     nonisolated private let injectedKeyBase64: String?
 
-    public init(i18n: I18nService = .shared, apiURL: URL? = nil,
+    init(i18n: I18nService = .shared, apiURL: URL? = nil,
                 bundleURL: URL? = nil, currentVersion: String? = nil,
                 sessionConfiguration: URLSessionConfiguration? = nil,
                 keyOverride: String? = nil) {

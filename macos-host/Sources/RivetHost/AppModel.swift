@@ -99,8 +99,8 @@ final class AppModel {
     /// Transient delete banner with a one-step undo (Reminders-style).
     var undoBannerText: String?
     var undoBannerAction: (() -> Void)?
-    @ObservationIgnored private var undoBannerTask: Swift.Task<Void, Never>?
-    @ObservationIgnored private var transientDeadline: Swift.Task<Void, Never>?
+    @ObservationIgnored private var undoBannerTask: _Concurrency.Task<Void, Never>?
+    @ObservationIgnored private var transientDeadline: _Concurrency.Task<Void, Never>?
     @ObservationIgnored private var appearanceObserver: NSKeyValueObservation?
 
     init() {
