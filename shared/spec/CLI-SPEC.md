@@ -3,7 +3,9 @@
 > Stable agent-facing interface. Every platform binary is dual-mode:
 > **any** argument at launch routes to the CLI (the GUI toolkit is never
 > initialized); no arguments opens the GUI. Command output and exit codes
-> are identical across platforms — enforced by golden-output tests in CI.
+> are identical across platforms — enforced by golden-output tests in CI
+> (`shared/cli-golden/`, 61 cases; canonical implementation
+> `racket/taskly/cli.rkt`, the M6 Racket CLI).
 
 ```
 taskly <subcommand> [options] [--json] [--db PATH] [--quiet]
@@ -37,7 +39,7 @@ Success JSON on **stdout**, 2-space indented, null fields omitted
 ```json
 { "id": 1, "listId": 1, "listName": "工作", "text": "买牛奶", "completed": false,
   "dueDate": "2026-09-16", "dueTime": "10:00", "notes": null, "createdAt": "..." }
-{ "id": 1, "name": "工作", "icon": "📋", "color": -4104388, "pendingCount": 3 }
+{ "id": 1, "name": "工作", "icon": "📋", "color": -16745729, "pendingCount": 3 }
 ```
 
 Human-readable (non-`--json`) task row: `%5d  [x| ]  text  🗓 dueDate[ dueTime]`;
@@ -96,7 +98,7 @@ exit 0 either way. Non-json: `Deleted task N` / `Task N did not exist`.
 ### mklist "<name>"
 `--icon <emoji>` `--color #RRGGBB|AARRGGBB|<int>`. Name validation → exit 2.
 Color parsing: plain int → as-is; `#RRGGBB` → `0xFF000000|RGB`; 8-digit hex
-→ as-is; anything else → exit 2. Null icon/color get defaults (📋 / Crail).
+→ as-is; anything else → exit 2. Null icon/color get defaults (📋 / system blue `0xFF007AFF`).
 Output: list JSON / list row / quiet → id.
 
 ### rmlist <ID>

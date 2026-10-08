@@ -1,0 +1,1 @@
+#hasheq((name . "taskly") (display-name . "taskly") (version . "0.1.0") (build . 1) (identifier . "app.taskly.Taskly") (macos-min-version . "14.0") (windows-min-version . "10.0.19041.0") (backend . "racket/taskly/backend.rkt") (module . "backend") (entry . "start") (protocol . 1))

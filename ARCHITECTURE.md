@@ -1,121 +1,175 @@
-# Taskly Architecture — Native Platform Rewrite
+# Taskly Architecture — Shared Racket Core + Native Platform Shells
 
-> Status: **Adopted** (supersedes the single-stack Avalonia architecture for all new work)
-> Decision date: 2026-09-15
+> Status: **Experimental on `experiment/taskly-rivet`**
+>
+> Stable releases continue from `main` until a platform passes the migration
+> gates in `docs/RIVET-MIGRATION.md`.
 
-## 1. Context
+## Decision
 
-Taskly v0.6.x ships as a single Avalonia 11 + .NET codebase. Feature-complete for
-v1, but cross-platform UI toolkits impose a ceiling we keep hitting:
+Taskly is converging from three duplicated application implementations toward
+one Racket application core connected to first-party native desktop shells
+through Rivet.
 
-- Platform-feel gaps: file dialogs, IME (Windows IME character duplication —
-  Avalonia#18661), keyboard navigation, accessibility, HiDPI, menu bar
-  integration all need per-platform workarounds inside a toolkit that owns the
-  whole window.
-- Upstream regressions land in our release notes, not ours to fix.
-- No credible path to native iOS/Android from Avalonia.
-- A commercial desktop product must feel like a *platform citizen* on every OS.
-  "Close enough" is not close enough.
+The product rule is:
 
-## 2. Decision
+> Share product behavior; keep platform behavior native.
 
-**One product, native per platform, one repository.**
+Racket owns behavior that must be identical everywhere. Native hosts own the
+parts where platform fidelity is the feature.
 
-Each desktop app is written in the platform's first-party UI stack. No shared
-runtime code, no embedded web views, no FFI core. Consistency comes from a
-shared *contract* (specs, data format, CLI, strings, design tokens), enforced by
-CI and conformance tests — not from shared implementation.
+## Ownership boundary
 
-| Platform | Stack (first-party) | UI framework | Data access | Packaging | Future mobile |
-|---|---|---|---|---|---|
-| macOS | Swift 6 (+ SwiftUI, AppKit interop) | SwiftUI, min macOS 14 | libsqlite3 (system) | `.app` + notarized DMG | **iOS / iPadOS: reuse this codebase** (SwiftUI is cross-Apple; add adaptive layout targets) |
-| Windows | C# / .NET 10 | WinUI 3 (Windows App SDK), Fluent 2 | `Microsoft.Data.Sqlite` | Self-contained exe + MSIX | — |
-| Linux | Vala (GNOME first-party; compiles to C/GObject) | GTK 4 + libadwaita (GNOME HIG) | libsqlite3 (system) | Flatpak + tarball | — |
-| Android (future) | Kotlin | Jetpack Compose (Material 3) | `androidx.sqlite` | AAB / Play | — |
-
-Why no shared core library (Rust/C with FFI)?
-
-1. The business core is thin: SQLite CRUD, date parsing, filtering. The cost of
-   duplicating it is smaller than the cost of an FFI boundary in every build
-   and every platform's debugger.
-2. Native purity is the whole point of the rewrite; a foreign core drags its
-   own runtime into each binary.
-3. The shared artifact that actually prevents drift is the **contract**
-   (§4), which is testable without shared code.
-
-## 3. Repository layout
-
-```
-taskly/
-├── apps/
-│   ├── macos/          Swift package (app + CLI in one binary) + tests + bundle scripts
-│   ├── windows/        WinUI 3 solution (app + CLI in one exe)
-│   └── linux/          Rust crate (app + CLI in one binary) + Flatpak manifest
-├── shared/
-│   ├── spec/           PRODUCT-SPEC · DATA-FORMAT · CLI-SPEC · DESIGN-TOKENS  ← canonical
-│   ├── i18n/           zh.json / en.json  ← single source of all user-facing strings
-│   └── assets/         icon sources (SVG/PNG), brand
-├── scripts/            sync-i18n.sh · verify-parity (CI helpers)
-├── src/Taskly/         LEGACY Avalonia app — frozen reference implementation.
-│                       Kept for behavioral reference during the parity push;
-│                       deleted at native 1.0 (git history retains it).
-├── packaging/          legacy packaging (frozen, as shipped for 0.6.x)
-└── .github/workflows/  ci.yml (legacy, while it ships) · native.yml · release-native.yml
-```
-
-**Monorepo, not polyrepo**, because: one product, one version, one changelog;
-a schema migration must land in three apps + the spec in a single atomic
-commit; solo-developer overhead of three repos (issues, releases, CI drift)
-outweighs nothing. Platform CI jobs are isolated by `paths:` filters so a
-macOS-only change doesn't burn Windows runners.
-
-## 4. The contract (what keeps three codebases one product)
-
-`shared/spec/` is canonical. Every platform implementation must satisfy:
-
-| Contract | Enforced by |
+| Concern | Owner |
 |---|---|
-| `DATA-FORMAT.md` — SQLite schema (user_version 4), column↔field mapping, storage formats, WAL pragmas, `~/.taskly/config.ini`, default-DB resolution | Conformance tests open a fixture DB and round-trip every column on every platform (CI) |
-| `CLI-SPEC.md` — subcommands, flags, JSON field names, exit codes 0/1/2/3/4, date syntax | Golden-CLI test suite: identical argv → identical JSON stdout, per platform (CI) |
-| `shared/i18n/*.json` — every user-facing string, zh + en | `scripts/verify-i18n.sh`: platform copies byte-identical to canonical; no missing keys |
-| `DESIGN-TOKENS.md` — color ramp (light/dark), spacing, type, iconography | Platform constant files reviewed against tokens; screenshot tests (follow-up) |
-| `PRODUCT-SPEC.md` — behavior: views, filtering, sorting, editing loops, reminders | Human QA checklist per release + UI tests (follow-up) |
+| SQLite schema/migrations, queries | Racket core |
+| config and DB path resolution | Racket core (migration target; Windows shell still has transitional config code) |
+| validation, date parsing, filtering | Racket core |
+| task/list state transitions | Racket core |
+| CLI semantics and exit classification | Racket core (migration target) |
+| cross-host RPC/state/events, typed DTO generation | Rivet |
+| Racket CS embedding/lifecycle | Rivet |
+| WinUI / SwiftUI / GTK composition | native host |
+| IME, keyboard, accessibility | native host |
+| file dialogs, menus, notifications | native host |
+| signing/package/update integration | native host + release tooling |
 
-## 5. Non-negotiables carried over from 0.6.x
+## Target data flow
 
-- **DB continuity**: existing `tasks.db` files open in-place, schema untouched
-  (`user_version = 4`). Migrations in any native app only ever append
-  `oldVersion < N` steps in lockstep across all platforms — and always ship in
-  the same release on all platforms.
-- **Cloud-sync story**: the DB is a single file the user may place in a synced
-  folder (iCloud/OneDrive/Dropbox). WAL mode stays on; all writes go through
-  the same repository validation layer; no platform may add a second store.
-- **Agent CLI**: `taskly <subcommand> [--json|--db|--quiet]` keeps working from
-  the same binary as the GUI (no GUI runtime initialized in CLI mode), same
-  stdout/stderr split, same exit codes.
-- **Bilingual zh/en at runtime**, light/dark themes following the OS with a
-  manual override.
+```text
+Native UI event
+    │
+    ▼
+Platform application-backend port
+    │
+    ▼
+Generated typed Rivet client
+    │
+    ▼
+Embedded Racket Taskly service
+    │
+    ├── validation / date / commands
+    ├── SQLite v4 repository
+    └── state + domain events
+    │
+    ▼
+Rivet response/event
+    │
+    ▼
+Native presentation model / UI
+```
 
-## 6. Versioning & releases
+Native UI code must not contain a second implementation of Taskly business
+rules after its platform migration milestone is complete.
 
-- One product version, one `CHANGELOG.md`. A release tag `vX.Y.Z` builds all
-  platforms from the same commit (`.github/workflows/release-native.yml`).
-- Artifacts: macOS `.dmg` (arm64 + x64, signed & notarized), Windows
-  self-contained `.exe` installer + MSIX (signed), Linux Flatpak + portable
-  tarball.
-- Platform apps may add **native-only** features later (e.g. macOS Shortcuts,
-  Windows widgets), gated behind the contract so shared behavior never forks.
+## Windows reference architecture
 
-## 7. Migration plan
+Windows is the first migration platform and now has an explicit reversible
+boundary:
 
-1. **Phase 0 (this restructure)**: monorepo layout, contracts, all three
-   native codebases, CI.
-2. **Phase 1**: macOS reaches parity first (fastest to verify, flagship
-   platform) → private beta.
-3. **Phase 2**: Windows + Linux parity → private beta. Legacy removed from
-   release pipeline.
-4. **Phase 3**: native 1.0 GA across three desktops; delete `src/Taskly` and
-   legacy CI/release workflows.
-5. **Phase 4**: iOS/iPadOS from the macOS codebase; Android on
-   Kotlin/Compose; optional cloud sync service (server-owned, not a file hack)
-   evaluated only after mobile GA.
+```text
+MainViewModel + ReminderService
+            │
+      ITasklyBackend
+       ┌────┴─────┐
+       │          │
+NativeTasklyBackend     RivetTasklyBackend
+(reference/fallback)          │
+       │                generated RivetAPI
+ C# SQLite stack               │
+                         EmbeddedRivetClient
+                               │
+                         rivet_native.dll
+                               │
+                         embedded Racket CS
+                               │
+                        Taskly Racket core
+```
+
+`UseRivetBackend=true` selects the Rivet path at compile time. A normal build
+continues to compile the native fallback. CI builds both until the Windows
+acceptance gates are complete.
+
+The release target is **not** a hidden Racket child process. `ProcessRivetClient`
+is a useful development transport; the production Windows path embeds Racket
+CS in the Taskly process through Rivet's stable C ABI.
+
+## Repository layout
+
+```text
+taskly/
+├── racket/
+│   ├── taskly/
+│   │   ├── model.rkt
+│   │   ├── errors.rkt
+│   │   ├── clock.rkt
+│   │   ├── paths.rkt
+│   │   ├── config.rkt
+│   │   ├── validation.rkt
+│   │   ├── date-parser.rkt
+│   │   ├── db.rkt
+│   │   ├── service.rkt
+│   │   ├── rivet-schema.rkt
+│   │   └── backend.rkt
+│   └── tests/
+│       ├── core-test.rkt
+│       ├── rivet-schema-test.rkt
+│       └── dotnet-rivet-smoke/
+├── rivet.rktd
+├── apps/
+│   ├── windows/       # first migration platform + native reference
+│   ├── macos/         # native reference; next migration platform
+│   └── linux/         # native reference; host strategy still pending
+├── shared/spec/       # product contracts remain canonical
+└── docs/RIVET-MIGRATION.md
+```
+
+## Compatibility invariants
+
+The migration does not define a new product format.
+
+- `PRAGMA user_version = 4`
+- existing `.db` files open in-place
+- WAL remains enabled
+- default list remains `工作` / `📋` / signed ARGB `0xFF007AFF`
+- task/list storage formats remain those in `shared/spec/DATA-FORMAT.md`
+- CLI meanings and exit codes remain those in `shared/spec/CLI-SPEC.md`
+- native visual behavior remains measured against the current applications
+
+## Rivet dependency rule
+
+Taskly is allowed to reveal missing Rivet capabilities. It is not allowed to
+work around reusable host/runtime problems inside Taskly.
+
+Capabilities Taskly has already driven into Rivet:
+
+1. named Record/DTO schema types layered compatibly on RVT1
+2. generated Swift, C++, and C# typed clients
+3. managed `IRivetClient` runtime and development process transport
+4. Windows in-process .NET embedding through `rivet_native.dll`
+5. `raco rivet build-dotnet` for a self-contained Racket backend bundle
+6. strict protocol-channel behavior (backend declarations may not pollute stdout)
+7. generated C# support for ordinary domain names such as `Task`
+
+Remaining framework/product gaps include:
+
+- Linux GTK host strategy
+- richer typed remote errors/diagnostics
+- production crash/lifecycle instrumentation
+- any declarative native UI abstraction that real Taskly repetition later justifies
+
+RVT1 remains protocol version 1. Records are schema/codegen constructs encoded
+as field-ordered RVT1 lists, so typed DTO support did not require a transport
+version break.
+
+## Migration safety
+
+Do not delete or simplify the existing native implementation merely because a
+Racket equivalent exists. Replacement happens platform by platform only after
+contract tests and desktop-quality acceptance gates pass.
+
+Do not build a general-purpose declarative UI toolkit before Taskly needs one.
+If repeated native UI patterns justify an abstraction later, extract the
+smallest reusable primitive from real Taskly code.
+
+See `docs/RIVET-MIGRATION.md` for milestones and stop rules.

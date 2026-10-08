@@ -8,9 +8,10 @@
 ## 1. Product
 
 Taskly — a focused personal task manager in the spirit of macOS Reminders,
-Anthropic warm palette, bilingual zh/en (runtime switchable), light/dark.
-Desktop today; iOS/iPadOS/Android later. Single SQLite file the user can
-place in a cloud-synced folder; agent-facing CLI in the same binary.
+macOS Reminders neutral palette (DESIGN-TOKENS), bilingual zh/en (runtime
+switchable), light/dark. Desktop today; iOS/iPadOS/Android later. Single
+SQLite file the user can place in a cloud-synced folder; agent-facing CLI
+in the same binary.
 
 ## 2. Window & layout
 
@@ -27,12 +28,14 @@ place in a cloud-synced folder; agent-facing CLI in the same binary.
 
 ## 3. Sidebar
 
-- 2×2 smart-view tiles, fixed semantic colors, white text, count top-right:
-  Today `🗓` #C15F3C · Planned `📅` #B5543A · All `≡` #8E887E ·
-  Completed `✓` #6B8E5A. Counts: today = due today & incomplete; planned =
+- 2×2 smart-view tiles, fixed semantic colors (DESIGN-TOKENS), platform
+  glyphs (macOS SF Symbols `calendar` / `calendar.badge.clock` / `tray.full`
+  / `checkmark.circle`), quiet chip fill with the color on the glyph, count
+  top-right: Today `#007AFF` · Planned `#FF3B30` · All `#8E8E93` ·
+  Completed `#8E8E93`. Counts: today = due today & incomplete; planned =
   has date & incomplete; all = incomplete; completed = completed.
 - "My Lists" collapsible section with a `✚` add button → create-list sheet.
-- List row: 32px round swatch (list color, accent fallback) + emoji
+- List row: 20px round swatch (list color, accent fallback) + emoji
   (fallback 📋) + name + pending count (when > 0).
   - Click → select list (persists `last-selected-list-id`).
   - Right-click / double-click → edit-list sheet (rename, icon, color).
@@ -57,7 +60,7 @@ place in a cloud-synced folder; agent-facing CLI in the same binary.
 
 ## 5. Task row
 
-- 18px circular checkbox: incomplete = hollow ring; complete = ring +
+- 20px circular checkbox: incomplete = hollow ring; complete = ring +
   check in accent; completed text gets strikethrough + tertiary color.
 - Meta line under the text when present: the localized due date
   (today/tomorrow/yesterday/`Aug 31`/`8月31日`, plus the time when set) in

@@ -6,17 +6,20 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# File-based targets. The Linux (GTK4) and Windows (WinRT) hosts embed their
+# string tables in source (linux/src/main.cpp / windows MainWindow), so only
+# the macOS SwiftPM host consumes JSON resources today.
 declare -a EMOJI_TARGETS=(
-  "apps/macos/Sources/Taskly/Resources"
-  "apps/windows/Taskly/Strings"
-  "apps/linux/resources"
+  "macos-host/Sources/RivetHost/Resources"
 )
 
 declare -a TARGETS=(
-  "apps/macos/Sources/Taskly/Resources"
-  "apps/windows/Taskly/Strings"
-  "apps/linux/resources/i18n"
+  "macos-host/Sources/RivetHost/Resources"
 )
+
+# The Linux host reads shared/i18n directly (dev tree + staged res/i18n);
+# the Windows host carries its own compiled-in strings (M3) and migrates to
+# the shared source with the i18n milestone.
 
 copy() {
   for target in "${TARGETS[@]}"; do
