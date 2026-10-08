@@ -7,10 +7,10 @@
 
 | 仓库 | 分支 | 用途 |
 |---|---|---|
-| `turinglambdaai/taskly` | `experiment/taskly-rivet`（开发主线） | Rivet 项目布局：`rivet.rktd` + `racket/taskly/`（Racket 领域核心，M0 ✅）+ `app/backend.rkt`（Rivet 后端入口）+ `windows/`（C++/WinRT 宿主）+ `macos-host/`（SwiftUI 宿主脚手架） |
+| `turinglambdaai/taskly` | `main`（开发主线） | Rivet 项目布局：`rivet.rktd` + `racket/taskly/`（Racket 领域核心，M0 ✅）+ `app/backend.rkt`（Rivet 后端入口）+ `windows/`（C++/WinRT 宿主）+ `macos-host/`（SwiftUI 宿主脚手架） |
 | `turinglambdaai/rivet` | `main` | named-record API 已进 rivet main（PR #72 + #78；issue #92 已验证关闭）——**不再需要切任何 rivet 分支**，linked main 即可 |
 
-`main`（taskly）= 删除前的原生三平台实现，仅作历史安全网；Rivet 分支才是主线。
+`main` 即 Rivet 重建主线。
 
 ## MacBook 首次环境搭建
 

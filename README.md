@@ -1,7 +1,7 @@
 # Taskly
 
 > **⚠ Archived (v1 native line).** Active development has moved to
-> [`experiment/taskly-rivet`](https://github.com/turinglambdaai/taskly/tree/experiment/taskly-rivet),
+> [`main`](https://github.com/turinglambdaai/taskly/tree/main),
 > where Taskly is being rebuilt on [Rivet](https://github.com/turinglambdaai/rivet).
 > `main` documents the archived native implementation and receives fixes only.
 > See [docs/RIVET-MIGRATION.md](docs/RIVET-MIGRATION.md) on that branch.

@@ -1,6 +1,6 @@
 ﻿# Taskly × Rivet Migration Architecture
 
-> Branch: `experiment/taskly-rivet`
+> Branch: `main`
 >
 > Goal: make Taskly the first commercial acceptance test for Rivet without
 > destabilizing the current native product on `main`.
@@ -153,7 +153,7 @@ validate the packaged runtime layout.
 - bug fixes and release hardening only
 - no deletion of native business logic until a Rivet slice reaches parity
 
-### `experiment/taskly-rivet`
+### `main`
 
 - owns the migration
 - keeps exact Rivet commit pins in CI
