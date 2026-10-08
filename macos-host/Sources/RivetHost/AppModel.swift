@@ -107,7 +107,7 @@ final class AppModel {
         statusMessage = i18n.t("statusDatabaseNotConnected")
 
         i18n.onLanguageChanged = { [weak self] in
-            Swift.Task { @MainActor [weak self] in
+            _Concurrency.Task { @MainActor [weak self] in
                 self?.languageChangedToken += 1
                 self?.refreshStatusPersistent()
             }
@@ -119,7 +119,7 @@ final class AppModel {
         appearanceObserver = NSApplication.shared.observe(
             \.effectiveAppearance, options: [.initial, .new]
         ) { [weak self] _, _ in
-            Swift.Task { @MainActor [weak self] in
+            _Concurrency.Task { @MainActor [weak self] in
                 self?.theme.isDark = Self.systemAppearanceIsDark
             }
         }
@@ -139,12 +139,12 @@ final class AppModel {
             try backend.start(onEvent: { [weak self] name, value in
                 guard let event = try? RivetEvent.decode(name: name, value: value),
                       case .changed = event else { return }
-                Swift.Task { @MainActor [weak self] in
+                _Concurrency.Task { @MainActor [weak self] in
                     self?.reload()
                 }
             })
             api = RivetAPI(client: backend.client)
-            Swift.Task { await bootstrap() }
+            _Concurrency.Task { await bootstrap() }
         } catch {
             statusMessage = "Backend error: \(error)"
         }
@@ -197,7 +197,7 @@ final class AppModel {
     func setTheme(_ value: String) {
         applyTheme(value)
         guard let api else { return }
-        Swift.Task {
+        _Concurrency.Task {
             _ = try? await api.set_setting(key: "theme", value: value)
         }
     }
@@ -205,7 +205,7 @@ final class AppModel {
     func setLanguage(_ language: String) {
         i18n.setLanguage(language)
         guard let api else { return }
-        Swift.Task {
+        _Concurrency.Task {
             _ = try? await api.set_setting(key: "language", value: language)
         }
     }
@@ -225,7 +225,7 @@ final class AppModel {
     /// Open (creating when absent) a database file in place.
     func openDatabase(path: String) {
         guard let api else { return }
-        Swift.Task {
+        _Concurrency.Task {
             do {
                 let snapshot = try await api.open_database(path: path)
                 isConnected = true
@@ -243,7 +243,7 @@ final class AppModel {
 
     func closeDatabase() {
         guard let api else { return }
-        Swift.Task {
+        _Concurrency.Task {
             _ = try? await api.close_database()
             isConnected = false
             reminder?.stop()
@@ -344,9 +344,9 @@ final class AppModel {
     func flashStatus(_ text: String) {
         transientDeadline?.cancel()
         statusMessage = text
-        transientDeadline = Swift.Task { [weak self] in
-            try? await Swift.Task.sleep(nanoseconds: 3_000_000_000)
-            guard !Swift.Task.isCancelled else { return }
+        transientDeadline = _Concurrency.Task { [weak self] in
+            try? await _Concurrency.Task.sleep(nanoseconds: 3_000_000_000)
+            guard !_Concurrency.Task.isCancelled else { return }
             self?.transientDeadline = nil
             self?.refreshStatusPersistent()
         }
@@ -419,7 +419,7 @@ final class AppModel {
         let view = currentView.backendView
         let listId = currentView.listId
         let show = showCompleted
-        Swift.Task { [weak self] in
+        _Concurrency.Task { [weak self] in
             guard let snapshot = try? await api.load_snapshot(
                 view: view, list_id: listId, show_completed: show) else { return }
             guard let self, seq == self.reloadSequence else { return }
@@ -433,7 +433,7 @@ final class AppModel {
         let keyword = searchText
         reloadSequence += 1
         let seq = reloadSequence
-        Swift.Task { [weak self] in
+        _Concurrency.Task { [weak self] in
             guard let results = try? await api.search_tasks(keyword: keyword) else { return }
             guard let self, seq == self.reloadSequence else { return }
             withAnimation(.easeOut(duration: 0.15)) {
@@ -469,7 +469,7 @@ final class AppModel {
 
     private func persistLastSelectedList(_ id: Int64) {
         guard let api else { return }
-        Swift.Task {
+        _Concurrency.Task {
             // The backend clamps unknown ids on read, so a stale id is
             // harmless: the next launch falls back to All.
             _ = try? await api.set_setting(
@@ -497,7 +497,7 @@ final class AppModel {
             return
         }
 
-        Swift.Task {
+        _Concurrency.Task {
             do {
                 // One quick-add grammar on every platform: the backend
                 // splits text + due (parse_quick_add), we just store it.
@@ -530,7 +530,7 @@ final class AppModel {
             quickAddPreview = nil
             return
         }
-        Swift.Task { [weak self] in
+        _Concurrency.Task { [weak self] in
             guard let self, seq == self.previewSequence else { return }
             guard let parsed = try? await api.parse_quick_add(text: raw),
                   let dueDate = parsed.due_date else {
@@ -574,7 +574,7 @@ final class AppModel {
 
     func toggleCompleted(_ task: Task) {
         guard let api else { return }
-        Swift.Task {
+        _Concurrency.Task {
             do {
                 _ = try await api.set_completed(id: task.id, completed: !task.completed)
                 flashStatus(i18n.t("statusUpdateTaskState"))
@@ -587,7 +587,7 @@ final class AppModel {
 
     func saveTask(_ task: Task) {
         guard let api else { return }
-        Swift.Task {
+        _Concurrency.Task {
             do {
                 _ = try await api.update_task(task: task)
                 flashStatus(i18n.t("statusTaskUpdated"))
@@ -607,7 +607,7 @@ final class AppModel {
     func deleteTasks(_ tasks: [Task]) {
         guard !tasks.isEmpty, let api else { return }
         let targets = tasks
-        Swift.Task {
+        _Concurrency.Task {
             do {
                 for task in targets {
                     _ = try await api.delete_task(id: task.id)
@@ -635,7 +635,7 @@ final class AppModel {
     /// id — position/order follows the current view's sort).
     private func restoreTasks(_ tasks: [Task]) {
         guard let api else { return }
-        Swift.Task {
+        _Concurrency.Task {
             do {
                 for task in tasks {
                     _ = try await api.add_task(
@@ -659,7 +659,7 @@ final class AppModel {
             id: task.id, list_id: list.id, list_name: list.name, text: task.text,
             completed: task.completed, due_date: task.due_date, due_time: task.due_time,
             notes: task.notes, created_at: task.created_at)
-        Swift.Task {
+        _Concurrency.Task {
             do {
                 _ = try await api.update_task(task: updated)
                 flashStatus(i18n.format("statusTaskMoved", list.name))
@@ -735,9 +735,9 @@ final class AppModel {
         undoBannerTask?.cancel()
         undoBannerText = text
         undoBannerAction = undo
-        undoBannerTask = Swift.Task { [weak self] in
-            try? await Swift.Task.sleep(nanoseconds: 6_000_000_000)
-            guard !Swift.Task.isCancelled else { return }
+        undoBannerTask = _Concurrency.Task { [weak self] in
+            try? await _Concurrency.Task.sleep(nanoseconds: 6_000_000_000)
+            guard !_Concurrency.Task.isCancelled else { return }
             self?.dismissUndoBanner()
         }
     }
@@ -752,7 +752,7 @@ final class AppModel {
 
     func createList(name: String, icon: String?, color: Int64?) {
         guard let api else { return }
-        Swift.Task {
+        _Concurrency.Task {
             do {
                 let list = try await api.create_list(name: name, icon: icon, color: color)
                 listEditSheet = nil
@@ -770,7 +770,7 @@ final class AppModel {
         let updated = TodoList(
             id: list.id, name: name, icon: icon, color: color,
             pending_count: list.pending_count)
-        Swift.Task {
+        _Concurrency.Task {
             do {
                 _ = try await api.update_list(item: updated)
                 listEditSheet = nil
@@ -783,7 +783,7 @@ final class AppModel {
 
     func deleteList(_ list: TodoList) {
         guard let api else { return }
-        Swift.Task {
+        _Concurrency.Task {
             do {
                 _ = try await api.delete_list(id: list.id)
                 if currentView.listId == list.id {
