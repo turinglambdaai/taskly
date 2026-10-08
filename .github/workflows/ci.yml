@@ -9,12 +9,14 @@ on:
       - 'shared/i18n/**'
       - 'rivet.rktd'
       - 'scripts/taskly-cli.*'
+      - 'windows/**'
       - '.github/workflows/ci.yml'
   pull_request:
     paths:
       - 'racket/**'
       - 'shared/cli-golden/**'
       - 'rivet.rktd'
+      - 'windows/**'
       - '.github/workflows/ci.yml'
 
 permissions:
@@ -86,3 +88,34 @@ jobs:
             BIN="$PWD/scripts/taskly-cli.sh"
           fi
           python3 shared/cli-golden/runner.py --binary "$BIN"
+
+  windows-host:
+    name: Windows host build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Racket CS
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          distribution: full
+          variant: CS
+          version: '9.3'
+      - name: Install pinned Rivet
+        shell: pwsh
+        run: |
+          git clone https://github.com/turinglambdaai/rivet.git "$env:RUNNER_TEMP\rivet"
+          git -C "$env:RUNNER_TEMP\rivet" checkout $env:RIVET_COMMIT
+          raco pkg install --auto --no-docs --name rivet --link "$env:RUNNER_TEMP\rivet"
+      - name: Build host (regenerates the generated client)
+        shell: pwsh
+        run: raco rivet build
+      - name: Generated client matches the pin
+        shell: pwsh
+        run: |
+          git diff --exit-code windows/GeneratedBackend.hpp
+          if ($LASTEXITCODE -ne 0) { throw 'windows/GeneratedBackend.hpp is stale against the pinned Rivet' }
+      - name: Staged executable exists
+        shell: pwsh
+        run: |
+          if (-not (Test-Path '.rivet\stage\RivetHost.exe')) { throw 'staged RivetHost.exe missing' }
