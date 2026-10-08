@@ -51,6 +51,8 @@ final class AppModel {
     private var backend: EmbeddedRacketBackend?
     private var api: RivetAPI?
     private var started = false
+    /// PRODUCT-SPEC §9 due-task reminders (60 s poll + startup check).
+    @ObservationIgnored private var reminder: ReminderService?
     /// Monotonic token; stale async snapshot responses are dropped.
     private var reloadSequence = 0
     private var previewSequence = 0
@@ -128,6 +130,7 @@ final class AppModel {
     func start() {
         guard !started else { return }
         started = true
+        reminder = ReminderService(model: self)
 
         do {
             let config = try Self.runtimeConfiguration()
@@ -163,6 +166,7 @@ final class AppModel {
             restoreSelection(settings.last_selected_list_id)
             refreshStatusPersistent()
             flashStatus(i18n.t("statusDatabaseConnected"))
+            reminder?.start()
         } catch {
             statusMessage = "\(error)"
         }
@@ -208,6 +212,16 @@ final class AppModel {
 
     // MARK: - Database lifecycle (File menu)
 
+    /// Full snapshot of the planned view — every dated incomplete task,
+    /// due ones first; the reminder poll filters by time (spec §9).
+    func currentSnapshotForReminders() async throws -> Snapshot {
+        guard let api else {
+            throw HostError.missingRuntimeLayout("backend not started")
+        }
+        return try await api.load_snapshot(
+            view: "planned", list_id: nil, show_completed: false)
+    }
+
     /// Open (creating when absent) a database file in place.
     func openDatabase(path: String) {
         guard let api else { return }
@@ -220,6 +234,7 @@ final class AppModel {
                 restoreSelection(settings?.last_selected_list_id ?? 0)
                 refreshStatusPersistent()
                 flashStatus(i18n.t("statusDatabaseConnected"))
+                reminder?.resetSession()
             } catch {
                 flashStatus("\(error)")
             }
@@ -231,6 +246,7 @@ final class AppModel {
         Swift.Task {
             _ = try? await api.close_database()
             isConnected = false
+            reminder?.stop()
             lists = []
             tasks = []
             counts = SmartCounts(today: 0, planned: 0, all: 0, completed: 0)
