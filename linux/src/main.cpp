@@ -753,6 +753,20 @@ void apply_theme(std::string const& theme) {
   }
   g_object_set(gtk_settings_get_default(),
                "gtk-application-prefer-dark-theme", prefer_dark, nullptr);
+  // This desktop's XSetting ships a dark widget variant while the
+  // color-scheme says light — pin the widget theme to the chosen palette
+  // (strip or append the "-dark" suffix of the current theme name).
+  gchar* theme_name = nullptr;
+  g_object_get(gtk_settings_get_default(), "gtk-theme-name", &theme_name,
+               nullptr);
+  std::string base = theme_name != nullptr ? theme_name : "Adwaita";
+  g_free(theme_name);
+  if (base.size() > 5 && base.substr(base.size() - 5) == "-dark") {
+    base.erase(base.size() - 5);
+  }
+  base += dark_pref ? "-dark" : "";
+  g_object_set(gtk_settings_get_default(), "gtk-theme-name",
+               base.c_str(), nullptr);
 }
 
 // ---------------------------------------------------------------------------
