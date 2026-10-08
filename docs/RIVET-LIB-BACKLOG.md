@@ -5,6 +5,18 @@
 > prioritized library improvement. Items move to the Rivet repo when picked
 > up; the Taskly commit that discovered each item is referenced.
 
+## Status 2026-10-08
+
+Filed upstream (taskly-driven, see the issues for evidence):
+
+- rivet#140 — Swift codegen: emitted record types collide with the Swift
+  standard library (Task, Result); needs a namespace or mangling strategy.
+  Taskly carries `_Concurrency.Task` workarounds until then.
+- rivet#141 — DX: reusable CI setup for the embeddable Racket CS runtime
+  (every app duplicates the checksum-pinned build + cache + env exports).
+- rivet#142 — Linux host: mixed light/dark rendering when gtk-theme-name
+  disagrees with color-scheme; adopt libadwaita or template the pinning.
+
 ## Status 2026-09-28
 
 - PR #60 (commercial distribution + system services) **merged** — update
