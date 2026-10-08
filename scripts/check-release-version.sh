@@ -20,15 +20,9 @@ if [[ -n "$TAG" ]]; then
     fail "tag '$TAG' does not match VERSION '$VERSION'"
 fi
 
-WINDOWS_VERSION="$(sed -n 's:.*<Version>\([^<]*\)</Version>.*:\1:p' "$ROOT/apps/windows/Taskly/Taskly.csproj" | head -n1 | tr -d '[:space:]')"
-[[ "$WINDOWS_VERSION" == "$VERSION" ]] || \
-  fail "Windows version '$WINDOWS_VERSION' does not match VERSION '$VERSION'"
+# The Rivet app manifest carries the product version on this tree.
+RIVET_RKTD_VERSION="$(grep -o '"[0-9]*\.[0-9]*\.[0-9]*"' "$ROOT/rivet.rktd" | head -n1 | tr -d '"')"
+[[ "$RIVET_RKTD_VERSION" == "$VERSION" ]] || \
+  fail "rivet.rktd version '$RIVET_RKTD_VERSION' does not match VERSION '$VERSION'"
 
-LINUX_VERSION="$(sed -n "s/^[[:space:]]*version:[[:space:]]*'\([^']*\)'.*/\1/p" "$ROOT/apps/linux/meson.build" | head -n1 | tr -d '[:space:]')"
-[[ "$LINUX_VERSION" == "$VERSION" ]] || \
-  fail "Linux version '$LINUX_VERSION' does not match VERSION '$VERSION'"
-
-grep -q 'VERSION_FILE="../../VERSION"' "$ROOT/apps/macos/scripts/make-app.sh" || \
-  fail "macOS packaging script is not wired to the root VERSION file"
-
-echo "release preflight: version $VERSION is aligned across platforms"
+echo "release preflight: version $VERSION is aligned (VERSION == rivet.rktd)"
