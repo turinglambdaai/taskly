@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Migration policy: exact Rivet pins in release builds (docs/RIVET-MIGRATION.md §6).
+  RIVET_COMMIT: f37908fcf0aad02665227beec39c354c76952886
+
+jobs:
+  macos:
+    name: macOS package (arm64)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Racket CS
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          distribution: full
+          variant: CS
+          version: '9.3'
+      - name: Install pinned Rivet
+        run: |
+          set -euo pipefail
+          git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
+          git -C "$RUNNER_TEMP/rivet" checkout "$RIVET_COMMIT"
+          raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
+      - name: Version preflight (VERSION == rivet.rktd == tag)
+        run: scripts/check-release-version.sh "${{ github.ref_name }}"
+      - name: Package
+        run: raco rivet package --skip-launch-smoke
+      - name: Zip + checksum
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd dist
+          zip -qry "taskly-${VERSION}-macos-arm64.zip" taskly.app
+          shasum -a 256 "taskly-${VERSION}-macos-arm64.zip" > "taskly-${VERSION}-macos-arm64.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-package
+          path: dist/taskly-*
+
+  windows:
+    name: Windows package (x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Racket CS
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          distribution: full
+          variant: CS
+          version: '9.3'
+      - name: Install pinned Rivet
+        shell: pwsh
+        run: |
+          git clone https://github.com/turinglambdaai/rivet.git "$env:RUNNER_TEMP\rivet"
+          git -C "$env:RUNNER_TEMP\rivet" checkout $env:RIVET_COMMIT
+          raco pkg install --auto --no-docs --name rivet --link "$env:RUNNER_TEMP\rivet"
+      - name: Version preflight (VERSION == rivet.rktd == tag)
+        shell: bash
+        run: scripts/check-release-version.sh "${{ github.ref_name }}"
+      - name: Package
+        shell: pwsh
+        run: raco rivet package --skip-launch-smoke
+      - name: Zip + checksum
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          Compress-Archive -Path 'dist\*\*' -DestinationPath "taskly-$version-windows-x64.zip"
+          $hash = (Get-FileHash "taskly-$version-windows-x64.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  taskly-$version-windows-x64.zip" | Set-Content "taskly-$version-windows-x64.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-package
+          path: taskly-*
+
+  release:
+    name: Publish
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Gather + publish (notes = CHANGELOG section for this version)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          mv artifacts/macos-package/* artifacts/windows-package/* dist/
+          awk -v header="## [${VERSION}]" '
+            $0 ~ "^" header {on=1; next}
+            on && /^## / {exit}
+            on {print}
+          ' CHANGELOG.md > /tmp/notes.md
+          cd dist
+          cat *.sha256 > SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Taskly ${VERSION}" \
+            --notes-file /tmp/notes.md \
+            *.zip *.sha256 SHA256SUMS
