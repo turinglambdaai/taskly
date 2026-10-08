@@ -1714,7 +1714,7 @@ GtkWidget* make_chip(int index) {
   auto* button = gtk_button_new();
   gtk_widget_add_css_class(button, "chip");
   auto* box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_widget_set_halign(box, GTK_ALIGN_CENTER);
+  gtk_widget_set_hexpand(box, TRUE);
   gtk_widget_set_valign(box, GTK_ALIGN_CENTER);
   auto* glyph = gtk_label_new(spec.glyph);
   // macOS M4: each chip's glyph carries a semantic color (today accent,
@@ -1725,12 +1725,16 @@ GtkWidget* make_chip(int index) {
   gtk_widget_add_css_class(glyph, glyph_classes[index]);
   gtk_box_append(GTK_BOX(box), glyph);
   auto* label = gtk_label_new(tr(spec.key).c_str());
+  gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
+  gtk_label_set_xalign(GTK_LABEL(label), 0.0f);
+  gtk_widget_set_hexpand(label, TRUE);
   gtk_box_append(GTK_BOX(box), label);
   auto* count = gtk_label_new("0");
   gtk_widget_add_css_class(count, "count-badge");
   gtk_box_append(GTK_BOX(box), count);
   g_object_set_data(G_OBJECT(button), "chip-count", count);
   g_object_set_data(G_OBJECT(button), "chip-label", label);
+  gtk_widget_set_hexpand(button, TRUE);
   gtk_button_set_child(GTK_BUTTON(button), box);
   g_signal_connect(button, "clicked", G_CALLBACK(on_chip_clicked),
                    GINT_TO_POINTER(index));
@@ -2668,13 +2672,26 @@ void on_activate(GtkApplication* app, gpointer) {
   auto* menubar_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_box_append(GTK_BOX(root), menubar_box);
 
-  auto* body = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  // Sidebar is user-resizable: 200–420 px via the paned handle (PRODUCT-SPEC
+  // §2); the position is clamped while dragging.
+  auto* body = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
   gtk_widget_set_vexpand(body, TRUE);
+  g_signal_connect(body, "notify::position",
+                   G_CALLBACK(+[](GObject* obj, gpointer) {
+                     auto* paned = GTK_PANED(obj);
+                     auto const pos = gtk_paned_get_position(paned);
+                     if (pos > 420) {
+                       gtk_paned_set_position(paned, 420);
+                     } else if (pos < 200) {
+                       gtk_paned_set_position(paned, 200);
+                     }
+                   }),
+                   nullptr);
 
   // Sidebar: smart-view chips (2×2) + my lists + new-list button.
   auto* sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class(sidebar, "taskly-sidebar");
-  gtk_widget_set_size_request(sidebar, 280, -1);
+  gtk_widget_set_size_request(sidebar, 200, -1);
   g_state.sidebar_widget = sidebar;
 
   auto* chip_grid = gtk_grid_new();
@@ -2718,10 +2735,7 @@ void on_activate(GtkApplication* app, gpointer) {
                                 user_list);
   gtk_box_append(GTK_BOX(sidebar), lists_scroll);
 
-  gtk_box_append(GTK_BOX(body), sidebar);
-  auto* divider = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
-  gtk_widget_add_css_class(divider, "taskly-divider");
-  gtk_box_append(GTK_BOX(body), divider);
+  gtk_paned_set_start_child(GTK_PANED(body), sidebar);
 
   // Task pane: header (toggle + title/subtitle + search + show-completed),
   // quick-add capsule with live parse preview, then the task list with the
@@ -2843,7 +2857,8 @@ void on_activate(GtkApplication* app, gpointer) {
   gtk_overlay_add_overlay(GTK_OVERLAY(list_overlay), banner_revealer);
   g_object_set_data(G_OBJECT(banner_box), "banner-revealer", banner_revealer);
   gtk_box_append(GTK_BOX(pane), list_overlay);
-  gtk_box_append(GTK_BOX(body), pane);
+  gtk_paned_set_end_child(GTK_PANED(body), pane);
+  gtk_paned_set_position(GTK_PANED(body), 280);
   gtk_box_append(GTK_BOX(root), body);
 
   // Status bar (28px): persistent view status with 3s flashes.
