@@ -17,6 +17,10 @@ declare -a TARGETS=(
   "macos-host/Sources/RivetHost/Resources"
 )
 
+# The Linux host reads shared/i18n directly (dev tree + staged res/i18n);
+# the Windows host carries its own compiled-in strings (M3) and migrates to
+# the shared source with the i18n milestone.
+
 copy() {
   for target in "${TARGETS[@]}"; do
     mkdir -p "$target"

@@ -30,6 +30,8 @@ find_package(ZLIB REQUIRED)
 find_library(LZ4_LIBRARY NAMES lz4 REQUIRED)
 pkg_check_modules(GTK4 REQUIRED IMPORTED_TARGET gtk4)
 pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET gio-2.0)
+# shared/i18n single-source strings load through json-glib at runtime.
+pkg_check_modules(JSON_GLIB REQUIRED IMPORTED_TARGET json-glib-1.0)
 # The Secret Service adapter is compiled whenever libsecret is present; the
 # capability then reports itself at runtime based on service availability.
 pkg_check_modules(LIBSECRET IMPORTED_TARGET libsecret-1)
@@ -68,6 +70,7 @@ target_include_directories(RivetHost PRIVATE
 target_link_libraries(RivetHost PRIVATE
   PkgConfig::GTK4
   PkgConfig::GLIB
+  PkgConfig::JSON_GLIB
   ${RACKETCS_LIBRARY}
   ZLIB::ZLIB
   ${LZ4_LIBRARY}
