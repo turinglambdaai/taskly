@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main, experiment/taskly-rivet]
+    paths:
+      - 'racket/**'
+      - 'shared/cli-golden/**'
+      - 'shared/i18n/**'
+      - 'rivet.rktd'
+      - 'scripts/taskly-cli.*'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths:
+      - 'racket/**'
+      - 'shared/cli-golden/**'
+      - 'rivet.rktd'
+      - '.github/workflows/ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Migration policy: exact Rivet pins in CI (docs/RIVET-MIGRATION.md §6).
+  RIVET_COMMIT: f37908fcf0aad02665227beec39c354c76952886
+
+jobs:
+  core:
+    name: Racket core (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Racket CS
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          distribution: full
+          variant: CS
+          version: '9.3'
+      - name: Test core contracts
+        run: raco test racket/tests/core-test.rkt
+
+  backend-and-cli:
+    name: Backend + CLI golden (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Racket CS
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          distribution: full
+          variant: CS
+          version: '9.3'
+      - name: Install pinned Rivet
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
+          git -C "$RUNNER_TEMP/rivet" checkout "$RIVET_COMMIT"
+          raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
+      - name: Compile backend
+        run: raco make racket/taskly/backend.rkt
+      - name: Test full core (incl. typed Rivet schema)
+        run: raco test racket/
+      - name: CLI golden suite (61 cases, byte-identical)
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then BIN=scripts/taskly-cli.cmd; else BIN=scripts/taskly-cli.sh; fi
+          python3 shared/cli-golden/runner.py --binary "$BIN"
