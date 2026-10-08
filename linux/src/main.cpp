@@ -299,6 +299,8 @@ struct Palette {
   char const* selected;
   char const* overdue;
   char const* planned;
+  char const* text;
+  char const* accent_soft;
 };
 
 // Values mirror macos-host Theme.swift exactly (incl. alpha-based
@@ -307,12 +309,14 @@ constexpr Palette kLight{
     "#FFFFFF", "#F2F2F2", "#007AFF", "#8E8E93", "#B0B0B5",
     "#E3E3E8", "#C7C7CC", "#FFFFFF", "rgba(0,0,0,0.05)",
     "rgba(0,0,0,0.08)", "#FF3B30", "#FF3B30",
+    "#1D1D1F", "rgba(0,122,255,0.10)",
 };
 
 constexpr Palette kDark{
     "#1E1E1E", "#2A2A2C", "#0A84FF", "#98989E", "#6B6B72",
     "#3F3F44", "#4A4A50", "#323234", "rgba(255,255,255,0.07)",
     "rgba(255,255,255,0.12)", "#FF3B30", "#FF3B30",
+    "#F5F5F7", "rgba(10,132,255,0.18)",
 };
 
 Palette const& system_palette();
@@ -645,65 +649,53 @@ void flash_status(std::string const& message) {
 
 void apply_css(Palette const& p) {
   auto* provider = gtk_css_provider_new();
-  std::string css = ""
-      ".taskly-sidebar { background: " + std::string(p.sidebar) + "; }\n"
-      ".taskly-divider { background: " + p.divider + "; min-width: 1px; }\n"
-      ".taskly-statusbar { background: " + p.sidebar +
-          "; min-height: 28px; }\n"
-      ".taskly-statusbar label { color: " + p.secondary +
-          "; font-size: 12px; }\n"
-      ".section-caption { color: " + p.muted +
-          "; font-size: 12px; font-weight: 600; }\n"
-      ".section-header { color: " + p.secondary +
-          "; font-size: 13px; font-weight: 600; padding: 0 16px; }\n"
-      ".count-badge { color: " + p.secondary + "; font-size: 12px; }\n"
-      ".meta-text { color: " + p.secondary + "; font-size: 12px; }\n"
-      ".pane-title { font-size: 22px; font-weight: 700; }\n"
-      ".pane-subtitle { font-size: 13px; color: " + p.secondary + "; }\n"
-      ".task-text { font-size: 14px; }\n"
-      ".task-done { color: " + p.muted +
-          "; text-decoration: line-through; }\n"
-      ".row-dot { border-radius: 4px; min-width: 8px; min-height: 8px; }\n"
-      ".due-chip { font-size: 12px; }\n"
-      ".due-today { color: " + p.accent + "; }\n"
-      ".due-overdue { color: " + p.overdue + "; }\n"
-      "listbox.task-row-list > row { min-height: 44px; padding: 9px 16px; "
-          "background: " + std::string(p.surface) + "; }\n"
-      "listbox.sidebar-list > row { min-height: 34px; border-radius: 8px; "
-          "margin: 1px 4px; padding: 5px 8px; background: " +
-          std::string(p.surface) + "; border: 1px solid " + p.divider + "; }\n"
-      "listbox.sidebar-list > row:hover { background: " +
-          std::string(p.hover) + "; }\n"
-      "listbox.sidebar-list > row:selected { background: " +
-          std::string(p.selected) + "; }\n"
-      "button.chip { min-height: 34px; border-radius: 8px; background: " +
-          std::string(p.surface) + "; border: 1px solid " + p.divider + "; }\n"
-      "button.chip-selected { background: " + std::string(p.selected) +
-          "; border: 1px solid " + p.divider + "; }\n"
-      ".chip-glyph-today { color: " + p.accent + "; }\n"
-      ".chip-glyph-planned { color: " + p.planned + "; }\n"
-      ".chip-glyph-all { color: " + p.secondary + "; }\n"
-      ".chip-glyph-completed { color: " + p.secondary + "; }\n"
-      "button.accent-toggle { color: " + p.accent + "; font-size: 13px; }\n"
-      ".quick-add-box { border-radius: 12px; border: 1px solid " +
-          std::string(p.input_border) + "; }\n"
-      ".quick-add-box:focus-within { border: 2px solid " + p.accent + "; }\n"
-      "entry.quick-add { min-height: 36px; border: none; background: none; "
-          "box-shadow: none; }\n"
-      "button.quick-add-plus { background: " + p.accent +
-          "; color: #FFFFFF; border-radius: 11px; min-width: 22px; "
-          "min-height: 22px; }\n"
-      ".preview-capsule { font-size: 12px; color: " + p.accent +
-          "; background: " + p.selected + "; border-radius: 9px; "
-          "padding: 2px 8px; }\n"
-      "box.banner-card { border-radius: 10px; border: 1px solid " +
-          std::string(p.divider) + "; background: " + p.surface + "; }\n"
-      ".section-header { color: " + p.secondary +
-          "; font-size: 13px; font-weight: 600; padding: 0 16px; }\n"
-      ".empty-icon { font-size: 48px; }\n"
-      ".list-dot { border-radius: 10px; min-width: 20px; min-height: 20px; "
-          "font-size: 11px; }\n"
-      ".dot-neutral { background: " + std::string(p.divider) + "; }\n";
+  std::string css;
+  css += ".taskly-root { background: " + std::string(p.background) + "; color: " + std::string(p.text) + "; }\n";
+  css += ".taskly-sidebar { background: " + std::string(p.sidebar) + "; }\n";
+  css += ".taskly-divider { background: ' + std::string(p.divider) + '; min-width: 1px; min-height: 1px; }\n";
+  css += ".taskly-statusbar { background: " + std::string(p.sidebar) + "; min-height: 28px; }\n";
+  css += ".taskly-statusbar label { color: " + std::string(p.secondary) + "; font-size: 12px; }\n";
+  css += "menubar { min-height: 30px; padding: 0 6px; background: " + std::string(p.background) + "; font-size: 13px; color: " + std::string(p.text) + "; }\n";
+  css += "menubar > item { min-height: 26px; padding: 3px 10px; border-radius: 6px; color: " + std::string(p.text) + "; }\n";
+  css += "menubar > item:hover { background: " + std::string(p.hover) + "; }\n";
+  css += ".section-caption { color: " + std::string(p.muted) + "; font-size: 12px; font-weight: 600; }\n";
+  css += ".section-header { color: " + std::string(p.secondary) + "; font-size: 13px; font-weight: 600; padding: 0 16px; }\n";
+  css += ".count-badge { color: " + std::string(p.secondary) + "; font-size: 12px; }\n";
+  css += ".meta-text { color: " + std::string(p.secondary) + "; font-size: 12px; }\n";
+  css += ".pane-title { font-size: 22px; font-weight: 700; color: " + std::string(p.text) + "; }\n";
+  css += ".pane-subtitle { font-size: 13px; color: " + std::string(p.secondary) + "; }\n";
+  css += ".task-text { font-size: 14px; color: " + std::string(p.text) + "; }\n";
+  css += ".task-done { color: " + std::string(p.muted) + "; text-decoration: line-through; }\n";
+  css += ".due-chip { font-size: 12px; }\n";
+  css += ".due-today { color: " + std::string(p.accent) + "; }\n";
+  css += ".due-overdue { color: " + std::string(p.overdue) + "; }\n";
+  css += "listbox.task-row-list { background: " + std::string(p.background) + "; }\n";
+  css += "listbox.task-row-list > row { min-height: 44px; padding: 9px 16px; background: " + std::string(p.background) + "; }\n";
+  css += "listbox.task-row-list > row:hover { background: " + std::string(p.hover) + "; }\n";
+  css += "listbox.sidebar-list { background: transparent; }\n";
+  css += "listbox.sidebar-list > row { min-height: 34px; border-radius: 8px; margin: 1px 4px; padding: 5px 8px; background: " + std::string(p.surface) + "; border: 1px solid " + std::string(p.divider) + "; box-shadow: none; }\n";
+  css += "listbox.sidebar-list > row:hover { background: " + std::string(p.hover) + "; }\n";
+  css += "listbox.sidebar-list > row:selected { background: " + std::string(p.selected) + "; color: " + std::string(p.text) + "; }\n";
+  css += "button.chip { min-height: 34px; padding: 0 10px; border-radius: 8px; background: " + std::string(p.surface) + "; border: 1px solid " + std::string(p.divider) + "; box-shadow: none; text-shadow: none; font-size: 13px; color: " + std::string(p.text) + "; }\n";
+  css += "button.chip:hover { background: " + std::string(p.hover) + "; }\n";
+  css += "button.chip-selected { background: " + std::string(p.selected) + "; border: 1px solid " + std::string(p.accent_soft) + "; box-shadow: none; }\n";
+  css += ".chip-glyph-today { color: " + std::string(p.accent) + "; }\n";
+  css += ".chip-glyph-planned { color: " + std::string(p.planned) + "; }\n";
+  css += ".chip-glyph-all { color: " + std::string(p.secondary) + "; }\n";
+  css += ".chip-glyph-completed { color: " + std::string(p.secondary) + "; }\n";
+  css += "button.flat { color: " + std::string(p.secondary) + "; background: none; border: none; box-shadow: none; }\n";
+  css += "button.accent-toggle { color: " + std::string(p.accent) + "; font-size: 13px; background: none; border: none; box-shadow: none; }\n";
+  css += ".quick-add-box { border-radius: 12px; background: " + std::string(p.surface) + "; border: 1px solid " + std::string(p.input_border) + "; }\n";
+  css += ".quick-add-box:focus-within { border: 1px solid " + std::string(p.accent) + "; box-shadow: 0 0 0 3px " + std::string(p.accent_soft) + "; }\n";
+  css += "entry.quick-add { min-height: 38px; background: none; border: none; box-shadow: none; font-size: 14px; color: " + std::string(p.text) + "; padding: 0 2px; }\n";
+  css += "button.quick-add-plus { min-width: 24px; min-height: 24px; border-radius: 12px; background: " + std::string(p.accent) + "; color: #FFFFFF; border: none; box-shadow: none; padding: 0; margin-left: 7px; }\n";
+  css += "button.quick-add-plus:hover { opacity: 0.9; }\n";
+  css += ".preview-capsule { font-size: 12px; color: " + std::string(p.accent) + "; background: " + std::string(p.accent_soft) + "; border-radius: 9px; padding: 3px 8px; margin-right: 8px; }\n";
+  css += "box.banner-card { border-radius: 10px; border: 1px solid " + std::string(p.divider) + "; background: " + std::string(p.surface) + "; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); color: " + std::string(p.text) + "; }\n";
+  css += ".list-dot { border-radius: 10px; min-width: 20px; min-height: 20px; font-size: 11px; }\n";
+  css += ".dot-neutral { background: " + std::string(p.divider) + "; }\n";
+  css += ".row-dot { border-radius: 4px; min-width: 8px; min-height: 8px; }\n";
+  css += ".empty-icon { font-size: 48px; }\n";
   gtk_css_provider_load_from_string(provider, css.c_str());
   gtk_style_context_add_provider_for_display(
       gdk_display_get_default(), GTK_STYLE_PROVIDER(provider),
@@ -1706,7 +1698,7 @@ void on_sidebar_toggle_clicked(GtkButton* button, gpointer) {
   auto const visible = gtk_widget_get_visible(sidebar);
   gtk_widget_set_visible(sidebar, !visible);
   gtk_button_set_icon_name(
-      button, visible ? "sidebar-show-symbolic" : "sidebar-hide-symbolic");
+      button, visible ? "pane-show-symbolic" : "pane-hide-symbolic");
 }
 
 GtkWidget* make_chip(int index) {
@@ -2669,6 +2661,7 @@ void on_activate(GtkApplication* app, gpointer) {
   load_i18n(executable_path().parent_path());
 
   auto* root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class(root, "taskly-root");
   auto* menubar_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_box_append(GTK_BOX(root), menubar_box);
 
@@ -2749,7 +2742,7 @@ void on_activate(GtkApplication* app, gpointer) {
   gtk_widget_set_margin_start(header, 16);
   gtk_widget_set_margin_end(header, 16);
   auto* sidebar_toggle =
-      gtk_button_new_from_icon_name("sidebar-hide-symbolic");
+      gtk_button_new_from_icon_name("pane-hide-symbolic");
   gtk_widget_add_css_class(sidebar_toggle, "flat");
   gtk_widget_set_valign(sidebar_toggle, GTK_ALIGN_CENTER);
   gtk_widget_set_tooltip_text(sidebar_toggle, tr("sidebarHide").c_str());
@@ -2791,7 +2784,8 @@ void on_activate(GtkApplication* app, gpointer) {
   auto* quick_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
   gtk_widget_add_css_class(quick_box, "quick-add-box");
   gtk_widget_set_hexpand(quick_box, TRUE);
-  auto* quick_plus = gtk_button_new_with_label("＋");
+  auto* quick_plus =
+      gtk_button_new_from_icon_name("list-add-symbolic");
   gtk_widget_add_css_class(quick_plus, "quick-add-plus");
   gtk_widget_set_valign(quick_plus, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_start(quick_plus, 7);
