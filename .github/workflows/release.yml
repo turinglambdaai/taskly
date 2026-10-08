@@ -35,7 +35,7 @@ jobs:
           git -C "$RUNNER_TEMP/rivet" checkout "$RIVET_COMMIT"
           raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
       - name: Version preflight (VERSION == rivet.rktd == tag)
-        run: scripts/check-release-version.sh "${{ github.ref_name }}"
+        run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
       - name: Package
         run: raco rivet package --skip-launch-smoke
       - name: Zip + checksum
@@ -69,7 +69,7 @@ jobs:
           raco pkg install --auto --no-docs --name rivet --link "$env:RUNNER_TEMP\rivet"
       - name: Version preflight (VERSION == rivet.rktd == tag)
         shell: bash
-        run: scripts/check-release-version.sh "${{ github.ref_name }}"
+        run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
       - name: Package
         shell: pwsh
         run: raco rivet package --skip-launch-smoke
