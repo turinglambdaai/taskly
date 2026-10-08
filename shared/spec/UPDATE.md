@@ -29,11 +29,19 @@
 
 ## Platform mechanisms
 
-| Platform | Feed | Install | Integrity |
-|---|---|---|---|
-| Windows | Velopack GitHub feed (`vpk pack`, delta nupkgs) | `UpdateManager.ApplyUpdatesAndRestart` | Velopack built-in EdDSA package signing |
-| macOS | `update-manifest.json` (this contract) | zip → sha256 → ditto → atomic swap in place | Ed25519 manifest signature (CryptoKit) + artifact sha256 |
-| Linux | `update-manifest.json` (this contract) | tarball → sha256 → replace prefix if writable, else open releases page | sha256 over HTTPS + GitHub release provenance attestation; Ed25519 planned (needs gnutls bindings) |
+The release pipeline signs and uploads `update-manifest.json` +
+`manifest.sig` for every release (see `release.yml`), so the feed exists
+on all platforms from day one. Host-side updaters land per platform:
+
+| Platform | Feed | Install | Integrity | Status |
+|---|---|---|---|---|
+| macOS | `update-manifest.json` (this contract) | zip → sha256 → ditto → atomic swap in place | Ed25519 manifest signature (CryptoKit) + artifact sha256 | shipped (`macos-host/Sources/RivetHost/UpdateService.swift`) |
+| Windows | `update-manifest.json` (this contract, `windows` entry) | manual download until the host updater lands | manifest sha256 | host updater not built yet |
+| Linux | `update-manifest.json` (this contract, `linux` entry) | manual download until the host updater lands | manifest sha256 | host updater not built yet |
+
+(The frozen v1 line used Velopack on Windows and a tarball replacer on
+Linux; those mechanisms died with that line — the Rivet hosts start from
+the manifest feed above.)
 
 ## `update-manifest.json`
 
@@ -43,13 +51,15 @@ signed; the signature ships alongside as `manifest.sig`.
 
 ```json
 {
-  "version": "1.0.1",
-  "notesUrl": "https://github.com/turinglambdaai/taskly/releases/tag/v1.0.1",
+  "version": "1.1.0",
+  "notesUrl": "https://github.com/turinglambdaai/taskly/releases/download/v1.1.0",
   "platforms": {
-    "macos": { "url": "https://…/Taskly-v1.0.1-macos.zip",
-               "sha256": "<hex of the zip>", "size": 12345678 },
-    "linux": { "url": "https://…/Taskly-v1.0.1-linux-x64.tar.gz",
-               "sha256": "<hex of the tarball>", "size": 23456789 }
+    "macos":   { "url": "https://…/taskly-1.1.0-macos-arm64.zip",
+                 "sha256": "<hex of the zip>", "size": 12345678 },
+    "windows": { "url": "https://…/taskly-1.1.0-windows-x64.zip",
+                 "sha256": "<hex of the zip>", "size": 23456789 },
+    "linux":   { "url": "https://…/taskly-1.1.0-linux-x64.tar.gz",
+                 "sha256": "<hex of the tarball>", "size": 34567890 }
   }
 }
 ```
@@ -83,5 +93,6 @@ signed; the signature ships alongside as `manifest.sig`.
 - The updater must never delete or touch `~/.taskly/` (DB + config) —
   it swaps application bundles/prefixes only.
 - A failed swap must leave the previous install runnable (macOS keeps a
-  `.old` copy until the next successful launch; Linux only replaces
-  after a complete, checksummed extraction).
+  `.old` copy until the next successful launch; future host updaters
+  follow the same rule — replace only after a complete, checksummed
+  extraction).

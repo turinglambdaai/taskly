@@ -1,88 +1,75 @@
 # Taskly
 
-> **⚠ 已归档（v1 原生版本线）。** 活跃开发已迁移到
-> [`main`](https://github.com/turinglambdaai/taskly/tree/main)
-> 分支 —— Taskly 正在以 [Rivet](https://github.com/turinglambdaai/rivet) 重建。
-> `main` 仅描述已归档的原生实现，只接收修复。
-> 迁移决策见该分支的 [docs/RIVET-MIGRATION.md](docs/RIVET-MIGRATION.md)。
+一款专注、键盘友好的跨平台任务管理器，覆盖 macOS、Windows 和 Linux——一个 Racket 核心驱动每个桌面的第一方原生宿主，附带面向 agent 的 CLI，数据就是单个本地 SQLite 文件。
 
-一个专注、原生的任务管理器。同一产品、同一 SQLite 数据文件、同一 agent CLI —— 每个平台都用原生技术实现。
+[![release](https://img.shields.io/github/v/release/turinglambdaai/taskly)](https://github.com/turinglambdaai/taskly/releases/latest) ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-[![Native CI](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[English](README.md) · **中文** · 🌐 [taskly.jrtx.site](https://taskly.jrtx.site/)
 
-**English** · [中文](README.zh-CN.md)
+Taskly 构建在 [Rivet](https://github.com/turinglambdaai/rivet) 之上：全部领域逻辑——SQLite 存储、排程、自然语言日期、校验、CLI——都在一个 Racket CS 核心里，每个桌面通过类型化 RPC 获得一个轻薄的第一方宿主。宿主只负责渲染和交互，所有逻辑都在后端。
 
-## 原生，而非跨平台
+| 桌面平台 | 宿主 |
+|---|---|
+| macOS 14+（Apple Silicon） | SwiftUI |
+| Windows 10+（x64） | WinUI 3 |
+| Linux（x64） | GTK 4 |
 
-Taskly v1 是对基于 Avalonia 的 0.6.x 版本的完全原生重写。每个桌面平台都使用该平台的第一方 UI 技术栈 —— 不嵌入 WebView、不使用外来工具包、不再有上游 UI 回归（0.6.x 的 Windows 输入法重复字符和 macOS 通知崩溃是压垮骆驼的最后一根稻草）。
+## 功能
 
-| 平台 | 技术栈 | 状态 | 目录 |
-|---|---|---|---|
-| macOS 14+ | Swift 6 + SwiftUI | ✅ 已验证：构建 + 31 个测试 + golden CLI 套件 | [apps/macos](apps/macos) |
-| Windows 10+ | WinUI 3 (Windows App SDK) + .NET 10 | 源码完成，CI 构建 | [apps/windows](apps/windows) |
-| Linux | Vala + GTK4 / libadwaita（编译为 C/GObject） | ✅ 原生构建 + 契约测试已验证 | [apps/linux](apps/linux) |
-| iOS / iPadOS（下一步） | 复用 macOS SwiftUI 代码库 | 计划中 | — |
-| Android（下一步） | Kotlin + Jetpack Compose | 计划中 | — |
+- **Reminders 风格界面**——智能视图（今天 / 计划 / 全部 / 已完成），emoji 图标 + 12 色板的自定义清单，明暗主题跟随系统，中英双语实时切换。
+- **自然语言快速添加**——输入 `明天买菜` 或 `standup @9am +1d`，回车前就能在实时预览 chip 里看到解析出的排程。
+- **对齐 Reminders 的交互**——悬停行显示 今天/明天 一键调度 chip；⌘/⇧ 多选、批量操作、单条撤销横幅；↑/↓ 导航，Return 行内展开（标题、日期/时间 chip、备注），Esc 收起；已完成任务收进可折叠分组。
+- **到期提醒通知**——60 秒轮询 + 启动检查，去重，超过三条合并为一条汇总。
+- **单文件数据**——所有任务存在一个 SQLite 文件（`~/.taskly/tasks.db`，WAL），丢进 iCloud/OneDrive/Dropbox 即可同步。格式文档化且稳定：[DATA-FORMAT](shared/spec/DATA-FORMAT.md)。
+- **面向 agent 的 CLI**——`taskly list|add|update|done|rm|search|mklist…`，`--json` 输出稳定、退出码固定、跨平台字节级一致（61 例 golden 套件钉死）。规格：[CLI-SPEC](shared/spec/CLI-SPEC.md)。
+- **在线更新（macOS）**——启动时静默检查 + 设置里手动检查；发布管线为每个版本签发 [更新清单](shared/spec/UPDATE.md)（Ed25519），应用验证后才安装。
 
-架构决策详见 [ARCHITECTURE.md](ARCHITECTURE.md)。冻结的 Avalonia 0.6.x 实现保留在 `src/Taskly` 作为行为参照，原生 1.0 GA 后删除。
+## 诚实差距
 
-## 每个应用都包含
-
-- **仿 macOS 提醒事项 UI** —— 智能视图（今天 / 计划 / 全部 / 完成）、emoji 图标 + 彩色的自定义列表、自然语言日期快速添加（`@10am`、`+1d`、`tomorrow`）、系统级到期通知、中英双语（运行时切换）、提醒事项式中性配色、明暗双主题。
-- **全平台应用内更新** —— 启动时静默检查 + 设置中手动检查；更新安装前先验签，绝不触碰你的数据（Windows 走 Velopack 含增量包，macOS/Linux 走签名发布清单）。契约：[UPDATE](shared/spec/UPDATE.md)。
-- **单一数据文件** —— 所有任务存于一个 SQLite 文件（`~/.taskly/tasks.db`，WAL 模式），放进 iCloud / OneDrive / Dropbox 即可多设备同步。格式文档化且稳定：[DATA-FORMAT](shared/spec/DATA-FORMAT.md)。
-- **同一二进制内的 agent CLI** —— `taskly list|add|update|done|rm|search|…`，支持 `--json`、稳定退出码、无头运行。规格：[CLI-SPEC](shared/spec/CLI-SPEC.md)。通过应用菜单（工具 ▸ 安装命令行工具）或 `taskly install-cli` 安装。
+- **Windows / Linux 的应用内更新器还没做**——三平台的签名更新 feed 都已随版本发布，但目前只有 macOS 宿主支持应用内更新；Windows/Linux 请到 [Releases](https://github.com/turinglambdaai/taskly/releases/latest) 页下载新版本。
+- **发布包暂不含独立 CLI 二进制**——CLI 目前从源码运行（见下节），打包分发在路线图上。
 
 ## 安装
 
-从 [Releases](https://github.com/turinglambdaai/taskly/releases/latest) 下载：
+到 [Releases](https://github.com/turinglambdaai/taskly/releases/latest) 下载对应平台的压缩包：`taskly-<version>-macos-arm64.zip`、`taskly-<version>-windows-x64.zip` 或 `taskly-<version>-linux-x64.tar.gz`。每个版本都带 `SHA256SUMS` 清单和签名的 `update-manifest.json`。
 
-| 平台 | 下载 | 更新方式 |
-|---|---|---|
-| macOS 14+（通用二进制） | `Taskly-<version>-macos.dmg` | 应用内更新（签名清单） |
-| Windows 10+ x64 | 推荐 Velopack 的 `*-Setup.exe` 安装器；也可选便携版 `Taskly-<version>-windows-x64.zip` | 安装版应用内更新（含增量包）；便携版手动替换 |
-| Linux x64 | `Taskly-<version>-linux-x64.tar.gz` | 应用内更新（签名清单；安装目录不可写时提示打开发布页） |
+macOS 包为 ad-hoc 签名；首次启动如被 Gatekeeper 拦截，执行 `xattr -cr /Applications/Taskly.app` 即可。
 
-每个 Release 附带 `SHA256SUMS` 校验清单与 Sigstore 构建溯源证明
-（`gh attestation verify <文件> -R turinglambdaai/taskly`）。
+Linux 需要 GTK 4 桌面（解压后运行 `RivetHost`；GTK 4 及其系统库是仅有的运行时依赖，其余全部内置）。
 
-macOS 构建未签名，首次启动可能被 Gatekeeper 拦截：使用 DMG 内的
-`安装 Taskly.command` 引导步骤，或执行 `xattr -cr /Applications/Taskly.app` 清除隔离标记。
-
-## 开发者指南
-
-```
-taskly/
-├── apps/macos|windows|linux/   原生应用（各自独立构建系统）
-├── shared/spec/                契约：产品 · 数据 · CLI · 设计令牌
-├── shared/i18n/                中英文案单源（CI 校验各平台副本）
-├── scripts/                    sync-i18n 等 CI 辅助脚本
-├── src/Taskly/                 旧版 Avalonia 应用（冻结参照）
-└── .github/workflows/          ci.yml（旧版）· native.yml（三平台原生）
-```
-
-三个应用**不共享任何代码**。它们共享契约（`shared/spec/`），由 CI 强制执行：一致的 CLI JSON/退出码、逐字节一致的 i18n、同一 DB schema（user_version 4）+ 三平台同步迁移。
-
-### 构建
+## 从源码使用 CLI
 
 ```bash
-# macOS
-cd apps/macos && swift build && swift test
-scripts/make-app.sh            # Taskly.app
-
-# Windows
-dotnet build apps/windows/Taskly/Taskly.csproj -c Release
-
-# Linux
-cd apps/linux && meson setup build && meson compile -C build && meson test -C build
+git clone https://github.com/turinglambdaai/taskly.git
+cd taskly
+raco pkg install --auto --no-docs https://github.com/turinglambdaai/rivet.git
+racket racket/taskly/cli.rkt add "买牛奶" --due tomorrow --json
+racket racket/taskly/cli.rkt install-cli   # 安装到 ~/.local/bin/taskly
 ```
 
-## 系统要求
+## 从源码构建
 
-- macOS：14 Sonoma 及以上（Apple Silicon + Intel）
-- Windows：10 19041+ / 11
-- Linux：任意 GTK4/libadwaita 桌面（推荐 GNOME 44+）
+需要 Racket CS 9.3+ 和对应桌面的原生工具链（macOS 用 Xcode/Swift，Linux 用 CMake + GTK 4 头文件，Windows 用 Windows App SDK）：
+
+```bash
+raco rivet build        # 生成客户端、编译核心、构建宿主
+raco test racket/       # 62 个核心契约测试
+python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 61 例 golden 套件
+```
+
+## 架构
+
+```
+┌─────────────────────────────┐            ┌────────────────────────────┐
+│ 第一方宿主                   │            │ Racket CS 核心              │
+│  SwiftUI · WinUI 3 · GTK 4  │◀── 类型化 ──▶│  db · 排程 · 校验 · 提醒    │
+│  只做渲染和交互               │  RPC (RVT1)│  agent CLI（同一领域层）    │
+│  内嵌 Racket CS 运行时        │            │                            │
+└─────────────────────────────┘            └────────────────────────────┘
+```
+
+一套规格保证所有端一致：产品行为（[PRODUCT-SPEC](shared/spec/PRODUCT-SPEC.md)）、数据格式、CLI 契约、设计令牌、更新契约——都在 [shared/spec/](shared/spec/) 下。CI 在每次推送时用 golden 套件和字节级一致的 i18n 强制执行 CLI 契约。
 
 ## 许可证
 
-桌面端核心采用 AGPL-3.0 —— 桌面应用开源，可自由使用、分叉与研究。未来的商业化面（iOS/iPadOS 客户端与云同步）以独立项目形式按各自条款发布，见 [COMMERCIAL-CHECKLIST](COMMERCIAL-CHECKLIST.md)。
+[AGPL-3.0](LICENSE)。

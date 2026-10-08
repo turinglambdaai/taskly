@@ -47,6 +47,10 @@ jobs:
         run: raco pkg install --auto --no-docs --name rivet --link "$GITHUB_WORKSPACE/rivet"
       - name: Core contract tests
         run: raco test racket/
+      # Golden CLI suite (61 cases): byte-identical stdout/stderr/exit codes
+      # against shared/cli-golden/, run through the system-racket CLI shim.
+      - name: Golden CLI suite
+        run: python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh
 
   linux-host:
     name: Linux host (GTK4 build)

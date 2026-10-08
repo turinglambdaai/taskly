@@ -1,60 +1,58 @@
 # AGENTS.md
 
-> **本分支已归档。** 活跃开发在 `main`（Rivet 重建）；
-> 本文件的 native 布局描述只适用于本归档分支。不要在这里加功能。
-
 指引给 AI agent（及开发者）：如何理解、构建、运行、改动 Taskly。
 
 ## 这是什么
 
-Taskly 是**原生**待办应用套件（monorepo）。同一产品在三个桌面平台各用第一方 UI 技术栈实现，**不共享任何运行时代码**，靠 `shared/spec/` 下的契约保持一致：
+Taskly 是 Rivet 架构的待办应用（monorepo）：**一个 Racket CS 领域核心 + 三平台第一方原生宿主**。宿主只渲染和交互，全部业务逻辑在核心，两端经 Rivet 的类型化 RPC（RVT1）通信。
 
-| 平台 | 技术栈 | 目录 | 验证状态 |
+| 组件 | 技术 | 目录 | 验证状态 |
 |---|---|---|---|
-| macOS 14+ | Swift 6 + SwiftUI（零第三方依赖，SQLite3 用系统库） | `apps/macos/` | ✅ 构建+测试+CLI 冒烟已验证 |
-| Windows 10+ | WinUI 3 (Windows App SDK) + .NET 10 | `apps/windows/` | 源码完成，需 Windows/CI 构建验证 |
-| Linux | Vala + GTK4/libadwaita（GNOME 第一方语言，编译为 C/GObject） | `apps/linux/` | ✅ 原生构建+契约测试已验证 |
+| 领域核心 + CLI | Racket CS 9.3 | `racket/taskly/`（+ `racket/tests/`） | ✅ 62 core 测试 + 61 例 golden CLI 全绿 |
+| macOS 宿主 14+ | Swift 6 + SwiftUI | `macos-host/` | ✅ CI 构建 |
+| Windows 宿主 10+ | WinUI 3 (C++/WinRT) | `windows/` | ✅ CI 构建 |
+| Linux 宿主 | GTK 4（C++/CMake） | `linux/` | ✅ CI 构建 + xvfb 冒烟 |
 
-每个二进制都是双模式：**无参数启动 GUI；带任何参数走 CLI**（GUI 框架完全不初始化，可无头运行）。
-
-旧版 Avalonia 实现（0.6.x）冻结在 `src/Taskly/` 作为行为参照，原生 1.0 GA 后删除。架构决策记录：`ARCHITECTURE.md`。
+宿主代码中的 `GeneratedBackend.swift` / `GeneratedBackend.hpp` / 客户端代码由 `raco rivet build` 从 `racket/taskly/backend.rkt`（RPC 契约）生成，**不要手改**。架构决策记录：`ARCHITECTURE.md`；迁移史：`docs/RIVET-MIGRATION.md`。
 
 ## 快速命令
 
 ```bash
-# macOS（Swift Package）
-cd apps/macos && swift build && swift test     # 24 个契约测试
-.build/debug/Taskly list --json
-.build/debug/Taskly add "买牛奶" --due tomorrow --json
-scripts/make-app.sh                             # 打包 Taskly.app
-scripts/golden-cli.sh                           # 61 条 golden CLI 套件（shared/cli-golden/，--record 重录）
+# 核心（任何平台）
+raco rivet build          # 生成客户端 + 编译核心 bundle + 构建当前平台宿主
+raco test racket/         # 62 个核心契约测试
+scripts/taskly-cli.sh list --json                          # dev CLI（系统 racket）
+python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 61 例 golden 套件（--record 重录）
 
-# Windows（WinUI 3，只能在 Windows 上构建）
-dotnet build apps/windows/Taskly/Taskly.csproj -c Release
+# 发布链
+bash scripts/check-release-version.sh [tag]   # VERSION == rivet.rktd == tag
+scripts/make-update-manifest.sh v<ver> <dist-dir>   # 签名更新清单（Ed25519，需 OpenSSL 3）
 
-# Linux（Vala → C → 原生二进制）
-cd apps/linux && meson setup build && meson compile -C build && meson test -C build
-
-# i18n 单源同步与校验
-scripts/sync-i18n.sh            # shared/i18n → 各平台资源目录
+# i18n / emoji 单源同步
+scripts/sync-i18n.sh            # shared/i18n → 各宿主资源目录
 scripts/sync-i18n.sh --check    # CI 模式：仅校验
 ```
+
+发布 = 改 `VERSION` + `rivet.rktd` + `CHANGELOG.md`（三处同值）→ 推 tag `v*`，release.yml 自动打包三平台 + SHA256SUMS + 签名 update manifest。
 
 ## 契约文档（改任何行为前必读，改动必须同步契约）
 
 | 文档 | 内容 |
 |---|---|
-| `shared/spec/DATA-FORMAT.md` | SQLite schema v4、列↔字段映射、日期存储格式（`yyyy-MM-dd`/`HH:mm`/ISO-8601 本地时区）、WAL、`~/.taskly/config.ini`、默认「工作」列表（color = -4104388） |
-| `shared/spec/CLI-SPEC.md` | 子命令、`--json` 字段名与顺序、退出码 0/1/2/3/4、`--due` 语法全集（`+Nm/+Nh/+Nd/+Nw/+NM`、`@now/@10am/@22:30 + tomorrow/tmw/星期`、裸词 today/tomorrow/tmw/tonight、绝对日期四格式）、纯日期意图清除时间规则 |
-| `shared/spec/PRODUCT-SPEC.md` | 视图/过滤/排序、任务行与详情对话框交互、提醒调度（60s 轮询+启动检查+去重+≤3逐条/>3汇总）、验证上限（1000/100/200/年份 1900–2100） |
-| `shared/spec/DESIGN-TOKENS.md` | 暖色板（Pampas #F4F3EE + Crail #C15F3C，明暗两套）、10 色 iOS 调色板、6×8 emoji 分类 |
-| `shared/i18n/{zh,en}.json` | 全部用户可见文案（约 98 键），平台副本必须逐字节一致 |
+| `shared/spec/DATA-FORMAT.md` | SQLite schema、列↔字段映射、日期存储格式、WAL、`~/.taskly/config.ini`、默认「工作」列表 |
+| `shared/spec/CLI-SPEC.md` | 子命令、`--json` 字段名与顺序、退出码 0/1/2/3/4、`--due` 语法全集、golden 套件对比规则 |
+| `shared/spec/PRODUCT-SPEC.md` | 视图/过滤/排序、任务行交互、提醒调度、验证上限 |
+| `shared/spec/DESIGN-TOKENS.md` | 色板、emoji/颜色选择器契约 |
+| `shared/spec/UPDATE.md` | 更新清单格式、Ed25519 签名、逐平台更新器状态 |
+| `shared/i18n/{zh,en}.json` | 全部用户可见文案，宿主副本必须逐字节一致 |
+| `shared/emoji.json` | 清单图标 emoji 单源（8 分类×12，Win10 字体安全） |
 
 ## 改动契约（不要破坏）
 
-- **DB schema**：`user_version = 4`。加列必须 bump 版本 + 三平台迁移链同步落地 + 更新 DATA-FORMAT.md，同一 release 发三平台
-- **CLI JSON 字段与退出码**：task 对象 `id, listId, listName, text, completed, dueDate, dueTime, notes, createdAt`（null 省略、2 空格缩进、非 ASCII `\uXXXX` 转义）；错误走 stderr `{"ok":false,"error":…,"exitCode":N}`
-- **默认数据**：新库种下名为 `工作`（硬编码中文）的列表，icon `📋`，color ARGB int（有符号）
+- **golden 套件是 CLI 的字节级契约**：改 CLI 行为 → 先改 `CLI-SPEC.md`，再 `--record` 重录，人工 review diff。新 case 必须录制，禁止静默跳过；禁止空 `args` 的 case（会启动 GUI）
+- **DB schema**：加列/迁移必须 bump `user_version` + 更新 DATA-FORMAT.md（核心只有 `racket/taskly/db.rkt` 一个实现）
+- **CLI JSON**：task 对象 `id, listId, listName, text, completed, dueDate, dueTime, notes, createdAt`（null 省略、2 空格缩进、非 ASCII `\uXXXX` 转义）；错误走 stderr `{"ok":false,"error":…,"exitCode":N}`
+- **RPC 契约**：改 `backend.rkt` 的 RPC/事件 → `raco rivet build` 重新生成三平台客户端后才能编译宿主
 - **通知永不崩溃**：权限拒绝/传输失败 → 本会话禁用通知（0.6.1 macOS 崩溃事故是永久回归测试）
 - **`~/.taskly/` 路径约定**：GUI/CLI/云盘同步都依赖它
 
@@ -62,26 +60,29 @@ scripts/sync-i18n.sh --check    # CI 模式：仅校验
 
 ```
 taskly/
-├── apps/
-│   ├── macos/          Swift 包：Sources/{Models,Data,Repositories,Services,Themes,Views,ViewModels,Cli} + Tests + scripts/make-app.sh
-│   ├── windows/        WinUI 3：Views/Dialogs/XAML + Cli/Data/Models/Services（C# 核心层移植自旧版）
-│   └── linux/          Vala/GTK4：src/*.vala + tests/ + meson.build + flatpak/
+├── racket/taskly/      Racket CS 领域核心：db · cli · service · date-parser · validation · backend（RPC 契约）
+├── racket/tests/       核心契约测试（raco test racket/）
+├── macos-host/         SwiftUI 宿主（Swift 包；含 UpdateService 应用内更新器）
+├── windows/            WinUI 3 宿主（XAML + C++/WinRT）
+├── linux/              GTK 4 宿主（CMake；宿主模板在 rivet 侧，此处放生成头）
 ├── shared/
-│   ├── spec/           四份契约文档（canonical）
-│   ├── i18n/           zh.json / en.json 单源
-│   └── assets/         图标源文件
-├── scripts/            sync-i18n.sh 等
-├── src/Taskly/         旧版 Avalonia（冻结）
-├── .github/workflows/  ci.yml（旧版构建）· native.yml（三平台原生 CI）
+│   ├── spec/           六份契约文档（canonical）
+│   ├── i18n/           zh/en 单源
+│   ├── emoji.json      清单图标单源
+│   └── cli-golden/     61 例 golden CLI 套件（cases.json + runner.py + golden/）
+├── scripts/            taskly-cli.sh · sync-i18n.sh · check-release-version.sh · make-update-manifest.sh · update-keys.sh · e2e/
+├── docs/               GitHub Pages 站点（taskly.jrtx.site）
+├── .github/workflows/  ci.yml（contract·core+golden·三平台宿主）· release.yml（三平台打包+签名清单）
+├── VERSION + rivet.rktd  版本双源（发版前必须同值）
 ├── ARCHITECTURE.md     架构决策记录
-├── COMMERCIAL-CHECKLIST.md   商业化工程清单（签名/许可证/收费钩子/发布）
-└── docs/               GitHub Pages 官网
+└── CHANGELOG.md        发布说明来源（release 说明自动提取对应版本段）
 ```
 
 ## 常见任务指引
 
-- **改共享行为**（视图过滤、CLI 语义、文案）：先改 `shared/spec/` 或 `shared/i18n/`，再逐平台落地，跑 `scripts/sync-i18n.sh`，最后各平台测试
-- **macOS 加功能**：`apps/macos/Sources/Taskly/`，MVVM 模式（AppState @Observable + SwiftUI 视图）；改完 `swift test` 必须绿
-- **加 CLI 子命令**：三平台各自实现（macos `Cli/CliEngine.swift`、windows `Cli/CliEngine.cs`、linux `src/cli.rs`），保持 JSON/退出码一致，并在 CLI-SPEC.md 补文档
-- **加 DB 列**：见 DATA-FORMAT.md §5 迁移规则，三平台迁移链逐字同步
-- **改配色/令牌**：先改 `shared/spec/DESIGN-TOKENS.md`，再改 macos `Themes/Palette.swift`、windows `App.xaml` 主题字典、linux `ui.vala` APP_CSS
+- **改共享行为**（视图过滤、CLI 语义、排程）：改 `racket/taskly/` + 同步 `shared/spec/`，跑 `raco test racket/` + golden；宿主侧只改展示层
+- **加 CLI 子命令**：单点实现于 `racket/taskly/cli.rkt`，补 `CLI-SPEC.md`，`--record` 重录 golden
+- **加 RPC**：`racket/taskly/backend.rkt` 定义 → `raco rivet build` 重新生成客户端 → 宿主调用生成代码
+- **macOS 宿主 UI**：`macos-host/Sources/RivetHost/`（AppModel @Observable + SwiftUI 视图），交互基准见 PRODUCT-SPEC §5b
+- **改文案**：改 `shared/i18n/`，跑 `scripts/sync-i18n.sh`；改清单图标：改 `shared/emoji.json` 同样同步
+- **发版**：见「快速命令」发布链；rivet pin（ci.yml `RIVET_PIN` == release.yml `RIVET_COMMIT`）只能有意 bump 并重新跑全套 CI

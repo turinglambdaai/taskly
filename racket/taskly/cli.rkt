@@ -549,6 +549,16 @@
                         (format "Cannot open database: ~a (~a)" resolved (exn-message e))))])
     (open-taskly-db resolved)))
 
+;; Golden contract (db-unopenable): v1 `list --json` had already emitted
+;; the empty array to stdout when the open failed, so the failure carries
+;; a leading `[]` on stdout ahead of the exit-4 error JSON on stderr.
+(define (open-cli-database-for-list flags)
+  (with-handlers ([exn:fail:taskly?
+                   (lambda (e)
+                     (when (flag flags 'json) (displayln "[]"))
+                     (raise e))])
+    (open-cli-database flags)))
+
 (define (dispatch a)
   (define sub (cli-args-subcommand a))
   (define flags (cli-args-flags a))
@@ -557,7 +567,7 @@
      (display help-text)
      0]
     [(member sub '("list" "ls"))
-     (cmd-list (open-cli-database flags) a)]
+     (cmd-list (open-cli-database-for-list flags) a)]
     [(equal? sub "lists")
      (cmd-lists (open-cli-database flags) a)]
     [(equal? sub "add")

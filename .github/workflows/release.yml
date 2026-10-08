@@ -13,7 +13,8 @@ concurrency:
 
 env:
   # Migration policy: exact Rivet pins in release builds (docs/RIVET-MIGRATION.md §6).
-  RIVET_COMMIT: f37908fcf0aad02665227beec39c354c76952886
+  # Kept identical to RIVET_PIN in ci.yml — CI verifies what releases ship.
+  RIVET_COMMIT: dbd032750f69c37ec577a18cb0265b68ab7551ea
 
 jobs:
   macos:
@@ -85,9 +86,98 @@ jobs:
           name: windows-package
           path: taskly-*
 
+  linux:
+    name: Linux package (x64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Racket CS
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          distribution: full
+          variant: CS
+          version: '9.3'
+      - name: Install pinned Rivet
+        run: |
+          set -euo pipefail
+          git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
+          git -C "$RUNNER_TEMP/rivet" checkout "$RIVET_COMMIT"
+          raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
+      - name: Install GTK toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build pkg-config \
+            libgtk-4-dev libadwaita-1-dev libjson-glib-dev \
+            libsecret-1-dev libglib2.0-dev xvfb
+      - name: Cache embeddable Racket CS
+        id: cache-racket-embed
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ runner.temp }}/racket-embed
+          key: racket-embed-9.3-${{ runner.os }}-${{ runner.arch }}-v1
+      - name: Build embeddable Racket CS
+        if: steps.cache-racket-embed.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/racket-minimal-9.3-src-builtpkgs.tgz"
+          source_root="$RUNNER_TEMP/racket-9.3"
+          build_root="$RUNNER_TEMP/racket-embed-build"
+          embed_prefix="$RUNNER_TEMP/racket-embed"
+          curl --fail --location --retry 3 --output "$archive" \
+            https://download.racket-lang.org/releases/9.3/installers/racket-minimal-9.3-src-builtpkgs.tgz
+          echo "3a01324d559a15e3f1f58b0c57a92bb344dce534e72e564e0d8b75e3b9c65295  $archive" | sha256sum --check
+          tar -xzf "$archive" -C "$RUNNER_TEMP"
+          mkdir -p "$build_root"
+          cd "$build_root"
+          "$source_root/src/configure" --prefix="$embed_prefix"
+          make -j2
+          make install
+      - name: Save embeddable Racket CS cache
+        if: steps.cache-racket-embed.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ runner.temp }}/racket-embed
+          key: racket-embed-9.3-${{ runner.os }}-${{ runner.arch }}-v1
+      - name: Expose embeddable runtime paths
+        run: |
+          set -euo pipefail
+          embed_prefix="$RUNNER_TEMP/racket-embed"
+          racket_include="$(racket -e '(require setup/dirs) (display (path->string (find-include-dir)))')"
+          petite="$(find "$embed_prefix" -maxdepth 6 -name petite.boot -print -quit)"
+          scheme="$(find "$embed_prefix" -maxdepth 6 -name scheme.boot -print -quit)"
+          racket_boot="$(find "$embed_prefix" -maxdepth 6 -name racket.boot -print -quit)"
+          test -n "$petite" && test -n "$scheme" && test -n "$racket_boot"
+          library="$(find "$embed_prefix" -maxdepth 6 -name 'libracketcs*.a' -print -quit)"
+          test -n "$library"
+          boot_dir="$(dirname "$petite")"
+          echo "RIVET_RACKET_INCLUDE=$racket_include" >> "$GITHUB_ENV"
+          echo "RIVET_RACKET_LIB_DIR=$(dirname "$library")" >> "$GITHUB_ENV"
+          echo "RIVET_RACKET_LIBRARY=$library" >> "$GITHUB_ENV"
+          echo "RIVET_RACKET_BOOT_DIR=$boot_dir" >> "$GITHUB_ENV"
+      - name: Version preflight (VERSION == rivet.rktd == tag)
+        run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
+      - name: Build host
+        run: raco rivet build
+      # Launch smoke included: the packaged app must survive launch under
+      # xvfb, same bar the CI linux-host job holds.
+      - name: Package (with launch smoke)
+        run: xvfb-run -a raco rivet package
+      - name: Tar + checksum
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          test -d dist/taskly-linux-x64
+          tar -czf "taskly-${VERSION}-linux-x64.tar.gz" -C dist taskly-linux-x64
+          sha256sum "taskly-${VERSION}-linux-x64.tar.gz" > "taskly-${VERSION}-linux-x64.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-package
+          path: taskly-*
+
   release:
     name: Publish
-    needs: [macos, windows]
+    needs: [macos, windows, linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,11 +187,22 @@ jobs:
       - name: Gather + publish (notes = CHANGELOG section for this version)
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_ED25519_PRIVATE_KEY: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p dist
-          mv artifacts/macos-package/* artifacts/windows-package/* dist/
+          mv artifacts/macos-package/* artifacts/windows-package/* artifacts/linux-package/* dist/
+          # Sign the update feed (shared/spec/UPDATE.md). Missing secret →
+          # warn and publish without a manifest; the app then reports
+          # "up to date" instead of failing the release.
+          if [[ -n "$UPDATE_ED25519_PRIVATE_KEY" ]]; then
+            KEY_FILE="$RUNNER_TEMP/update-signing-key.pem"
+            printf '%s\n' "$UPDATE_ED25519_PRIVATE_KEY" > "$KEY_FILE"
+            scripts/make-update-manifest.sh "$GITHUB_REF_NAME" dist "$KEY_FILE"
+          else
+            echo "::warning::UPDATE_ED25519_PRIVATE_KEY not set — release ships without an update manifest"
+          fi
           awk -v header="## [${VERSION}]" '
             index($0, header) == 1 {on=1; next}
             on && /^## / {exit}
@@ -112,4 +213,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "Taskly ${VERSION}" \
             --notes-file /tmp/notes.md \
-            *.zip *.sha256 SHA256SUMS
+            *.zip *.tar.gz *.sha256 SHA256SUMS update-manifest.json manifest.sig

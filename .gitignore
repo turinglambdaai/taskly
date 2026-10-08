@@ -68,3 +68,6 @@ packaging/macos/dmg/background*.png
 
 ## Rivet build artifacts
 .rivet/
+
+## Racket compile cache
+compiled/

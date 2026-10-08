@@ -1,113 +1,116 @@
 # Taskly
 
-> **⚠ Archived (v1 native line).** Active development has moved to
-> [`main`](https://github.com/turinglambdaai/taskly/tree/main),
-> where Taskly is being rebuilt on [Rivet](https://github.com/turinglambdaai/rivet).
-> `main` documents the archived native implementation and receives fixes only.
-> See [docs/RIVET-MIGRATION.md](docs/RIVET-MIGRATION.md) on that branch.
+A focused, keyboard-friendly task manager for macOS, Windows and Linux —
+one Racket core driving a first-party native host on every desktop, an
+agent-facing CLI, and a single local SQLite file.
 
-A focused, native task manager. One product, one SQLite file, one agent CLI —
-implemented natively per platform.
+[![release](https://img.shields.io/github/v/release/turinglambdaai/taskly)](https://github.com/turinglambdaai/taskly/releases/latest) ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-[![Native CI](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+**English** · [中文](README.zh-CN.md) · 🌐 [taskly.jrtx.site](https://taskly.jrtx.site/)
 
-**English** · [中文](README.zh-CN.md)
+Taskly is built on [Rivet](https://github.com/turinglambdaai/rivet): the
+entire domain — SQLite storage, scheduling, natural-language dates,
+validation, and the CLI — lives in one Racket CS core, and every desktop
+gets a thin first-party host over typed RPC. The hosts only render and
+interact; all logic lives in the backend.
 
-## Native, not cross-platform
+| Desktop | Host | 
+|---|---|
+| macOS 14+ (Apple Silicon) | SwiftUI |
+| Windows 10+ (x64) | WinUI 3 |
+| Linux (x64) | GTK 4 |
 
-Taskly v1 is a full native rewrite of the Avalonia-based 0.6.x app. Each
-desktop gets its platform's first-party UI stack — no embedded web views, no
-foreign toolkits, no upstream UI regressions (the Windows IME duplication and
-macOS notification crashes of 0.6.x were the last straw).
+## Features
 
-| Platform | Stack | Status | Build |
-|---|---|---|---|
-| macOS 14+ | Swift 6 + SwiftUI | ✅ build + 31 tests + golden CLI suite verified | [apps/macos](apps/macos) |
-| Windows 10+ | WinUI 3 (Windows App SDK) + .NET 10 | source complete, CI build | [apps/windows](apps/windows) |
-| Linux | Vala + GTK4 / libadwaita (compiles to C/GObject) | ✅ native build + contract tests verified | [apps/linux](apps/linux) |
-| iOS / iPadOS (next) | reuses the macOS SwiftUI codebase | planned | — |
-| Android (next) | Kotlin + Jetpack Compose | planned | — |
-
-Architecture rationale: [ARCHITECTURE.md](ARCHITECTURE.md). The frozen
-Avalonia 0.6.x implementation lives in `src/Taskly` as a behavioral reference
-until the native 1.0 GA.
-
-## What ships in every app
-
-- **Reminders-style UI** — smart views (Today / Planned / All / Completed),
-  custom lists with emoji icons and colors, quick add with natural-language
-  dates (`@10am`, `+1d`, `tomorrow`), due-task OS notifications, bilingual
-  zh/en (live switch), macOS Reminders neutral palette, light/dark.
-- **In-app updates on every platform** — silent check at launch plus a
-  manual check in Settings; updates are signature-verified before install
-  and never touch your data (Windows via Velopack with delta packages,
-  macOS/Linux via a signed release manifest). Contract:
-  [UPDATE](shared/spec/UPDATE.md).
+- **Reminders-style UI** — smart views (今天 / 计划 / 全部 / 已完成),
+  custom lists with emoji icons and 12-color palette, light/dark that
+  follows the system, bilingual zh/en with live switch.
+- **Quick add with natural-language dates** — type 明天买菜 or
+  `standup @9am +1d` and see the parsed schedule in a live preview chip
+  before you hit Enter.
+- **Reminders-parity interactions** — hover a row for one-click
+  今天/明天 schedule chips; ⌘/⇧ multi-select with batch actions and a
+  single undo banner; ↑/↓ navigation, Return expands the row in place
+  (title, date/time chips, notes), Esc collapses; completed tasks fold
+  under a collapsible header.
+- **Due-task notifications** — a 60 s poll plus a startup check, deduped,
+  capped at three separate banners (more → one summary).
 - **One data file** — your tasks live in a single SQLite file
-  (`~/.taskly/tasks.db`, WAL) you can drop into iCloud/OneDrive/Dropbox for
-  sync. The format is documented and stable: [DATA-FORMAT](shared/spec/DATA-FORMAT.md).
-- **Agent CLI in the same binary** — `taskly list|add|update|done|rm|search|…`
-  with `--json`, stable exit codes, and headless operation. Spec:
-  [CLI-SPEC](shared/spec/CLI-SPEC.md). Install via the app menu (Tools ▸
-  Install Command Line Tool) or `taskly install-cli`.
+  (`~/.taskly/tasks.db`, WAL) you can drop into iCloud/OneDrive/Dropbox
+  for sync. The format is documented and stable:
+  [DATA-FORMAT](shared/spec/DATA-FORMAT.md).
+- **Agent-facing CLI** — `taskly list|add|update|done|rm|search|mklist…`
+  with stable `--json` output, fixed exit codes, and byte-level
+  cross-platform parity pinned by a 61-case golden suite. Spec:
+  [CLI-SPEC](shared/spec/CLI-SPEC.md).
+- **Online updates (macOS)** — silent check at launch plus a manual
+  check in Settings; the release pipeline signs an
+  [update manifest](shared/spec/UPDATE.md) (Ed25519) that the app
+  verifies before installing.
+
+## Honest gaps
+
+- **Windows / Linux in-app updaters aren't built yet** — the signed
+  update feed ships for all three platforms, but today only the macOS
+  host installs updates in-app; on Windows/Linux, grab the new release
+  from the [Releases](https://github.com/turinglambdaai/taskly/releases/latest) page.
+- **The release packages don't include a standalone CLI binary yet** —
+  the CLI runs from source today (see below); a packaged CLI distribution
+  is on the roadmap.
 
 ## Install
 
-Download from [Releases](https://github.com/turinglambdaai/taskly/releases/latest):
+Grab the archive for your platform from
+[Releases](https://github.com/turinglambdaai/taskly/releases/latest):
+`taskly-<version>-macos-arm64.zip`, `taskly-<version>-windows-x64.zip`,
+or `taskly-<version>-linux-x64.tar.gz`. Every release carries a
+`SHA256SUMS` manifest and a signed `update-manifest.json`.
 
-| Platform | Download | Updates |
-|---|---|---|
-| macOS 14+ (universal) | `Taskly-<version>-macos.dmg` | in-app (signed manifest) |
-| Windows 10+ x64 | the Velopack `*-Setup.exe` installer (recommended) or the portable `Taskly-<version>-windows-x64.zip` | installed builds update in-app (with delta packages); portable builds are manual |
-| Linux x64 | `Taskly-<version>-linux-x64.tar.gz` | in-app (signed manifest) when the install prefix is writable, otherwise a releases-page prompt |
+macOS builds are ad-hoc signed; if Gatekeeper complains on first launch,
+run `xattr -cr /Applications/Taskly.app`.
 
-Every release carries a `SHA256SUMS` manifest and Sigstore build provenance
-(`gh attestation verify <file> -R turinglambdaai/taskly`).
+Linux needs a GTK 4 desktop (unpack the tarball and run `RivetHost`;
+GTK 4 and its system libraries are the only runtime dependencies —
+everything else is bundled).
 
-macOS builds are unsigned; on first launch macOS may block the app. Use the
-bundled `安装 Taskly.command` guided step (or `xattr -cr /Applications/Taskly.app`)
-to clear the Gatekeeper quarantine.
-
-## For developers
-
-```
-taskly/
-├── apps/macos|windows|linux/   native apps (each with its own build system)
-├── shared/spec/                the contract: product · data · CLI · design tokens
-├── shared/i18n/                zh/en single source (CI verifies platform copies)
-├── scripts/                    sync-i18n and CI helpers
-├── src/Taskly/                 legacy Avalonia app (frozen reference)
-└── .github/workflows/          ci.yml (legacy) · native.yml (three platforms)
-```
-
-The three apps share **no code**. They share the contract (`shared/spec/`),
-and CI enforces it: identical CLI JSON/exit codes (pinned by the 61-case
-golden suite in `shared/cli-golden/`), byte-identical i18n, one
-DB schema (user_version 4) with lockstep migrations.
-
-### Build
+## CLI from source
 
 ```bash
-# macOS
-cd apps/macos && swift build && swift test
-scripts/make-app.sh            # Taskly.app
-
-# Windows
-dotnet build apps/windows/Taskly/Taskly.csproj -c Release
-
-# Linux
-cd apps/linux && meson setup build && meson compile -C build && meson test -C build
+git clone https://github.com/turinglambdaai/taskly.git
+cd taskly
+raco pkg install --auto --no-docs https://github.com/turinglambdaai/rivet.git
+racket racket/taskly/cli.rkt add "买牛奶" --due tomorrow --json
+racket racket/taskly/cli.rkt install-cli   # shim at ~/.local/bin/taskly
 ```
 
-## Requirements
+## Building from source
 
-- macOS: 14 Sonoma or later (Apple Silicon + Intel)
-- Windows: 10 19041+ / 11
-- Linux: any GTK4/libadwaita desktop (GNOME 44+ recommended)
+Racket CS 9.3+ plus the native toolchain of your desktop (Xcode/Swift on
+macOS, CMake + GTK 4 headers on Linux, Windows App SDK on Windows):
+
+```bash
+raco rivet build        # generate clients, compile the core, build the host
+raco test racket/       # 62 core contract tests
+python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 61-case golden suite
+```
+
+## Architecture
+
+```
+┌─────────────────────────────┐            ┌────────────────────────────┐
+│ First-party host            │            │ Racket CS core             │
+│  SwiftUI · WinUI 3 · GTK 4  │◀── typed ──▶│  db · scheduling ·         │
+│  render + interaction only  │  RPC (RVT1)│  validation · reminders    │
+│  embedded Racket CS runtime │            │  agent CLI (same domain)   │
+└─────────────────────────────┘            └────────────────────────────┘
+```
+
+One spec keeps every surface consistent: product behavior
+([PRODUCT-SPEC](shared/spec/PRODUCT-SPEC.md)), data format, CLI contract,
+design tokens, and the update contract — all under
+[shared/spec/](shared/spec/). CI enforces the CLI contract with the
+golden suite and byte-identical i18n on every push.
 
 ## License
 
-AGPL-3.0 for the desktop core — the desktop app is open source and free to
-use, fork, and study. Future commercial surfaces (the iOS/iPadOS client and
-cloud sync) ship as separate projects under their own terms; see
-[COMMERCIAL-CHECKLIST](COMMERCIAL-CHECKLIST.md).
+[AGPL-3.0](LICENSE).

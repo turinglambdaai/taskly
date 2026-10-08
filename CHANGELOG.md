@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-10-08
+
+### Added
+- **Linux is now a release platform.** The release pipeline builds and
+  packages the GTK4 host on Ubuntu (`taskly-<version>-linux-x64.tar.gz`,
+  sha256-summed), completing the three-desktop matrix alongside the
+  macOS arm64 and Windows x64 zips. Launch smoke runs under xvfb before
+  anything is uploaded.
+- **Every release now ships a signed update feed.** The release pipeline
+  generates `update-manifest.json` (all three platform artifacts) and
+  signs it with the release Ed25519 key (`manifest.sig`); the macOS host
+  verifies it before installing an update
+  (`scripts/make-update-manifest.sh` regenerated for the Rivet asset
+  names). The [UPDATE](shared/spec/UPDATE.md) contract documents the
+  per-host updater status honestly.
+- **The 61-case golden CLI suite now runs in CI**, byte-pinning
+  stdout/stderr/exit codes of `scripts/taskly-cli.sh` on every push.
+
+### Fixed
+- `list --json` with an unopenable database now emits the leading `[]`
+  on stdout before the exit-4 error JSON on stderr, restoring the v1
+  byte contract (golden case `db-unopenable`).
+
+### Changed
+- Repository docs describe the Rivet line, not the archived v1 native
+  line: README (en/zh), AGENTS.md, and the site release section were
+  rewritten — the "archived" banner, dead `apps/` links, and the
+  Vala/WinUI-3-rewrite platform table are gone; the release workflow and
+  CI now pin the same Rivet commit.
+
 ## [1.0.0] - 2026-10-08
 
 ### Added
