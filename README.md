@@ -13,6 +13,16 @@ implemented natively per platform.
 
 **English** · [中文](README.zh-CN.md)
 
+## Native, not cross-platform
+
+Taskly v1 is a full native rewrite of the Avalonia-based 0.6.x app. Each
+desktop gets its platform's first-party UI stack — no embedded web views, no
+foreign toolkits, no upstream UI regressions (the Windows IME duplication and
+macOS notification crashes of 0.6.x were the last straw).
+
+| Platform | Stack | Status | Build |
+|---|---|---|---|
+| macOS 14+ | Swift 6 + SwiftUI | ✅ build + 31 tests + golden CLI suite verified | [apps/macos](apps/macos) |
 | Windows 10+ | WinUI 3 (Windows App SDK) + .NET 10 | source complete, CI build | [apps/windows](apps/windows) |
 | Linux | Vala + GTK4 / libadwaita (compiles to C/GObject) | ✅ native build + contract tests verified | [apps/linux](apps/linux) |
 | iOS / iPadOS (next) | reuses the macOS SwiftUI codebase | planned | — |
