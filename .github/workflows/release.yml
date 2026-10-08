@@ -103,7 +103,7 @@ jobs:
           mkdir -p dist
           mv artifacts/macos-package/* artifacts/windows-package/* dist/
           awk -v header="## [${VERSION}]" '
-            $0 ~ "^" header {on=1; next}
+            index($0, header) == 1 {on=1; next}
             on && /^## / {exit}
             on {print}
           ' CHANGELOG.md > /tmp/notes.md
