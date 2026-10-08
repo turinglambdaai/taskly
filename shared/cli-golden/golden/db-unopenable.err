@@ -1,5 +1,0 @@
-{
-  "ok": false,
-  "error": "Cannot open database: /nonexistent-dir-for-golden/x.db",
-  "exitCode": 4
-}

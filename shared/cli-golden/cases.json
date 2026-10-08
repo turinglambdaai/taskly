@@ -596,7 +596,7 @@
         "list",
         "--json",
         "--db",
-        "/nonexistent-dir-for-golden/x.db"
+        "seed.sql/nope.db"
       ]
     }
   ]
