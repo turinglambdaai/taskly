@@ -9,20 +9,9 @@
 一个专注、原生的任务管理器。同一产品、同一 SQLite 数据文件、同一 agent CLI —— 每个平台都用原生技术实现。
 
 [![Native CI](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/native.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+
 **English** · [中文](README.zh-CN.md)
 
-
-## 原生，而非跨平台
-
-Taskly v1 是对基于 Avalonia 的 0.6.x 版本的完全原生重写。每个桌面平台都使用该平台的第一方 UI 技术栈 —— 不嵌入 WebView、不使用外来工具包、不再有上游 UI 回归（0.6.x 的 Windows 输入法重复字符和 macOS 通知崩溃是压垮骆驼的最后一根稻草）。
-
-| 平台 | 技术栈 | 状态 | 目录 |
-|---|---|---|---|
-| macOS 14+ | Swift 6 + SwiftUI | ✅ 已验证：构建 + 31 个测试 + golden CLI 套件 | [apps/macos](apps/macos) |
-| Windows 10+ | WinUI 3 (Windows App SDK) + .NET 10 | 源码完成，CI 构建 | [apps/windows](apps/windows) |
-| Linux | Vala + GTK4 / libadwaita（编译为 C/GObject） | ✅ 原生构建 + 契约测试已验证 | [apps/linux](apps/linux) |
-| iOS / iPadOS（下一步） | 复用 macOS SwiftUI 代码库 | 计划中 | — |
-| Android（下一步） | Kotlin + Jetpack Compose | 计划中 | — |
 
 架构决策详见 [ARCHITECTURE.md](ARCHITECTURE.md)。冻结的 Avalonia 0.6.x 实现保留在 `src/Taskly` 作为行为参照，原生 1.0 GA 后删除。
 
