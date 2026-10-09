@@ -71,3 +71,6 @@ packaging/macos/dmg/background*.png
 
 ## Racket compile cache
 compiled/
+
+## C++/WinRT generated projection (msbuild cppwinrt)
+windows/Generated Files/

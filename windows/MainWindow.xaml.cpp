@@ -483,6 +483,19 @@ std::string MainWindow::ViewStringFor(ViewKind kind) {
 MainWindow::MainWindow() {
   InitializeComponent();
   Title(L"Taskly");
+  // PRODUCT-SPEC §2: default 1024×768 logical, scaled by the monitor DPI.
+  auto const window_native = try_as<::IWindowNative>();
+  HWND hwnd = nullptr;
+  winrt::check_hresult(window_native->get_WindowHandle(&hwnd));
+  auto const dpi = ::GetDpiForWindow(hwnd);
+  AppWindow().Resize(
+      {1024 * static_cast<std::int32_t>(dpi) / 96,
+       768 * static_cast<std::int32_t>(dpi) / 96});
+  // PRODUCT-SPEC §2: minimum 760×520 logical.
+  auto const presenter =
+      AppWindow().Presenter().as<winrt::Microsoft::UI::Windowing::OverlappedPresenter>();
+  presenter.PreferredMinimumWidth(760 * static_cast<std::int32_t>(dpi) / 96);
+  presenter.PreferredMinimumHeight(520 * static_cast<std::int32_t>(dpi) / 96);
   try {
     load_i18n(executable_path().parent_path());
   } catch (...) {
@@ -615,8 +628,17 @@ void MainWindow::ApplyLanguage() {
   MenuAbout().Text(t("menuAbout"));
   SearchBox().PlaceholderText(t("searchHint"));
   MyListsHeader().Text(t("sectionMyLists"));
-  NewListButton().Content(winrt::box_value(L"＋ " + t("dialogCreateList")));
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+      NewListButton(), t("dialogCreateList"));
   NewTaskBox().PlaceholderText(t("taskListInputHint"));
+  mxc::ToolTipService::SetToolTip(
+      SidebarToggle(),
+      winrt::box_value(t(sidebar_visible_ ? "sidebarHide" : "sidebarShow")));
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+      SidebarToggle(),
+      t(sidebar_visible_ ? "sidebarHide" : "sidebarShow"));
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+      QuickAddButton(), t("taskListInputHint"));
   ShowCompletedCheck().Content(winrt::box_value(t("showCompletedToggle")));
   RenderSidebar();
   RenderTasks();
@@ -637,6 +659,66 @@ mx::Media::Brush MainWindow::ThemeBrush(wchar_t const* key) {
       .as<mx::Media::Brush>();
 }
 
+// Smart-view chips: refresh glyph/title/count and the checked fill. Per
+// DESIGN-TOKENS the saturated view color only ever sits on the glyph; the
+// chip itself is neutral surface (+1px divider from XAML) with a quiet
+// selection fill while its view is current. Zero counts stay hidden.
+void MainWindow::RefreshSmartTiles() {
+  struct Chip {
+    ViewKind kind;
+    mxc::Button tile;
+    mxc::FontIcon glyph;
+    mxc::TextBlock label;
+    mxc::TextBlock count;
+    wchar_t const* glyph_code;
+    wchar_t const* color_key;
+    char const* title_key;
+    std::int64_t value;
+  };
+  Chip const chips[] = {
+      {ViewKind::Today, TileToday(), TileTodayGlyph(), TileTodayLabel(),
+       TileTodayCount(), L"\uE787", L"TasklyTileTodayBrush", "navToday",
+       current_counts_.today},
+      {ViewKind::Planned, TilePlanned(), TilePlannedGlyph(), TilePlannedLabel(),
+       TilePlannedCount(), L"\uE8BF", L"TasklyTilePlannedBrush", "navPlanned",
+       current_counts_.planned},
+      {ViewKind::All, TileAll(), TileAllGlyph(), TileAllLabel(), TileAllCount(),
+       L"\uE7EB", L"TasklyTileAllBrush", "navAll", current_counts_.all},
+      {ViewKind::Completed, TileCompleted(), TileCompletedGlyph(),
+       TileCompletedLabel(), TileCompletedCount(), L"\uE930",
+       L"TasklyTileCompletedBrush", "navCompleted", current_counts_.completed},
+  };
+  for (auto const& chip : chips) {
+    chip.tile.Tag(winrt::box_value(static_cast<std::int32_t>(chip.kind)));
+    chip.glyph.Glyph(chip.glyph_code);
+    chip.glyph.Foreground(ThemeBrush(chip.color_key));
+    chip.label.Text(t(chip.title_key));
+    chip.tile.Background(ThemeBrush(view_ == chip.kind
+                                        ? L"TasklySelectionBrush"
+                                        : L"TasklySurfaceBrush"));
+    if (chip.value > 0) {
+      chip.count.Text(std::to_wstring(chip.value));
+      chip.count.Visibility(mx::Visibility::Visible);
+    } else {
+      chip.count.Visibility(mx::Visibility::Collapsed);
+    }
+  }
+}
+
+mx::Media::Brush MainWindow::ListBrush(rivet_app::TodoList const& list) {
+  // Signed 32-bit ARGB (DATA-FORMAT); accent fallback = Today blue.
+  std::uint32_t const argb =
+      static_cast<std::uint32_t>(list.color.value_or(0xFF007AFF));
+  winrt::Windows::UI::Color color{};
+  color.A = static_cast<std::uint8_t>((argb >> 24) & 0xFF);
+  color.R = static_cast<std::uint8_t>((argb >> 16) & 0xFF);
+  color.G = static_cast<std::uint8_t>((argb >> 8) & 0xFF);
+  color.B = static_cast<std::uint8_t>(argb & 0xFF);
+  mx::Media::SolidColorBrush brush{};
+  brush.Color(color);
+  return brush;
+}
+
 void MainWindow::RenderSidebar() {
   suppress_selection_ = true;
   struct Restore {
@@ -644,75 +726,55 @@ void MainWindow::RenderSidebar() {
     ~Restore() { window->suppress_selection_ = false; }
   } restore{this};
 
-  struct SmartEntry {
-    ViewKind kind;
-    wchar_t const* glyph;
-    std::wstring title;
-    std::int64_t count;
-  };
-  SmartEntry const entries[] = {
-      {ViewKind::Today, L"\uE8BF", t("navToday"), current_counts_.today},
-      {ViewKind::Planned, L"\uE787", t("navPlanned"), current_counts_.planned},
-      {ViewKind::All, L"\uE8A9", t("navAll"), current_counts_.all},
-      {ViewKind::Completed, L"\uE73E", t("navCompleted"),
-       current_counts_.completed},
-  };
-
-  SmartList().Items().Clear();
-  for (auto const& entry : entries) {
-    auto row = mxc::Grid{};
-    row.ColumnDefinitions().Append(mxc::ColumnDefinition{});
-    row.ColumnDefinitions().Append(mxc::ColumnDefinition{});
-    row.ColumnDefinitions().GetAt(0).Width(
-        mx::GridLength{1, mx::GridUnitType::Star});
-    row.ColumnDefinitions().GetAt(1).Width(mx::GridLength{0, mx::GridUnitType::Auto});
-
-    auto label = mxc::StackPanel{};
-    label.Orientation(mxc::Orientation::Horizontal);
-    label.Spacing(10);
-    auto glyph = mxc::FontIcon{};
-    glyph.Glyph(winrt::hstring(entry.glyph));
-    glyph.FontSize(16);
-    label.Children().Append(glyph);
-    auto text = mxc::TextBlock{};
-    text.Text(entry.title);
-    label.Children().Append(text);
-    mxc::Grid::SetColumn(label, 0);
-    row.Children().Append(label);
-
-    auto badge = mxc::TextBlock{};
-    badge.Text(std::to_wstring(entry.count));
-    badge.Foreground(ThemeBrush(L"TasklySecondaryTextBrush"));
-    mxc::Grid::SetColumn(badge, 1);
-    row.Children().Append(badge);
-
-    row.Tag(winrt::box_value(static_cast<std::int32_t>(entry.kind)));
-    SmartList().Items().Append(row);
-    if (view_ != ViewKind::List && view_ == entry.kind) {
-      SmartList().SelectedIndex(SmartList().Items().Size() - 1);
-    }
-  }
+  // 2×2 smart-view chips (PRODUCT-SPEC §3, DESIGN-TOKENS smart-list chip).
+  RefreshSmartTiles();
 
   UserList().Items().Clear();
   for (auto const& list : lists_) {
     auto row = mxc::Grid{};
     row.ColumnDefinitions().Append(mxc::ColumnDefinition{});
     row.ColumnDefinitions().Append(mxc::ColumnDefinition{});
+    row.ColumnDefinitions().Append(mxc::ColumnDefinition{});
     row.ColumnDefinitions().GetAt(0).Width(
+        mx::GridLength{0, mx::GridUnitType::Auto});
+    row.ColumnDefinitions().GetAt(1).Width(
         mx::GridLength{1, mx::GridUnitType::Star});
-    row.ColumnDefinitions().GetAt(1).Width(mx::GridLength{0, mx::GridUnitType::Auto});
+    row.ColumnDefinitions().GetAt(2).Width(
+        mx::GridLength{0, mx::GridUnitType::Auto});
+
+    // 20px round swatch in the list color (accent fallback) with the emoji
+    // inside (PRODUCT-SPEC §3 list row).
+    auto swatch = mxc::Grid{};
+    swatch.Margin(mx::ThicknessHelper::FromLengths(0, 0, 8, 0));
+    auto dot = mx::Shapes::Ellipse{};
+    dot.Width(20);
+    dot.Height(20);
+    dot.Fill(ListBrush(list));
+    swatch.Children().Append(dot);
+    auto emoji = mxc::TextBlock{};
+    emoji.Text(wide(list.icon.value_or("\xF0\x9F\x8F\x8B")));
+    emoji.FontSize(11);
+    emoji.HorizontalAlignment(mx::HorizontalAlignment::Center);
+    emoji.VerticalAlignment(mx::VerticalAlignment::Center);
+    swatch.Children().Append(emoji);
+    mxc::Grid::SetColumn(swatch, 0);
+    row.Children().Append(swatch);
 
     auto text = mxc::TextBlock{};
     text.Text(wide(list.name));
     text.TextTrimming(mx::TextTrimming::CharacterEllipsis);
-    mxc::Grid::SetColumn(text, 0);
+    text.VerticalAlignment(mx::VerticalAlignment::Center);
+    mxc::Grid::SetColumn(text, 1);
     row.Children().Append(text);
 
-    auto badge = mxc::TextBlock{};
-    badge.Text(std::to_wstring(list.pending_count));
-    badge.Foreground(ThemeBrush(L"TasklySecondaryTextBrush"));
-    mxc::Grid::SetColumn(badge, 1);
-    row.Children().Append(badge);
+    if (list.pending_count > 0) {
+      auto badge = mxc::TextBlock{};
+      badge.Text(std::to_wstring(list.pending_count));
+      badge.Foreground(ThemeBrush(L"TasklySecondaryTextBrush"));
+      badge.VerticalAlignment(mx::VerticalAlignment::Center);
+      mxc::Grid::SetColumn(badge, 2);
+      row.Children().Append(badge);
+    }
 
     auto menu = mxc::MenuFlyout{};
     auto rename = mxc::MenuFlyoutItem{};
@@ -737,11 +799,27 @@ void MainWindow::RenderSidebar() {
 
 void MainWindow::RenderTasks() {
   PaneTitle().Text(view_title());
-  PaneCount().Text(tf("subtitleOpenTasks", std::to_wstring(tasks_.size())));
+  PaneSubtitle().Text(view_subtitle());
 
   TaskList().Items().Clear();
   for (auto const& task : tasks_) {
     TaskList().Items().Append(MakeTaskRow(task));
+  }
+
+  // While a search is live its pane replaces the normal one; otherwise the
+  // normal pane is the only pane, with the connected-empty state when the
+  // view has no rows (PRODUCT-SPEC §5: ✓ + taskListEmpty).
+  auto const searching = !current_search_.empty();
+  NormalPane().Visibility(searching ? mx::Visibility::Collapsed
+                                    : mx::Visibility::Visible);
+  SearchPane().Visibility(searching ? mx::Visibility::Visible
+                                    : mx::Visibility::Collapsed);
+  auto const empty = !searching && tasks_.empty();
+  EmptyState().Visibility(empty ? mx::Visibility::Visible
+                                : mx::Visibility::Collapsed);
+  if (empty) {
+    EmptyStateIcon().Text(L"\u2713");
+    EmptyStateText().Text(t("taskListEmpty"));
   }
 }
 
@@ -779,17 +857,53 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
 
   auto text = mxc::TextBlock{};
   text.Text(wide(task.text));
+  text.FontSize(14);
   text.TextTrimming(mx::TextTrimming::CharacterEllipsis);
   if (task.completed) {
     text.Foreground(ThemeBrush(L"TasklyMutedTextBrush"));
+    text.TextDecorations(
+        winrt::Windows::UI::Text::TextDecorations::Strikethrough);
   }
   content.Children().Append(text);
 
+  // Meta line (PRODUCT-SPEC §5, DESIGN-TOKENS task row): owning list name
+  // with its color dot in the smart views, then the due chip; the notes
+  // preview sits beneath.
+  auto meta = mxc::StackPanel{};
+  meta.Orientation(mxc::Orientation::Horizontal);
+  meta.Spacing(8);
+  if (view_ != ViewKind::List && task.list_name.has_value() &&
+      !task.list_name->empty()) {
+    auto list_label = mxc::StackPanel{};
+    list_label.Orientation(mxc::Orientation::Horizontal);
+    list_label.Spacing(4);
+    list_label.VerticalAlignment(mx::VerticalAlignment::Center);
+    auto dot = mx::Shapes::Ellipse{};
+    dot.Width(7);
+    dot.Height(7);
+    auto const* list = find_by_id(lists_, task.list_id);
+    dot.Fill(list ? ListBrush(*list) : ThemeBrush(L"TasklyAccentBrush"));
+    list_label.Children().Append(dot);
+    auto list_text = mxc::TextBlock{};
+    list_text.Text(wide(*task.list_name));
+    list_text.FontSize(12);
+    list_text.Foreground(ThemeBrush(L"TasklySecondaryTextBrush"));
+    list_text.VerticalAlignment(mx::VerticalAlignment::Center);
+    list_label.Children().Append(list_text);
+    meta.Children().Append(list_label);
+  }
+
   // Due chip: colored for today/tomorrow, red when overdue, muted otherwise.
+  // The time rides the same chip when set (PRODUCT-SPEC §5 meta line).
   if (task.due_date.has_value()) {
+    std::wstring chip{DueLabel(*task.due_date)};
+    if (task.due_time.has_value() && !task.due_time->empty()) {
+      chip += L" \u00B7 " + wide(*task.due_time);
+    }
     auto chip_text = mxc::TextBlock{};
-    chip_text.Text(DueLabel(*task.due_date));
+    chip_text.Text(chip);
     chip_text.FontSize(12);
+    chip_text.VerticalAlignment(mx::VerticalAlignment::Center);
     auto const today = date_string(0);
     auto const compare = date_compare(*task.due_date, today);
     wchar_t const* brush_key = L"TasklySecondaryTextBrush";
@@ -801,7 +915,20 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
       brush_key = L"TasklyDueTomorrowBrush";
     }
     chip_text.Foreground(ThemeBrush(brush_key));
-    content.Children().Append(chip_text);
+    meta.Children().Append(chip_text);
+  }
+  if (meta.Children().Size() > 0) {
+    content.Children().Append(meta);
+  }
+
+  // Notes preview: single line, ellipsized, muted (PRODUCT-SPEC §5).
+  if (task.notes.has_value() && !task.notes->empty()) {
+    auto notes_line = mxc::TextBlock{};
+    notes_line.Text(wide(*task.notes));
+    notes_line.FontSize(12);
+    notes_line.TextTrimming(mx::TextTrimming::CharacterEllipsis);
+    notes_line.Foreground(ThemeBrush(L"TasklyMutedTextBrush"));
+    content.Children().Append(notes_line);
   }
 
   auto menu = mxc::MenuFlyout{};
@@ -871,6 +998,59 @@ std::wstring MainWindow::view_title() const {
     default:
       return t("navAll");
   }
+}
+
+winrt::hstring MainWindow::view_subtitle() const {
+  // DESIGN-TOKENS view header: hidden while searching; today shows the full
+  // locale date, the other views show open/completed counts.
+  if (!current_search_.empty()) {
+    return winrt::hstring{};
+  }
+  switch (view_) {
+    case ViewKind::Today:
+      return winrt::hstring(full_date_today());
+    case ViewKind::Planned:
+      return winrt::hstring(
+          tf("subtitleOpenTasks", std::to_wstring(current_counts_.planned)));
+    case ViewKind::Completed:
+      return winrt::hstring(
+          tf("subtitleCompleted", std::to_wstring(current_counts_.completed)));
+    case ViewKind::List: {
+      auto const* list = find_by_id(lists_, view_list_id_);
+      return winrt::hstring(tf(
+          "subtitleOpenTasks",
+          std::to_wstring(list ? list->pending_count : 0)));
+    }
+    case ViewKind::All:
+    default:
+      return winrt::hstring(
+          tf("subtitleOpenTasks", std::to_wstring(current_counts_.all)));
+  }
+}
+
+std::wstring MainWindow::full_date_today() const {
+  // Date shapes come from the platform locale, not copy (PRODUCT-SPEC §11).
+  std::time_t const now = std::time(nullptr);
+  std::tm local{};
+  localtime_s(&local, &now);
+  static wchar_t const* const en_months[]{
+      L"January", L"February", L"March",     L"April",   L"May",      L"June",
+      L"July",    L"August",   L"September", L"October", L"November", L"December"};
+  static wchar_t const* const en_days[]{L"Sunday",    L"Monday",   L"Tuesday",
+                                        L"Wednesday", L"Thursday", L"Friday",
+                                        L"Saturday"};
+  static wchar_t const* const zh_days[]{L"星期日", L"星期一", L"星期二",
+                                        L"星期三", L"星期四", L"星期五",
+                                        L"星期六"};
+  if (g_i18n_active == 0) {
+    std::wstring text = std::to_wstring(local.tm_year + 1900);
+    text += L"年" + std::to_wstring(local.tm_mon + 1) + L"月" +
+            std::to_wstring(local.tm_mday) + L"日 " + zh_days[local.tm_wday];
+    return text;
+  }
+  return std::wstring(en_days[local.tm_wday]) + L", " +
+         en_months[local.tm_mon] + L" " + std::to_wstring(local.tm_mday) +
+         L", " + std::to_wstring(local.tm_year + 1900);
 }
 
 // ---------------------------------------------------------------------------
@@ -1522,25 +1702,25 @@ void MainWindow::OnSearchTextChanged(
     return;
   }
   current_search_ = keyword;
+  NormalPane().Visibility(mx::Visibility::Collapsed);
+  SearchPane().Visibility(mx::Visibility::Visible);
   RunSearchAsync(keyword);
 }
 
-void MainWindow::OnSmartListSelectionChanged(
-    winrt::Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&) {
-  if (suppress_selection_ || SmartList().SelectedIndex() < 0) {
+void MainWindow::OnSmartTileClick(
+    winrt::Windows::Foundation::IInspectable const& sender,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) {
+  auto const tag = sender.as<mxc::Button>().Tag();
+  auto const kind =
+      static_cast<ViewKind>(winrt::unbox_value<std::int32_t>(tag));
+  if (view_ == kind) {
     return;
   }
-  auto const tag =
-      SmartList()
-          .Items()
-          .GetAt(static_cast<std::uint32_t>(SmartList().SelectedIndex()))
-          .as<mxc::Grid>()
-          .Tag();
-  view_ = static_cast<ViewKind>(winrt::unbox_value<std::int32_t>(tag));
+  view_ = kind;
   suppress_selection_ = true;
   UserList().SelectedIndex(-1);
   suppress_selection_ = false;
+  RefreshSmartTiles();
   RenderTasks();
   ReloadTasksAsync();
 }
@@ -1564,8 +1744,8 @@ void MainWindow::OnUserListSelectionChanged(
     SaveSettingAsync("last-selected-list-id", std::to_string(view_list_id_));
   }
   suppress_selection_ = true;
-  SmartList().SelectedIndex(-1);
   suppress_selection_ = false;
+  RefreshSmartTiles();
   RenderTasks();
   ReloadTasksAsync();
 }
@@ -1627,10 +1807,128 @@ void MainWindow::OnNewTaskKeyDown(
     winrt::Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args) {
   if (args.Key() == Windows::System::VirtualKey::Enter) {
-    auto const text = std::wstring(NewTaskBox().Text());
-    NewTaskBox().Text(L"");
-    AddTaskAsync(text);
+    CommitQuickAdd();
   }
+}
+
+void MainWindow::CommitQuickAdd() {
+  auto const text = std::wstring(NewTaskBox().Text());
+  NewTaskBox().Text(L"");
+  AddTaskAsync(text);
+}
+
+void MainWindow::OnQuickAddCommit(
+    winrt::Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) {
+  CommitQuickAdd();
+}
+
+void MainWindow::OnNewTaskTextChanged(
+    winrt::Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&) {
+  if (NewTaskBox().Text().empty()) {
+    QuickAddPreview().Visibility(mx::Visibility::Collapsed);
+    if (preview_timer_) {
+      preview_timer_.Stop();
+    }
+    return;
+  }
+  RefreshQuickAddPreview();
+}
+
+void MainWindow::RefreshQuickAddPreview() {
+  // Debounce the parse RPC: one run per 250 ms pause in typing.
+  if (!preview_timer_) {
+    preview_timer_ = DispatcherQueue().CreateTimer();
+    preview_timer_.Interval(std::chrono::milliseconds{250});
+    preview_timer_.IsRepeating(false);
+    preview_timer_.Tick([weak = get_weak()](auto&&, auto&&) {
+      if (auto window = weak.get()) {
+        auto const text = std::wstring(window->NewTaskBox().Text());
+        if (!text.empty()) {
+          window->RunQuickAddPreview(text);
+        }
+      }
+    });
+  }
+  preview_timer_.Stop();
+  preview_timer_.Start();
+}
+
+void MainWindow::OnNewTaskFocusChanged(
+    winrt::Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) {
+  QuickAddCard().BorderBrush(ThemeBrush(
+      NewTaskBox().FocusState() != mx::FocusState::Unfocused
+          ? L"TasklyAccentBrush"
+          : L"TasklyDividerBrush"));
+}
+
+winrt::fire_and_forget MainWindow::RunQuickAddPreview(std::wstring const& text) {
+  if (backend_ == nullptr || !backend_->running()) {
+    co_return;
+  }
+  auto const dispatcher = DispatcherQueue();
+  auto const weak = get_weak();
+  auto backend = backend_;
+  try {
+    rivet_app::API api(*backend);
+    (void)api.parse_quick_add_async(
+        winrt::to_string(text),
+        [dispatcher, weak, text](
+            rivet_app::Result<rivet_app::QuickAddParse> result) {
+          dispatcher.TryEnqueue([weak, text, result] {
+            if (auto window = weak.get()) {
+              // Drop stale completions: only the newest text renders.
+              if (window->NewTaskBox().Text() != winrt::hstring(text)) {
+                return;
+              }
+              std::wstring label;
+              try {
+                auto const parse = result.get();
+                if (parse.due_date) {
+                  label = window->DueLabel(*parse.due_date);
+                  if (parse.due_time && !parse.due_time->empty()) {
+                    label += L" \u00B7 " + wide(*parse.due_time);
+                  }
+                }
+              } catch (...) {
+                label.clear();
+              }
+              if (label.empty()) {
+                window->QuickAddPreview().Visibility(mx::Visibility::Collapsed);
+              } else {
+                window->QuickAddPreviewText().Text(label);
+                window->QuickAddPreview().Visibility(mx::Visibility::Visible);
+              }
+            }
+          });
+        });
+  } catch (std::exception const&) {
+    // Preview is best-effort; commit still parses authoritatively.
+  }
+}
+
+void MainWindow::OnSidebarToggle(
+    winrt::Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) {
+  sidebar_visible_ = !sidebar_visible_;
+  auto const collapsed = !sidebar_visible_;
+  auto const columns = BodyGrid().ColumnDefinitions();
+  // DESIGN-TOKENS: collapsing releases the column MinWidth too.
+  columns.GetAt(0).Width(
+      mx::GridLength{collapsed ? 0.0 : 280.0, mx::GridUnitType::Pixel});
+  columns.GetAt(0).MinWidth(collapsed ? 0.0 : 200.0);
+  SidebarPane().Visibility(collapsed ? mx::Visibility::Collapsed
+                                     : mx::Visibility::Visible);
+  SidebarDivider().Visibility(collapsed ? mx::Visibility::Collapsed
+                                        : mx::Visibility::Visible);
+  SidebarToggleGlyph().Glyph(collapsed ? L"\uE76C" : L"\uE76B");
+  mxc::ToolTipService::SetToolTip(
+      SidebarToggle(),
+      winrt::box_value(t(collapsed ? "sidebarShow" : "sidebarHide")));
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+      SidebarToggle(), t(collapsed ? "sidebarShow" : "sidebarHide"));
 }
 
 void MainWindow::OnTaskCheckChanged(

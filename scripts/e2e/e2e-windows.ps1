@@ -3,13 +3,20 @@
 # NOTE: must be saved with a UTF-8 BOM (PowerShell 5 misreads BOM-less UTF-8).
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$exe = Get-ChildItem "$repo\apps\windows\Taskly\bin" -Recurse -Filter Taskly.exe |
-    Select-Object -First 1 -ExpandProperty FullName
-if (-not $exe) { Write-Output "Taskly.exe not found - build first"; exit 2 }
+$exe = Join-Path $repo ".rivet\stage\RivetHost.exe"
+if (-not (Test-Path $exe)) {
+    Write-Output "RivetHost.exe not found - run 'raco rivet build' first"; exit 2
+}
+# The host exe is GUI-only; CLI cross-checks go through the Racket CLI shim.
+$cli = Join-Path $repo "scripts\taskly-cli.cmd"
 
 $testDb = Join-Path $env:TEMP "taskly-e2e.db"
 $configPath = Join-Path $env:USERPROFILE ".taskly\config.ini"
 $configBackup = "$configPath.e2e-bak"
+if (-not (Test-Path $configPath)) {
+    New-Item -ItemType Directory -Force (Split-Path $configPath) | Out-Null
+    "# Taskly configuration" | Out-File $configPath -Encoding ascii
+}
 Copy-Item $configPath $configBackup -Force
 Remove-Item $testDb -ErrorAction SilentlyContinue
 
@@ -34,6 +41,15 @@ Start-Sleep -Seconds 6
 $Win = Get-TasklyWindow
 Test-Check "app window appears" ($null -ne $Win)
 if (-not $Win) { Test-Summary }
+
+# A fresh config makes the silent launch update check hit the live feed; the
+# update-offer ContentDialog (if it appeared) must go before other dialogs.
+$cancel = Find-Element $Win 'Cancel' 'Button' 3
+if ($cancel) {
+    Invoke-Element $cancel
+    Start-Sleep -Seconds 1
+    Test-Check "update offer dismissed" $true
+}
 
 # --- 1. Fresh database: seeded default list, empty state
 Test-Check "seeded default list visible" ($null -ne (Find-Element $Win $seedListName 'Text' 15))
@@ -64,44 +80,53 @@ Set-EditValue $quickAdd2 "Call dentist $timeArg"
 Start-Sleep -Seconds 1
 Test-Check "time-only task meta rendered" ($null -ne (Find-Element $Win $expectedMeta 'Text' 6)) $expectedMeta
 
-# --- 4. Toggle completed (row's first button = checkbox)
-$meta = Find-Element $Win 'Call dentist' 'Text' 3
-$walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
-$node = $meta; $rowItem = $null
-while ($node -ne $null) {
-    $node = $walker.GetParent($node)
-    if ($node -eq $null) { break }
-    if ($node.Current.ControlType.ProgrammaticName -eq 'ControlType.ListItem') { $rowItem = $node; break }
+# --- 4. Toggle completed (the row's checkbox; WinUI exposes it as CheckBox)
+function Find-Ancestor {
+    param($Element, [string]$ControlType)
+    $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
+    $node = $Element
+    while ($node -ne $null) {
+        $node = $walker.GetParent($node)
+        if ($node -eq $null) { break }
+        if ($node.Current.ControlType.ProgrammaticName -eq "ControlType.$ControlType") { return $node }
+    }
+    return $null
 }
+function Find-RowItem {
+    param($Win, [string]$Name)
+    $label = Find-Element $Win $Name 'Text' 3
+    if (-not $label) { return $null }
+    return Find-Ancestor $label 'ListItem'
+}
+function Select-Tile {
+    # Smart-view tiles are chip Buttons; invoking one switches the view.
+    param($Win, [string]$Name)
+    $label = Find-Element $Win $Name 'Text' 3
+    if (-not $label) { return }
+    $btn = Find-Ancestor $label 'Button'
+    if ($btn) { Invoke-Element $btn }
+}
+$walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
+$rowItem = Find-RowItem $Win 'Call dentist'
 Test-Check "task row is a ListItem" ($null -ne $rowItem)
 if ($rowItem) {
-    $btnCond = New-Object System.Windows.Automation.PropertyCondition(
+    $checkCond = New-Object System.Windows.Automation.PropertyCondition(
         [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
-        [System.Windows.Automation.ControlType]::Button)
-    $rowButtons = $rowItem.FindAll([System.Windows.Automation.TreeScope]::Descendants, $btnCond)
-    Test-Check "row exposes buttons" ($rowButtons.Count -ge 2) ("count=" + $rowButtons.Count)
-    if ($rowButtons.Count -ge 2) {
-        Invoke-Element $rowButtons[0]
+        [System.Windows.Automation.ControlType]::CheckBox)
+    $rowChecks = $rowItem.FindAll([System.Windows.Automation.TreeScope]::Descendants, $checkCond)
+    Test-Check "row exposes a checkbox" ($rowChecks.Count -ge 1) ("count=" + $rowChecks.Count)
+    if ($rowChecks.Count -ge 1) {
+        Invoke-Element $rowChecks[0]
         Start-Sleep -Seconds 1
         Test-Check "completed task leaves the default view" (
             $null -eq (Find-Element $Win 'Call dentist' 'Text' 2))
         # A completed row leaves the view by design; restore via the CLI
         # (also cross-checks the shared DB). @() guards single-element wrap.
-        $found = @(& $exe --db $testDb search "dentist" --json 2>&1 | ConvertFrom-Json)
-        & $exe --db $testDb undone $found[0].id | Out-Null
-        function Invoke-TileByName([string]$Name) {
-            $t = Find-Element $Win $Name 'Text' 3
-            $n = $t
-            while ($n -ne $null) {
-                $n = $walker.GetParent($n)
-                if ($n -eq $null) { break }
-                if ($n.Current.ControlType.ProgrammaticName -eq 'ControlType.Button') { break }
-            }
-            if ($n) { Invoke-Element $n }
-        }
-        Invoke-TileByName 'Planned'
+        $found = @(& $cli --db $testDb search "dentist" --json 2>&1 | ConvertFrom-Json)
+        & $cli --db $testDb undone $found[0].id | Out-Null
+        Select-Tile $Win 'Planned'
         Start-Sleep -Milliseconds 600
-        Invoke-TileByName 'All'
+        Select-Tile $Win 'All'
         Start-Sleep -Seconds 1
         Test-Check "toggle back restores the task (via CLI undone)" (
             $null -ne (Find-Element $Win 'Call dentist' 'Text' 3))
@@ -119,45 +144,24 @@ $search.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Set
 Start-Sleep -Seconds 1
 Test-Check "clearing search restores rows" ($null -ne (Find-Element $Win 'Buy milk' 'Text' 3))
 
-# --- 6. View tiles (UIA invoke; tiles are chrome-free template buttons)
-$btnCondAll = New-Object System.Windows.Automation.PropertyCondition(
-    [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
-    [System.Windows.Automation.ControlType]::Button)
+# --- 6. View tiles (UIA invoke; tiles are 2×2 chip Buttons per DESIGN-TOKENS)
 foreach ($tileName in @('Today', 'Planned', 'All', 'Completed')) {
     $t = Find-Element $Win $tileName 'Text' 3
     Test-Check "tile exists: $tileName" ($null -ne $t)
     if ($t) {
-        $node = $t; $tileBtn = $null
-        while ($node -ne $null) {
-            $node = $walker.GetParent($node)
-            if ($node -eq $null) { break }
-            if ($node.Current.ControlType.ProgrammaticName -eq 'ControlType.Button') { $tileBtn = $node; break }
-        }
-        Test-Check "tile is a real button: $tileName" ($null -ne $tileBtn)
-        if ($tileBtn) {
-            Invoke-Element $tileBtn
+        $btn = Find-Ancestor $t 'Button'
+        Test-Check "tile is a chip button: $tileName" ($null -ne $btn)
+        if ($btn) {
+            Invoke-Element $btn
             Start-Sleep -Milliseconds 900
         }
     }
 }
 
 # --- 7. All view: verify counts + open-completed toggle
-$allTile = Find-Element $Win 'All' 'Text' 3
-Click-Center $allTile
+Select-Tile $Win 'All'
 Start-Sleep -Milliseconds 800
-# Show Completed toggle sits in the header row (right end). The tour left
-# us on Completed; switch to All first so an open task is visible.
-$allTile = Find-Element $Win 'All' 'Text' 3
-if ($allTile) {
-    $n0 = $allTile
-    while ($n0 -ne $null) {
-        $n0 = $walker.GetParent($n0)
-        if ($n0 -eq $null) { break }
-        if ($n0.Current.ControlType.ProgrammaticName -eq 'ControlType.Button') { break }
-    }
-    if ($n0) { Invoke-Element $n0; Start-Sleep -Milliseconds 700 }
-}
-$toggle = Find-Element $Win 'Show Completed' 'Button' 3
+$toggle = Find-Element $Win 'Show Completed' 'CheckBox' 3
 Test-Check "show-completed toggle present" ($null -ne $toggle)
 if ($toggle) {
     Invoke-Element $toggle
@@ -170,40 +174,30 @@ if ($toggle) {
 }
 
 # --- 8. CLI cross-check on the same DB
-$cliTasks = & $exe --db $testDb list --json 2>&1 | ConvertFrom-Json
+$cliTasks = & $cli --db $testDb list --json 2>&1 | ConvertFrom-Json
 $cliTexts = ($cliTasks | ForEach-Object { $_.text }) -join "|"
 Test-Check "CLI sees the GUI tasks" ($cliTexts -match "Buy milk") ("saw: " + $cliTexts)
 
 # --- 9. CLI add -> GUI reflects after a view refresh
-& $exe --db $testDb add "CLI inserted task" | Out-Null
-function Invoke-Tile([string]$Name) {
-    $t = Find-Element $Win $Name 'Text' 3
-    $n = $t
-    while ($n -ne $null) {
-        $n = $walker.GetParent($n)
-        if ($n -eq $null) { break }
-        if ($n.Current.ControlType.ProgrammaticName -eq 'ControlType.Button') { break }
-    }
-    if ($n) { Invoke-Element $n }
-}
-Invoke-Tile 'Planned'
+& $cli --db $testDb add "CLI inserted task" | Out-Null
+Select-Tile $Win 'Planned'
 Start-Sleep -Milliseconds 800
-Invoke-Tile 'All'
+Select-Tile $Win 'All'
 Start-Sleep -Seconds 1
 Test-Check "GUI reflects CLI-inserted task after refresh" (
     $null -ne (Find-Element $Win 'CLI inserted task' 'Text' 3))
 
-# --- 10. List management: create a list via the + button
-$plus = Find-Element $Win ([string][char]0x271A) 'Button' 3   # heavy plus sign
+# --- 10. List management: create a list via the ✚ button in the My Lists header
+$plus = Find-Element $Win 'Create List' 'Button' 3
 Test-Check "add-list button present" ($null -ne $plus)
 if ($plus) {
     Invoke-Element $plus
     Start-Sleep -Seconds 1
-    $nameField = Find-Element $Win 'List name' 'Edit' 3
+    $nameField = Find-Element $Win 'Please enter list name' 'Edit' 3
     Test-Check "list dialog opened" ($null -ne $nameField)
     if ($nameField) {
         $nameField.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue("Errands")
-        # Confirm via the dialog's Save button
+        # Confirm via the dialog's primary button
         $saveBtn = Find-Element $Win 'OK' 'Button' 3
         if ($saveBtn) { Invoke-Element $saveBtn }
         Start-Sleep -Seconds 1
@@ -227,7 +221,7 @@ Test-Check "tiles re-render in Chinese" ($null -ne (Find-Element $Win $todayZh '
 Test-Check "app survived the whole flow" ($null -ne (Get-TasklyWindow))
 
 # Cleanup: restore user config, kill app, remove test DB
-Get-Process Taskly -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process RivetHost, Taskly -ErrorAction SilentlyContinue | Stop-Process -Force
 Copy-Item $configBackup $configPath -Force
 Remove-Item $configBackup -Force
 Start-Sleep -Seconds 2

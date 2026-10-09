@@ -49,14 +49,24 @@ struct MainWindow : MainWindowT<MainWindow> {
       Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   // Sidebar handlers
+  void OnSidebarToggle(winrt::Windows::Foundation::IInspectable const&,
+                       Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSearchTextChanged(winrt::Windows::Foundation::IInspectable const&,
                            Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
-  void OnSmartListSelectionChanged(winrt::Windows::Foundation::IInspectable const&,
-                                   Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
+  void OnSmartTileClick(winrt::Windows::Foundation::IInspectable const&,
+                        Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnUserListSelectionChanged(winrt::Windows::Foundation::IInspectable const&,
                                   Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
   void OnNewList(winrt::Windows::Foundation::IInspectable const&,
                  Microsoft::UI::Xaml::RoutedEventArgs const&);
+
+  // Quick add
+  void OnQuickAddCommit(winrt::Windows::Foundation::IInspectable const&,
+                        Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnNewTaskTextChanged(winrt::Windows::Foundation::IInspectable const&,
+                            Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
+  void OnNewTaskFocusChanged(winrt::Windows::Foundation::IInspectable const&,
+                             Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   // Task pane handlers
   void OnShowCompletedChanged(winrt::Windows::Foundation::IInspectable const&,
@@ -73,14 +83,21 @@ private:
 
   void ApplyLanguage();
   void ApplyTheme(std::string const& theme);
+  void RefreshSmartTiles();
   void RenderSidebar();
   void RenderTasks();
   void RenderSearchResults();
   winrt::Microsoft::UI::Xaml::Media::Brush ThemeBrush(wchar_t const* key);
+  winrt::Microsoft::UI::Xaml::Media::Brush ListBrush(
+      rivet_app::TodoList const& list);
   winrt::Microsoft::UI::Xaml::Controls::Grid MakeTaskRow(
       rivet_app::Task const& task);
   winrt::hstring DueLabel(std::string const& due_date) const;
   std::wstring view_title() const;
+  winrt::hstring view_subtitle() const;
+  std::wstring full_date_today() const;
+  void CommitQuickAdd();
+  void RefreshQuickAddPreview();
   void SetStatus(std::wstring const& message);
   void SetError(std::string const& message);
   winrt::fire_and_forget PromptAsync(
@@ -101,6 +118,7 @@ private:
   winrt::fire_and_forget DeleteListAsync(std::int64_t id);
   winrt::fire_and_forget SaveSettingAsync(std::string const& key, std::string const& value);
   winrt::fire_and_forget RunSearchAsync(std::wstring const& keyword);
+  winrt::fire_and_forget RunQuickAddPreview(std::wstring const& text);
 
   // Row context-menu handlers
   void OnRenameList(winrt::Windows::Foundation::IInspectable const&,
@@ -153,9 +171,12 @@ private:
   std::int64_t view_list_id_{0};
   bool show_completed_{false};
   bool suppress_selection_{false};
+  bool sidebar_visible_{true};
+  std::uint64_t preview_seq_{0};
   std::atomic<bool> reload_in_flight_{false};
   winrt::Microsoft::UI::Xaml::DispatcherTimer poll_timer_{nullptr};
   winrt::Microsoft::UI::Xaml::DispatcherTimer update_timer_{nullptr};
+  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer preview_timer_{nullptr};
   bool update_downloading_{false};
 };
 

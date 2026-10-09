@@ -10,10 +10,13 @@
                 <ResourceDictionary.ThemeDictionaries>
                     <ResourceDictionary x:Key="Light">
                         <SolidColorBrush x:Key="TasklySidebarBrush" Color="#F3F2F1" />
+                        <SolidColorBrush x:Key="TasklySurfaceBrush" Color="#FFFFFF" />
                         <SolidColorBrush x:Key="TasklyDividerBrush" Color="#E1DFDD" />
                         <SolidColorBrush x:Key="TasklySelectedBrush" Color="#E8E4E0" />
+                        <SolidColorBrush x:Key="TasklySelectionBrush" Color="#14000000" />
                         <SolidColorBrush x:Key="TasklyHoverBrush" Color="#EBE9E7" />
                         <SolidColorBrush x:Key="TasklyAccentBrush" Color="#C94F30" />
+                        <SolidColorBrush x:Key="TasklyAccentSoftBrush" Color="#14C94F30" />
                         <SolidColorBrush x:Key="TasklyDueTodayBrush" Color="#C4501B" />
                         <SolidColorBrush x:Key="TasklyDueTomorrowBrush" Color="#B0681E" />
                         <SolidColorBrush x:Key="TasklyOverdueBrush" Color="#D13438" />
@@ -22,10 +25,13 @@
                     </ResourceDictionary>
                     <ResourceDictionary x:Key="Dark">
                         <SolidColorBrush x:Key="TasklySidebarBrush" Color="#272424" />
+                        <SolidColorBrush x:Key="TasklySurfaceBrush" Color="#323234" />
                         <SolidColorBrush x:Key="TasklyDividerBrush" Color="#3B3939" />
                         <SolidColorBrush x:Key="TasklySelectedBrush" Color="#3A3736" />
+                        <SolidColorBrush x:Key="TasklySelectionBrush" Color="#1FFFFFFF" />
                         <SolidColorBrush x:Key="TasklyHoverBrush" Color="#332F2F" />
                         <SolidColorBrush x:Key="TasklyAccentBrush" Color="#E8704F" />
+                        <SolidColorBrush x:Key="TasklyAccentSoftBrush" Color="#14E8704F" />
                         <SolidColorBrush x:Key="TasklyDueTodayBrush" Color="#F2913D" />
                         <SolidColorBrush x:Key="TasklyDueTomorrowBrush" Color="#D8A24E" />
                         <SolidColorBrush x:Key="TasklyOverdueBrush" Color="#FF6B6E" />
@@ -33,6 +39,12 @@
                         <SolidColorBrush x:Key="TasklyMutedTextBrush" Color="#7A7775" />
                     </ResourceDictionary>
                 </ResourceDictionary.ThemeDictionaries>
+                <!-- Smart-tile view colors (DESIGN-TOKENS, theme-independent);
+                     looked up from code via RootGrid resources. -->
+                <SolidColorBrush x:Key="TasklyTileTodayBrush" Color="#007AFF" />
+                <SolidColorBrush x:Key="TasklyTilePlannedBrush" Color="#FF3B30" />
+                <SolidColorBrush x:Key="TasklyTileAllBrush" Color="#8E8E93" />
+                <SolidColorBrush x:Key="TasklyTileCompletedBrush" Color="#8E8E93" />
             </ResourceDictionary>
         </Grid.Resources>
         <Grid.RowDefinitions>
@@ -68,15 +80,15 @@
         </MenuBar>
 
         <!-- Body: sidebar | task pane -->
-        <Grid Grid.Row="1">
+        <Grid x:Name="BodyGrid" Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="280" MinWidth="220" MaxWidth="420" />
+                <ColumnDefinition Width="280" MinWidth="200" MaxWidth="420" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
             <!-- Sidebar: lists (search lives in the pane header) -->
-            <Grid Grid.Column="0" Background="{ThemeResource TasklySidebarBrush}">
+            <Grid x:Name="SidebarPane" Grid.Column="0" Background="{ThemeResource TasklySidebarBrush}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
@@ -84,15 +96,132 @@
 
                 <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <ListView
-                            x:Name="SmartList"
-                            SelectionMode="Single"
-                            SelectionChanged="OnSmartListSelectionChanged" />
-                        <TextBlock
-                            x:Name="MyListsHeader"
-                            Margin="16,12,16,4"
-                            FontSize="12"
-                            Foreground="{ThemeResource TasklyMutedTextBrush}" />
+                        <!-- 2×2 smart-view tiles (DESIGN-TOKENS smart-list chip:
+                             34px neutral chip, radius 8, 8px gaps, colored glyph
+                             + 13px label + quiet 12px count right). -->
+                        <Grid x:Name="SmartTileGrid" Margin="12,4,12,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.Resources>
+                                <Style TargetType="Button">
+                                    <Setter Property="Height" Value="34" />
+                                    <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="8,0" />
+                                    <Setter Property="CornerRadius" Value="8" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                </Style>
+                            </Grid.Resources>
+                            <Button x:Name="TileToday" Margin="0,0,8,8" Click="OnSmartTileClick">
+                                <Grid ColumnSpacing="5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon x:Name="TileTodayGlyph" FontSize="14" />
+                                    <TextBlock
+                                        x:Name="TileTodayLabel"
+                                        Grid.Column="1"
+                                        FontSize="13"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <TextBlock
+                                        x:Name="TileTodayCount"
+                                        Grid.Column="2"
+                                        FontSize="12"
+                                        Foreground="{ThemeResource TasklySecondaryTextBrush}" />
+                                </Grid>
+                            </Button>
+                            <Button x:Name="TilePlanned" Grid.Column="1" Margin="0,0,0,8" Click="OnSmartTileClick">
+                                <Grid ColumnSpacing="5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon x:Name="TilePlannedGlyph" FontSize="14" />
+                                    <TextBlock
+                                        x:Name="TilePlannedLabel"
+                                        Grid.Column="1"
+                                        FontSize="13"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <TextBlock
+                                        x:Name="TilePlannedCount"
+                                        Grid.Column="2"
+                                        FontSize="12"
+                                        Foreground="{ThemeResource TasklySecondaryTextBrush}" />
+                                </Grid>
+                            </Button>
+                            <Button x:Name="TileAll" Grid.Row="1" Margin="0,0,8,0" Click="OnSmartTileClick">
+                                <Grid ColumnSpacing="5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon x:Name="TileAllGlyph" FontSize="14" />
+                                    <TextBlock
+                                        x:Name="TileAllLabel"
+                                        Grid.Column="1"
+                                        FontSize="13"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <TextBlock
+                                        x:Name="TileAllCount"
+                                        Grid.Column="2"
+                                        FontSize="12"
+                                        Foreground="{ThemeResource TasklySecondaryTextBrush}" />
+                                </Grid>
+                            </Button>
+                            <Button x:Name="TileCompleted" Grid.Row="1" Grid.Column="1" Click="OnSmartTileClick">
+                                <Grid ColumnSpacing="5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon x:Name="TileCompletedGlyph" FontSize="14" />
+                                    <TextBlock
+                                        x:Name="TileCompletedLabel"
+                                        Grid.Column="1"
+                                        FontSize="13"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <TextBlock
+                                        x:Name="TileCompletedCount"
+                                        Grid.Column="2"
+                                        FontSize="12"
+                                        Foreground="{ThemeResource TasklySecondaryTextBrush}" />
+                                </Grid>
+                            </Button>
+                        </Grid>
+
+                        <!-- My Lists section header with the ✚ create button
+                             (PRODUCT-SPEC §3). -->
+                        <Grid Margin="16,14,12,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                x:Name="MyListsHeader"
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="{ThemeResource TasklySecondaryTextBrush}" />
+                            <Button
+                                x:Name="NewListButton"
+                                Grid.Column="1"
+                                Padding="6,2"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Click="OnNewList">
+                                <FontIcon Glyph="&#xE710;" FontSize="12" />
+                            </Button>
+                        </Grid>
                         <ListView
                             x:Name="UserList"
                             SelectionMode="Single"
@@ -107,18 +236,10 @@
                     </StackPanel>
                 </ScrollViewer>
 
-                <Button
-                    x:Name="NewListButton"
-                    Grid.Row="1"
-                    Margin="12,4,12,12"
-                    HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Left"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Click="OnNewList" />
             </Grid>
 
             <Border
+                x:Name="SidebarDivider"
                 Grid.Column="1"
                 Width="1"
                 HorizontalAlignment="Center"
@@ -131,46 +252,122 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0" Margin="24,16,24,8">
+                <Grid Grid.Row="0" Margin="8,10,16,10">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
-                        <TextBlock
-                            x:Name="PaneTitle"
-                            FontSize="26"
-                            FontWeight="SemiBold" />
-                        <TextBlock
-                            x:Name="PaneCount"
-                            VerticalAlignment="Bottom"
-                            Margin="0,0,0,5"
+                    <!-- Sidebar collapse toggle (PRODUCT-SPEC §2) -->
+                    <Button
+                        x:Name="SidebarToggle"
+                        Padding="6"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="OnSidebarToggle">
+                        <FontIcon
+                            x:Name="SidebarToggleGlyph"
                             FontSize="14"
                             Foreground="{ThemeResource TasklySecondaryTextBrush}" />
-                    </StackPanel>
-                    <TextBox
-                        x:Name="SearchBox"
+                    </Button>
+                    <!-- Large title + secondary subtitle line (DESIGN-TOKENS
+                         view header): subtitle sits beneath the title. -->
+                    <StackPanel
                         Grid.Column="1"
-                        Width="200"
-                        Height="32"
-                        Margin="0,0,12,0"
-                        VerticalAlignment="Bottom"
-                        TextChanged="OnSearchTextChanged" />
-                    <CheckBox
-                        x:Name="ShowCompletedCheck"
-                        Grid.Column="2"
-                        VerticalAlignment="Bottom"
-                        Checked="OnShowCompletedChanged"
-                        Unchecked="OnShowCompletedChanged" />
+                        VerticalAlignment="Center"
+                        Spacing="2"
+                        Margin="10,0,12,0">
+                        <TextBlock
+                            x:Name="PaneTitle"
+                            FontSize="22"
+                            FontWeight="SemiBold"
+                            TextTrimming="CharacterEllipsis" />
+                        <TextBlock
+                            x:Name="PaneSubtitle"
+                            FontSize="13"
+                            Foreground="{ThemeResource TasklySecondaryTextBrush}"
+                            TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <TextBox
+                            x:Name="SearchBox"
+                            Width="200"
+                            Height="28"
+                            CornerRadius="10"
+                            VerticalContentAlignment="Center"
+                            TextChanged="OnSearchTextChanged" />
+                        <CheckBox
+                            x:Name="ShowCompletedCheck"
+                            VerticalAlignment="Center"
+                            Checked="OnShowCompletedChanged"
+                            Unchecked="OnShowCompletedChanged" />
+                    </StackPanel>
                 </Grid>
 
                 <Grid Grid.Row="1">
                     <!-- Normal view -->
-                    <StackPanel>
-                        <TextBox
-                            x:Name="NewTaskBox"
-                            Margin="24,4,24,8"
-                            KeyDown="OnNewTaskKeyDown" />
+                    <StackPanel x:Name="NormalPane">
+                        <!-- Quick-add card: accent plus button + live parse
+                             preview capsule (macOS TaskPaneView inputArea). -->
+                        <Border
+                            x:Name="QuickAddCard"
+                            Margin="24,4,24,10"
+                            CornerRadius="12"
+                            Background="{ThemeResource TasklySurfaceBrush}"
+                            BorderBrush="{ThemeResource TasklyDividerBrush}"
+                            BorderThickness="1">
+                            <Grid Margin="10,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Button
+                                    x:Name="QuickAddButton"
+                                    Width="22"
+                                    Height="22"
+                                    VerticalAlignment="Center"
+                                    Padding="0"
+                                    CornerRadius="11"
+                                    Background="{ThemeResource TasklyAccentBrush}"
+                                    BorderThickness="0"
+                                    Click="OnQuickAddCommit">
+                                    <FontIcon Glyph="&#xE710;" FontSize="11" Foreground="White" />
+                                </Button>
+                                <TextBox
+                                    x:Name="NewTaskBox"
+                                    Grid.Column="1"
+                                    Margin="10,0,0,0"
+                                    MinHeight="40"
+                                    FontSize="14"
+                                    VerticalAlignment="Center"
+                                    BorderThickness="0"
+                                    Background="Transparent"
+                                    KeyDown="OnNewTaskKeyDown"
+                                    TextChanged="OnNewTaskTextChanged"
+                                    GotFocus="OnNewTaskFocusChanged"
+                                    LostFocus="OnNewTaskFocusChanged" />
+                                <Border
+                                    x:Name="QuickAddPreview"
+                                    Grid.Column="2"
+                                    Padding="8,3"
+                                    VerticalAlignment="Center"
+                                    CornerRadius="999"
+                                    Background="{ThemeResource TasklyAccentSoftBrush}"
+                                    Visibility="Collapsed">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <FontIcon
+                                            Glyph="&#xE787;"
+                                            FontSize="10"
+                                            Foreground="{ThemeResource TasklyAccentBrush}" />
+                                        <TextBlock
+                                            x:Name="QuickAddPreviewText"
+                                            FontSize="12"
+                                            Foreground="{ThemeResource TasklyAccentBrush}" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <ListView
                                 x:Name="TaskList"
@@ -204,6 +401,24 @@
                             </ListView.ItemContainerStyle>
                         </ListView>
                     </ScrollViewer>
+
+                    <!-- Connected-empty state (PRODUCT-SPEC §5: ✓ + taskListEmpty) -->
+                    <StackPanel
+                        x:Name="EmptyState"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="6"
+                        Visibility="Collapsed">
+                        <TextBlock
+                            x:Name="EmptyStateIcon"
+                            HorizontalAlignment="Center"
+                            FontSize="28"
+                            Foreground="{ThemeResource TasklyMutedTextBrush}" />
+                        <TextBlock
+                            x:Name="EmptyStateText"
+                            HorizontalAlignment="Center"
+                            Foreground="{ThemeResource TasklySecondaryTextBrush}" />
+                    </StackPanel>
                 </Grid>
             </Grid>
         </Grid>
