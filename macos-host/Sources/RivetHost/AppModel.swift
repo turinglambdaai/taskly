@@ -37,6 +37,18 @@ enum SmartView: Hashable {
     }
 }
 
+/// Update-sheet phase machine (shared/spec/UPDATE.md behavior contract):
+/// check → offer → download → install; silent checks open the sheet only
+/// for an offer.
+enum UpdatePhase: Equatable {
+    case idle
+    case checking
+    case available
+    case downloading
+    case upToDate
+    case failed
+}
+
 /// Application state: embedded-backend lifecycle, settings, lists, current
 /// view, tasks, status line. All data flows through the typed RivetAPI;
 /// every backend mutation publishes `changed`, which re-reads the snapshot.
@@ -96,12 +108,23 @@ final class AppModel {
     var confirmContext: ConfirmContext?
     var aboutVisible = false
 
+    // Updater (shared/spec/UPDATE.md)
+    var updateSheetVisible = false
+    var updatePhase: UpdatePhase = .idle
+    var updateProgressPercent = 0
+    var updateAvailableVersion = ""
+    var updateErrorMessage = ""
+
     /// Transient delete banner with a one-step undo (Reminders-style).
     var undoBannerText: String?
     var undoBannerAction: (() -> Void)?
     @ObservationIgnored private var undoBannerTask: _Concurrency.Task<Void, Never>?
     @ObservationIgnored private var transientDeadline: _Concurrency.Task<Void, Never>?
     @ObservationIgnored private var appearanceObserver: NSKeyValueObservation?
+    /// Update offer accepted but not yet installed (lost on relaunch — the
+    /// user re-offers on the next check).
+    @ObservationIgnored private var pendingUpdateManifest: UpdateService.Manifest?
+    @ObservationIgnored private lazy var updateService = UpdateService(i18n: i18n)
 
     init() {
         statusMessage = i18n.t("statusDatabaseNotConnected")
@@ -167,6 +190,7 @@ final class AppModel {
             refreshStatusPersistent()
             flashStatus(i18n.t("statusDatabaseConnected"))
             reminder?.start()
+            autoCheckForUpdates()
         } catch {
             statusMessage = "\(error)"
         }
@@ -208,6 +232,118 @@ final class AppModel {
         _Concurrency.Task {
             _ = try? await api.set_setting(key: "language", value: language)
         }
+    }
+
+    // MARK: - Updates (shared/spec/UPDATE.md)
+
+    /// Silent checks run at most once per 4 hours (UPDATE.md triggers).
+    static let updateThrottleInterval: TimeInterval = 4 * 60 * 60
+
+    /// Manual entry point: Settings ▸ Check for Updates…. The sheet reports
+    /// every outcome (up to date, offer, failure, dev copy).
+    func checkForUpdates() {
+        guard updatePhase != .downloading else { return }
+        updateSheetVisible = true
+        updatePhase = .checking
+        _Concurrency.Task { await runUpdateCheck(present: true) }
+    }
+
+    /// Silent launch check: once shortly after startup, throttled to one
+    /// attempt per 4 h (config `last-update-check`); failures never nag.
+    func autoCheckForUpdates() {
+        _Concurrency.Task {
+            try? await _Concurrency.Task.sleep(nanoseconds: 3_000_000_000)
+            await runUpdateCheck(present: false)
+        }
+    }
+
+    private func runUpdateCheck(present: Bool) async {
+        guard updatePhase != .downloading else { return }
+        if !present {
+            guard await updateThrottleElapsed() else { return }
+        }
+        do {
+            let result = try await updateService.check()
+            await recordUpdateCheck()
+            switch result {
+            case .available(let manifest):
+                pendingUpdateManifest = manifest
+                updateAvailableVersion = manifest.version
+                updatePhase = .available
+                updateSheetVisible = true
+            case .upToDate:
+                updatePhase = present ? .upToDate : .idle
+                if present { updateSheetVisible = true }
+            }
+        } catch {
+            await recordUpdateCheck()
+            guard present else {
+                updatePhase = .idle
+                return
+            }
+            if case UpdateService.UpdateError.notInstalled = error {
+                updateErrorMessage = t("updateNotInstalled")
+            } else {
+                updateErrorMessage = t("updateCheckFailed", Self.cleanError(error))
+            }
+            updatePhase = .failed
+            updateSheetVisible = true
+        }
+    }
+
+    /// The throttle lives in config.ini (DATA-FORMAT §7 `last-update-check`,
+    /// unix epoch seconds), shared with the future Windows/Linux updaters.
+    private func updateThrottleElapsed() async -> Bool {
+        guard let api else { return false }
+        let raw = (try? await api.get_setting(key: "last-update-check")) ?? ""
+        let last = TimeInterval(raw.trimmingCharacters(in: .whitespaces)) ?? 0
+        return Date().timeIntervalSince1970 - last >= Self.updateThrottleInterval
+    }
+
+    private func recordUpdateCheck() async {
+        guard let api else { return }
+        _ = try? await api.set_setting(
+            key: "last-update-check",
+            value: String(Int(Date().timeIntervalSince1970)))
+    }
+
+    /// Offer accepted: download (progress in the sheet) → sha256 + Ed25519
+    /// already verified → in-place swap → relaunch. UpdateService terminates
+    /// the app on success; any earlier throw leaves this version running.
+    func installUpdate() {
+        guard updatePhase == .available, let manifest = pendingUpdateManifest else { return }
+        updatePhase = .downloading
+        updateProgressPercent = 0
+        updateErrorMessage = ""
+        _Concurrency.Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await updateService.downloadAndInstall(manifest) { [weak self] percent in
+                    self?.updateProgressPercent = percent
+                }
+            } catch {
+                updateErrorMessage = t("updateInstallFailed", Self.cleanError(error))
+                updatePhase = .failed
+            }
+        }
+    }
+
+    func dismissUpdateSheet() {
+        updateSheetVisible = false
+        if updatePhase != .downloading {
+            updatePhase = .idle
+            updateErrorMessage = ""
+            pendingUpdateManifest = nil
+        }
+    }
+
+    static func cleanError(_ error: Error) -> String {
+        let text = error.localizedDescription
+        // RVT1 failures arrive as "...error: <message>"; keep the message.
+        if let range = text.range(of: "error: ") {
+            return String(text[range.upperBound...])
+        }
+        return text
     }
 
     // MARK: - Database lifecycle (File menu)

@@ -7,7 +7,7 @@ public enum RivetGeneratedConfig {
     public static let moduleName = "backend"
     public static let entryName = "start"
     public static let displayName = "taskly"
-    public static let version = "1.1.0"
+    public static let version = "1.1.1"
     public static let build: Int64 = 1
     public static let identifier = "app.taskly.Taskly"
     public static let releaseChannel = "stable"
@@ -171,6 +171,10 @@ public struct RivetAPI: Sendable {
     public func delete_task(id: Int64) async throws -> Bool {
         let result = try await client.call("delete_task", arguments: [encode_Int64(id)])
         return try decode_Bool(result)
+    }
+    public func get_setting(key: String) async throws -> String {
+        let result = try await client.call("get_setting", arguments: [encode_String(key)])
+        return try decode_String(result)
     }
     public func get_settings() async throws -> Settings {
         let result = try await client.call("get_settings", arguments: [])

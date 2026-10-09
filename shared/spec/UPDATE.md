@@ -35,7 +35,7 @@ on all platforms from day one. Host-side updaters land per platform:
 
 | Platform | Feed | Install | Integrity | Status |
 |---|---|---|---|---|
-| macOS | `update-manifest.json` (this contract) | zip → sha256 → ditto → atomic swap in place | Ed25519 manifest signature (CryptoKit) + artifact sha256 | shipped (`macos-host/Sources/RivetHost/UpdateService.swift`) |
+| macOS | `update-manifest.json` (this contract) | zip → sha256 → ditto → atomic swap in place | Ed25519 manifest signature (CryptoKit) + artifact sha256 | wired since 1.1.1: silent throttled launch check + `Settings ▸ Check for Updates…` (`UpdateService.swift` + `AppModel`) |
 | Windows | `update-manifest.json` (this contract, `windows` entry) | manual download until the host updater lands | manifest sha256 | host updater not built yet |
 | Linux | `update-manifest.json` (this contract, `linux` entry) | manual download until the host updater lands | manifest sha256 | host updater not built yet |
 

@@ -145,11 +145,14 @@
     ("theme" ("system" "light" "dark"))
     ("close-to-tray" ("0" "1"))))
 
+;; Integer-as-string per DATA-FORMAT §7: sidebar selection and the
+;; update-check throttle (shared/spec/UPDATE.md) persist as plain integers.
+(define integer-settings '("last-selected-list-id" "last-update-check"))
+
 (define-rpc (set_setting [key : String] [value : String] : Settings)
   (define normalized-key (string-downcase (string-trim key)))
-  ;; Integer-as-string per DATA-FORMAT §7; sidebar selection persists here.
   (unless (or (assoc normalized-key allowed-settings)
-              (string=? normalized-key "last-selected-list-id"))
+              (member normalized-key integer-settings))
     (error 'set_setting "unknown setting: ~a" normalized-key))
   (cond
     [(assoc normalized-key allowed-settings)
@@ -160,12 +163,27 @@
      (unless (and parsed (exact-integer? parsed))
        (error 'set_setting "invalid value for ~a: ~a" normalized-key value))])
   (define config (read-config))
-  (write-config! (hash-set config normalized-key (string-trim value)))
+  ;; read-config returns a mutable hash — hash-set! (not the
+  ;; immutable-only hash-set) or every write would fail and hosts'
+  ;; try?-swallowed RPC errors would silently drop preferences.
+  (hash-set! config normalized-key (string-trim value))
+  (write-config! config)
   (settings->dto))
+
+;; Raw config read for host-side state that has no Settings slot (e.g. the
+;; last-update-check throttle, DATA-FORMAT §7). Unset keys read as the empty
+;; string so hosts parse a single shape ("value or default").
+(define-rpc (get_setting [key : String] : String)
+  (config-ref (read-config) (string-downcase (string-trim key)) ""))
 
 ;; Native embedded hosts pass anonymous pipe file descriptors here.
 (define (start in-fd out-fd)
   (serve-fds in-fd out-fd))
+
+;; Test seam: the generated RPC handlers are plain functions; contract
+;; tests import them directly without standing up an RVT1 server.
+(module+ rpcs
+  (provide get_setting set_setting))
 
 ;; The managed development host speaks the exact same RVT1 protocol over
 ;; stdin/stdout. This is deliberately only a transport alternative: the

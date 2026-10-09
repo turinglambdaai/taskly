@@ -95,6 +95,8 @@ struct TasklyCommands: Commands {
                     model.setTheme("dark")
                 }
             }
+            Divider()
+            Button(model.t("menuCheckUpdates")) { model.checkForUpdates() }
         }
     }
 

@@ -279,3 +279,79 @@ struct AboutSheet: View {
         .background(model.theme.background)
     }
 }
+
+/// Update sheet (shared/spec/UPDATE.md): one phase machine driving check →
+/// offer → download → install. A failed install leaves the running version
+/// untouched; the download phase cannot be dismissed (no cancel support).
+struct UpdateSheet: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "arrow.down.circle")
+                .font(.system(size: 44))
+                .foregroundStyle(model.theme.accent)
+
+            switch model.updatePhase {
+            case .checking:
+                ProgressView()
+
+            case .available:
+                Text(model.t("updateAvailableTitle"))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(model.theme.onSurface)
+                Text(model.t("updateAvailableBody", model.updateAvailableVersion))
+                    .font(.system(size: 13))
+                    .foregroundStyle(model.theme.secondaryText)
+                    .multilineTextAlignment(.center)
+                HStack(spacing: 12) {
+                    Button(model.t("dialogCancel")) { dismiss() }
+                    Button(model.t("updateRestart")) { model.installUpdate() }
+                        .keyboardShortcut(.defaultAction)
+                        .buttonStyle(.borderedProminent)
+                        .tint(model.theme.accent)
+                }
+
+            case .downloading:
+                Text(model.t("updateDownloading"))
+                    .font(.system(size: 13))
+                    .foregroundStyle(model.theme.onSurface)
+                ProgressView(value: Double(model.updateProgressPercent), total: 100)
+                    .frame(width: 240)
+                    .tint(model.theme.accent)
+                Text("\(model.updateProgressPercent)%")
+                    .font(.system(size: 12))
+                    .foregroundStyle(model.theme.secondaryText)
+
+            case .upToDate:
+                Text(model.t("updateUpToDate"))
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(model.theme.onSurface)
+                Button(model.t("dialogConfirm")) { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
+                    .tint(model.theme.accent)
+
+            case .failed:
+                Text(model.updateErrorMessage)
+                    .font(.system(size: 13))
+                    .foregroundStyle(model.theme.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 320)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 12) {
+                    Button(model.t("dialogCancel")) { dismiss() }
+                    Button(model.t("menuCheckUpdates")) { model.checkForUpdates() }
+                }
+
+            case .idle:
+                EmptyView()
+            }
+        }
+        .padding(28)
+        .frame(width: 360)
+        .background(model.theme.background)
+        .interactiveDismissDisabled(model.updatePhase == .downloading)
+    }
+}

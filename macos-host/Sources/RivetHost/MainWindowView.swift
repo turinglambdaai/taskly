@@ -33,6 +33,14 @@ struct MainWindowView: View {
             set: { model.aboutVisible = $0 })) {
             AboutSheet()
         }
+        .sheet(isPresented: Binding(
+            get: { model.updateSheetVisible },
+            set: { newValue in
+                model.updateSheetVisible = newValue
+                if !newValue { model.dismissUpdateSheet() }
+            })) {
+            UpdateSheet()
+        }
         .confirmationDialog(
             model.confirmContext?.title ?? "",
             isPresented: Binding(

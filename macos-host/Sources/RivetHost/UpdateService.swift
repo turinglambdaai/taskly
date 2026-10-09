@@ -189,8 +189,10 @@ public final class UpdateService {
 
     /// Downloads, verifies (sha256, then unpacked bundle version), swaps the
     /// bundle in place and relaunches. Throws before touching the running
-    /// install when anything is off.
-    public func downloadAndInstall(_ manifest: Manifest) async throws {
+    /// install when anything is off. `onProgress` reports download percent
+    /// (0…100) on the main actor for the update sheet.
+    public func downloadAndInstall(_ manifest: Manifest,
+                                   onProgress: ((Int) -> Void)? = nil) async throws {
         guard let bundleURL = installedBundleURL else { throw UpdateError.notInstalled }
         guard let artifact = manifest.platforms["macos"] else {
             throw UpdateError.manifestMissing
@@ -211,9 +213,18 @@ public final class UpdateService {
             var hasher = SHA256()
             var data = Data()
             data.reserveCapacity(artifact.size)
+            let total = max(artifact.size, 1)
+            var lastPercent = -1
             for try await byte in bytes {
                 hasher.update(data: [byte])
                 data.append(byte)
+                if onProgress != nil {
+                    let percent = min(100, data.count * 100 / total)
+                    if percent != lastPercent {
+                        lastPercent = percent
+                        onProgress?(percent)
+                    }
+                }
             }
             let digest = hasher.finalize().map { String(format: "%02x", $0) }.joined()
             guard digest == artifact.sha256.lowercased() else {

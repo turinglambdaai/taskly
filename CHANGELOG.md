@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-10-09
+
+### Added
+- **The macOS updater is wired in.** 1.1.0 shipped the signed update feed
+  and the `UpdateService` engine, but nothing invoked it. `Settings ▸
+  Check for Updates…` now checks the Ed25519-signed manifest on demand,
+  and one silent check runs shortly after launch (throttled to once per
+  4 hours via the `last-update-check` config key, bypassed by the menu).
+  An available update is offered by version, downloads with visible
+  progress, re-verifies the artifact sha256 and the unpacked bundle
+  version, swaps the app in place and relaunches; a failed swap restores
+  the previous bundle and the running version keeps working. Development
+  copies (not under /Applications) get an honest "auto-update
+  unavailable" answer instead of a network error.
+
+### Fixed
+- **`set_setting` never persisted anything.** The RPC built the new
+  config with the immutable-only `hash-set` on the mutable hash that
+  `read-config` returns, so every write threw and the hosts silently
+  swallowed the RPC error — theme, language and last-selected list never
+  survived a relaunch. It now uses `hash-set!`; a new backend contract
+  test (`racket/tests/backend-test.rkt`) covers the write path, growing
+  the suite from 62 to 69 checks.
+
+### Changed
+- Backend: a new `get_setting` RPC exposes raw config values to hosts
+  (the macOS update throttle reads `last-update-check` through it, and
+  the future Windows/Linux updaters will share it); `set_setting`
+  accepts the integer-as-string `last-update-check` key and the config
+  writer persists it (DATA-FORMAT §7).
+- The [UPDATE](shared/spec/UPDATE.md) status table reflects reality:
+  the macOS updater is fully wired; Windows and Linux host updaters
+  remain documented follow-ups — until they land, update those hosts by
+  manual download from the releases page.
+
 ## [1.1.0] - 2026-10-08
 
 ### Added
