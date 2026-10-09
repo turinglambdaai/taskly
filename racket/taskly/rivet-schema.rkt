@@ -57,6 +57,27 @@
    [due-date : (Optional String)]
    [due-time : (Optional String)]))
 
+;; Result of check_updates. status: "available" | "up-to-date" | "error";
+;; the descriptive fields are only filled for "available".
+(define-record UpdateCheck
+  ([status : String]
+   [error : (Optional String)]
+   [current-version : String]
+   [available-version : (Optional String)]
+   [build : (Optional Int64)]
+   [published-at : (Optional String)]
+   [installer : (Optional String)]
+   [size-bytes : (Optional Int64)]))
+
+;; Polled by the host while a download runs. phase: idle | checking |
+;; downloading | downloaded | error.
+(define-record UpdateState
+  ([phase : String]
+   [percent : Int64]
+   [message : (Optional String)]
+   [downloaded-path : (Optional String)]
+   [available-version : (Optional String)]))
+
 (define (nullable value)
   (if value value (void)))
 

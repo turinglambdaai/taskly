@@ -6,8 +6,10 @@
          "date-parser.rkt"
          "errors.rkt"
          "model.rkt"
+         "paths.rkt"
          "rivet-schema.rkt"
-         "service.rkt")
+         "service.rkt"
+         "updater.rkt")
 
 (provide start
          start-stdio)
@@ -175,6 +177,50 @@
 ;; string so hosts parse a single shape ("value or default").
 (define-rpc (get_setting [key : String] : String)
   (config-ref (read-config) (string-downcase (string-trim key)) ""))
+
+;; ------------------------------------------------------------ online update
+;; The family pattern (rivet/distribution): this backend verifies and
+;; downloads the signed artifact; hosts own installation and the silent
+;; 4-hour throttle (last-update-check config key, shared/spec/UPDATE.md).
+
+(define (update-check->record result)
+  (define (opt key) (nullable (hash-ref result key #f)))
+  (UpdateCheck
+   (hash-ref result 'status "error")
+   (opt 'message)
+   (hash-ref result 'currentVersion app-version)
+   (opt 'availableVersion)
+   (opt 'build)
+   (opt 'publishedAt)
+   (opt 'installer)
+   (opt 'sizeBytes)))
+
+;; Never raises: network/manifest failures surface as status "error" so a
+;; headless check can't take the host down with it.
+(define-rpc (check_updates : UpdateCheck)
+  (with-handlers
+      ([exn:fail?
+        (lambda (e)
+          (UpdateCheck "error" (nullable (exn-message e)) app-version
+                       (void) (void) (void) (void) (void)))])
+    (update-check->record (perform-check!))))
+
+;; Runs on a backend worker thread; the host follows progress via
+;; update_state. Never raises: failures surface through the state's phase.
+(define-rpc (start_download : Void)
+  (with-handlers
+      ([exn:fail? (lambda (e) (set-update-error! (exn-message e)))])
+    (start-download! (taskly-directory)))
+  (void))
+
+(define-rpc (update_state : UpdateState)
+  (define s (update-state-snapshot))
+  (UpdateState
+   (hash-ref s 'phase "idle")
+   (hash-ref s 'percent 0)
+   (nullable (hash-ref s 'message #f))
+   (nullable (hash-ref s 'downloadedPath #f))
+   (nullable (hash-ref s 'availableVersion #f))))
 
 ;; Native embedded hosts pass anonymous pipe file descriptors here.
 (define (start in-fd out-fd)

@@ -25,4 +25,8 @@ RIVET_RKTD_VERSION="$(grep -o '"[0-9]*\.[0-9]*\.[0-9]*"' "$ROOT/rivet.rktd" | he
 [[ "$RIVET_RKTD_VERSION" == "$VERSION" ]] || \
   fail "rivet.rktd version '$RIVET_RKTD_VERSION' does not match VERSION '$VERSION'"
 
-echo "release preflight: version $VERSION is aligned (VERSION == rivet.rktd)"
+# The backend updater embeds the release identity for the update feed.
+grep -qF "(define app-version \"$VERSION\")" "$ROOT/racket/taskly/updater.rkt" || \
+  fail "racket/taskly/updater.rkt app-version does not match VERSION '$VERSION'"
+
+echo "release preflight: version $VERSION is aligned (VERSION == rivet.rktd == updater)"

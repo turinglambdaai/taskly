@@ -14,7 +14,7 @@ concurrency:
 env:
   # Migration policy: exact Rivet pins in release builds (docs/RIVET-MIGRATION.md §6).
   # Kept identical to RIVET_PIN in ci.yml — CI verifies what releases ship.
-  RIVET_COMMIT: dbd032750f69c37ec577a18cb0265b68ab7551ea
+  RIVET_COMMIT: 2fcdd091ddd7fd157fa934ac6053cdf4f9ab6100
 
 jobs:
   macos:
@@ -38,7 +38,7 @@ jobs:
       - name: Version preflight (VERSION == rivet.rktd == tag)
         run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
       - name: Package
-        run: raco rivet package --skip-launch-smoke
+        run: raco rivet package
       - name: Zip + checksum
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
@@ -189,6 +189,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Racket CS
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          distribution: full
+          variant: CS
+          version: '9.3'
+      - name: Install pinned Rivet (manifest signer)
+        run: |
+          set -euo pipefail
+          git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
+          git -C "$RUNNER_TEMP/rivet" checkout "$RIVET_COMMIT"
+          raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -221,4 +234,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "Taskly ${VERSION}" \
             --notes-file /tmp/notes.md \
-            *.zip *.tar.gz *.sha256 SHA256SUMS update-manifest.json manifest.sig
+            *.zip *.tar.gz *.sha256 SHA256SUMS update-manifest.json

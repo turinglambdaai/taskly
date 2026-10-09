@@ -12,7 +12,7 @@ permissions:
 env:
   # Exact Rivet commit the hosts build against (migration policy: pinned).
   # Bump together with host code; local dev may track rivet main.
-  RIVET_PIN: dbd032750f69c37ec577a18cb0265b68ab7551ea
+  RIVET_PIN: 2fcdd091ddd7fd157fa934ac6053cdf4f9ab6100
 
 jobs:
   contract:
@@ -162,6 +162,15 @@ jobs:
         run: raco pkg install --auto --no-docs --name rivet --link "$GITHUB_WORKSPACE/rivet"
       - name: Build host
         run: raco rivet build
+      - name: Boot smoke
+        run: |
+          smoke_home="$RUNNER_TEMP/taskly-smoke-home"
+          mkdir -p "$smoke_home"
+          HOME="$smoke_home" ./.rivet/stage/RivetHost &
+          APP_PID=$!
+          sleep 8
+          kill -0 $APP_PID
+          kill $APP_PID
 
   windows-host:
     name: Windows host (WinRT build)

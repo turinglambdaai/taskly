@@ -3,7 +3,7 @@
 #
 #   scripts/make-update-manifest.sh <tag> <dist-dir> [key-path]
 #
-#   <tag>       release tag, e.g. v1.1.0 (must match the VERSION file)
+#   <tag>       release tag, e.g. v1.2.0 (must match the VERSION file)
 #   <dist-dir>  directory containing the release artifacts, i.e. the names
 #               the release pipeline produces:
 #                 taskly-<ver>-macos-arm64.zip   taskly-<ver>-windows-x64.zip
@@ -11,8 +11,11 @@
 #   <key-path>  Ed25519 private key PEM (default: $UPDATE_KEY_PATH, then
 #               ~/.taskly/update-signing-key.pem)
 #
-# Writes update-manifest.json + manifest.sig into <dist-dir>. Runs on macOS
-# and Linux (sha256sum/shasum, GNU/BSD stat are both handled).
+# Emits <dist-dir>/update-manifest.json — a single self-contained signed
+# wrapper (schema + base64 payload + signature block): the family format
+# every rivet/distribution client verifies, hosts included. Requires racket
+# with rivet linked (the release publish job installs the pinned checkout)
+# and OpenSSL 3 for the PEM → DER key conversion.
 set -euo pipefail
 
 TAG="${1:?usage: make-update-manifest.sh <tag> <dist-dir> [key-path]}"
@@ -24,26 +27,14 @@ VERSION="${TAG#v}"
 [[ "$VERSION" == "$(tr -d '[:space:]' < "$ROOT/VERSION")" ]] || {
   echo "error: tag $TAG does not match VERSION '$(cat "$ROOT/VERSION")'" >&2; exit 1; }
 
-MACOS_ZIP="$DIST/taskly-$VERSION-macos-arm64.zip"
-WINDOWS_ZIP="$DIST/taskly-$VERSION-windows-x64.zip"
-LINUX_TAR="$DIST/taskly-$VERSION-linux-x64.tar.gz"
-REPO_URL="https://github.com/turinglambdaai/taskly/releases/download/$TAG"
-BASE_URL="${RELEASE_ASSET_BASE_URL:-$REPO_URL}"
-
-for artifact in "$MACOS_ZIP" "$WINDOWS_ZIP" "$LINUX_TAR"; do
+for artifact in "$DIST/taskly-$VERSION-macos-arm64.zip" \
+                "$DIST/taskly-$VERSION-windows-x64.zip" \
+                "$DIST/taskly-$VERSION-linux-x64.tar.gz"; do
   [[ -f "$artifact" ]] || { echo "error: missing $artifact" >&2; exit 1; }
 done
 [[ -f "$KEY" ]] || { echo "error: missing signing key $KEY (see scripts/update-keys.sh)" >&2; exit 1; }
 
-# sha256 helper: macOS ships shasum, Linux CI ships sha256sum.
-sha256_file() {
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$1" | awk '{print $1}'
-  else
-    shasum -a 256 "$1" | awk '{print $1}'
-  fi
-}
-size_of() { stat -f%z "$1" 2>/dev/null || stat -c%s "$1"; }
+BASE_URL="${RELEASE_ASSET_BASE_URL:-https://github.com/turinglambdaai/taskly/releases/download/$TAG}"
 
 # Ed25519 needs OpenSSL 3+ (macOS ships LibreSSL, which cannot do it).
 OPENSSL_BIN="${OPENSSL_BIN:-}"
@@ -63,23 +54,77 @@ fi
   exit 1
 }
 
-MACOS_SHA="$(sha256_file "$MACOS_ZIP")"
-WINDOWS_SHA="$(sha256_file "$WINDOWS_ZIP")"
-LINUX_SHA="$(sha256_file "$LINUX_TAR")"
+SCRIPT="$(mktemp /tmp/taskly-manifest-XXXXXX.rkt)"
+KEY_DER="$(mktemp /tmp/taskly-key-XXXXXX.der)"
+trap 'rm -f "$SCRIPT" "$KEY_DER"' EXIT
 
-cat > "$DIST/update-manifest.json" <<JSON
-{
-  "version": "$VERSION",
-  "notesUrl": "$REPO_URL",
-  "platforms": {
-    "macos": { "url": "$BASE_URL/taskly-$VERSION-macos-arm64.zip", "sha256": "$MACOS_SHA", "size": $(size_of "$MACOS_ZIP") },
-    "windows": { "url": "$BASE_URL/taskly-$VERSION-windows-x64.zip", "sha256": "$WINDOWS_SHA", "size": $(size_of "$WINDOWS_ZIP") },
-    "linux": { "url": "$BASE_URL/taskly-$VERSION-linux-x64.tar.gz", "sha256": "$LINUX_SHA", "size": $(size_of "$LINUX_TAR") }
-  }
-}
-JSON
+# rivet's signer reads DER (OneAsymmetricKey); convert the PEM once here.
+"$OPENSSL_BIN" pkey -in "$KEY" -outform DER -out "$KEY_DER"
 
-"$OPENSSL_BIN" pkeyutl -sign -inkey "$KEY" -rawin \
-  -in "$DIST/update-manifest.json" -out "$DIST/manifest.sig"
+cat > "$SCRIPT" <<RKT
+#lang racket/base
+(require rivet/distribution
+         racket/date
+         racket/file
+         racket/format)
+(define version "$VERSION")
+(define base-url "$BASE_URL")
+(define dist (path->complete-path "$DIST"))
+(define key-path (path->complete-path "$KEY_DER"))
+(define key-id "taskly-2026-10")
+(define build (hash-ref (file->value (build-path (path->complete-path "$ROOT") "rivet.rktd")) 'build))
 
-echo "wrote $DIST/update-manifest.json + manifest.sig (signed with $KEY)"
+(define (artifact platform architecture file installer)
+  (define path (build-path dist file))
+  (unless (file-exists? path)
+    (error 'make-update-manifest "missing installer: ~a" path))
+  (update-artifact platform architecture
+                   (string-append base-url "/" file)
+                   (sha256-file/hex path)
+                   (file-size path)
+                   installer
+                   '()))
+
+(define manifest
+  (update-manifest "app.taskly.Taskly"
+                   version
+                   build
+                   'stable
+                   ;; published-at: RFC 3339, second precision, UTC
+                   (let ([d (seconds->date (current-seconds) #f)])
+                     (format "~a-~a-~aT~a:~a:~aZ"
+                             (date-year d)
+                             (~r (date-month d) #:min-width 2 #:pad-string "0")
+                             (~r (date-day d) #:min-width 2 #:pad-string "0")
+                             (~r (date-hour d) #:min-width 2 #:pad-string "0")
+                             (~r (date-minute d) #:min-width 2 #:pad-string "0")
+                             (~r (date-second d) #:min-width 2 #:pad-string "0")))
+                   "0.0.0"
+                   #f
+                   #t
+                   100
+                   (list (artifact 'macos 'arm64
+                                   (format "taskly-~a-macos-arm64.zip" version) 'zip)
+                         (artifact 'windows 'x64
+                                   (format "taskly-~a-windows-x64.zip" version) 'zip)
+                         (artifact 'linux 'x64
+                                   (format "taskly-~a-linux-x64.tar.gz" version) 'targz))))
+
+;; write-signed-manifest validates the struct against the manifest schema
+;; before signing, so a malformed manifest fails the release instead of
+;; shipping something every client would reject.
+(call-with-output-file (build-path dist "update-manifest.json")
+  #:exists 'truncate/replace
+  (lambda (out)
+    (write-signed-manifest manifest
+                           (read-ed25519-private-key key-path)
+                           key-id
+                           out)
+    (newline out)))
+(printf "manifest: ~a (3 artifacts, key-id ~a)\\n"
+        (build-path dist "update-manifest.json") key-id)
+RKT
+
+# rivet must be installed for the signer; the release publish job links a
+# checkout at the release pin.
+racket "$SCRIPT"
