@@ -82,7 +82,10 @@ std::filesystem::path update_success_marker() {
 // RivetHost.exe / res / runtime sit at the archive root). Order matters:
 // extract and verify BEFORE touching the old install, so a corrupt zip can
 // never break the running copy.
-std::wstring update_handoff_batch(unsigned long pid) {
+std::string update_handoff_batch(unsigned long pid) {
+  // Pure ASCII: every path travels as a quoted %~1…%~5 argument, never in
+  // the script body, so no codepage conversion is needed (cmd.exe reads
+  // batch files in the ANSI codepage — keep it that way).
   std::string const pid_text = std::to_string(pid);
   std::string batch;
   batch += "@echo off\r\n";
@@ -124,7 +127,7 @@ std::wstring update_handoff_batch(unsigned long pid) {
   batch += ":restart_old\r\n";
   batch += "start \"\" \"%~3\"\r\n";
   batch += "exit /b 1\r\n";
-  return std::wstring(batch.begin(), batch.end());
+  return batch;
 }
 
 void open_releases_page() {
