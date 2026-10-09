@@ -122,7 +122,9 @@ jobs:
           export RIVET_UPDATE_BASE_URL="https://github.com/turinglambdaai/taskly/releases/download/${{ github.ref_name }}"
           export RIVET_UPDATE_KEY_ID="taskly-2026-10"
           export RIVET_UPDATE_PRIVATE_KEY="$KEY_DER"
-          raco rivet release
+          # Development signing (ad-hoc) — the family ships ad-hoc until a
+          # code-signing certificate lands in secrets.
+          raco rivet release --development
           # taskly signs one merged feed in the publish job; the
           # per-windows manifest rivet emits here is not shipped.
           rm -f dist/update-*.json
