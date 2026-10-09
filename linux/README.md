@@ -56,9 +56,13 @@ platform host consumes) next to `RivetHost`. `raco rivet build`, `dev`, and
 
 - Production releases use `raco rivet release`: a deterministic self-contained
   `.tar.gz` with a detached Ed25519 signature, verified by re-deriving the
-  archive from the package directory. Distro-native packages (`.deb`/`.rpm`,
-  AppImage, apt repository trust) and OS-integrated update installation are
-  follow-up work.
+  archive from the package directory. The in-app updater (shared/spec/UPDATE.md)
+  is wired: a silent launch check throttled to one attempt per 4 hours plus
+  `Settings ▸ Check for Updates…`; the backend verifies and downloads the
+  signed tar.gz, and the host hands it off with an open-folder dialog —
+  installation stays manual (extract the archive over the Taskly directory).
+  Distro-native packages (`.deb`/`.rpm`, AppImage, apt repository trust) and
+  OS-integrated update installation are follow-up work.
 - The system adapter covers single-instance, notifications, XDG autostart,
   Secret Service secure storage, and crash hooks, with runtime capability
   reporting. The tray contract is deliberately absent: StatusNotifierItem

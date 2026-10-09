@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-10-09
+
+### Fixed
+- **The macOS packages could not launch at all — 1.0.0, 1.1.0 and 1.1.1
+  all shipped dead.** The host's SwiftPM resource bundle (i18n + emoji
+  JSON) was never placed where the generated accessor looks for it, so
+  every packaged app died instantly with `could not load resource
+  bundle` (rivet#148); the release job skipped the launch smoke, so CI
+  never noticed. Taskly no longer uses a SwiftPM resource bundle: the
+  hosts read the staged product resources (`app/shared/i18n`,
+  declared via the `resources` field in `rivet.rktd`, the same
+  rivet#149 convention the Linux and Windows hosts follow), with the
+  macOS resource lookup in one place (`HostResources.swift`). The
+  release job runs the launch smoke again and the CI `macos-host` job
+  boots the staged host for 8 seconds — this crash class cannot ship
+  silently anymore.
+- **The Windows and Linux packages never carried their i18n files.**
+  The release pipeline staged `shared/i18n` into the stage, but every
+  rivet build recreates the stage from scratch, so the copies were
+  wiped before packaging and the hosts silently ran on their embedded
+  fallback tables. Product resources now ride the `rivet.rktd`
+  `resources` declaration and land inside the package on all three
+  platforms.
+- The macOS update feed migrated to the family's self-contained signed
+  wrapper (`update-manifest.json` with the payload base64-embedded —
+  no separate `manifest.sig` asset). This also drops the updater's
+  dependency on the GitHub releases API.
+
+### Added
+- **Windows host: i18n and an in-app updater.** Every user-visible
+  string in the WinUI3 shell now comes from the shared table (runtime
+  language from the backend settings, embedded fallback otherwise), and
+  the host can check, download and install updates: silent throttled
+  launch check, `Settings ▸ Check for Updates…`, progress polling, and
+  a quit-and-install handoff that swaps the install directory in place
+  and restores it if anything fails (the failure is reported on the
+  next launch).
+- **Linux host: an in-app updater.** `Settings ▸ 检查更新…` checks the
+  signed feed, downloads the tar.gz with a progress dialog and hands
+  the user the verified file (open folder); install stays a manual
+  extract, which is the family rule for tarball distributions.
+- Backend: `check_updates` / `start_download` / `update_state` RPCs on
+  `rivet/distribution` — the backend verifies the Ed25519-signed
+  manifest and downloads the artifact (with a sticky per-install
+  rollout bucket); hosts own only UI and install. Test suite grew from
+  69 to 77 checks (`racket/tests/updater-test.rkt` covers the offline
+  trust chain, progress accounting and the rollout bucket).
+- Release pipeline: the publish job signs the manifest with the pinned
+  rivet checkout; Rivet pin moved to `2fcdd091` (rivet#148 bundle
+  staging + rivet#153 redirect-following update fetches).
+
 ## [1.1.1] - 2026-10-09
 
 ### Added

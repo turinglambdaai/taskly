@@ -159,16 +159,10 @@ jobs:
         run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
       - name: Build host
         run: raco rivet build
-      # The generated host reads <exe_dir>/res/i18n/{zh,en}.json (with an
-      # embedded fallback table); until rivet stages product resources
-      # itself (turinglambdaai/rivet#149), copy them into the stage here.
-      - name: Stage product resources (i18n)
-        run: |
-          set -euo pipefail
-          mkdir -p .rivet/stage/res/i18n
-          cp shared/i18n/zh.json shared/i18n/en.json .rivet/stage/res/i18n/
       # Launch smoke included: the packaged app must survive launch under
-      # xvfb, same bar the CI linux-host job holds.
+      # xvfb, same bar the CI linux-host job holds. Product resources
+      # (shared/i18n + emoji.json) ride in via the rivet.rktd `resources`
+      # declaration — rivet stages them into the package itself.
       - name: Package (with launch smoke)
         run: xvfb-run -a raco rivet package
       - name: Tar + checksum

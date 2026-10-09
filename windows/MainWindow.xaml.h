@@ -6,53 +6,18 @@
 
 namespace winrt::RivetHost::implementation {
 
-// UI strings for the two supported languages. The backend owns the
-// authoritative config; hosts only render what get_settings returns.
-struct Strings {
-  std::wstring search_placeholder;
-  std::wstring smart_lists;
-  std::wstring my_lists;
-  std::wstring new_list;
-  std::wstring today;
-  std::wstring planned;
-  std::wstring all;
-  std::wstring completed;
-  std::wstring new_task_placeholder;
-  std::wstring show_completed;
-  std::wstring due_today;
-  std::wstring due_tomorrow;
-  std::wstring due_clear;
-  std::wstring delete_task;
-  std::wstring rename_list;
-  std::wstring delete_list;
-  std::wstring new_list_dialog_title;
-  std::wstring new_list_dialog_placeholder;
-  std::wstring rename_list_dialog_title;
-  std::wstring edit_task_dialog_title;
-  std::wstring ok;
-  std::wstring cancel;
-  std::wstring menu_file;
-  std::wstring menu_settings;
-  std::wstring menu_help;
-  std::wstring menu_new_db;
-  std::wstring menu_open_db;
-  std::wstring menu_close_db;
-  std::wstring menu_exit;
-  std::wstring menu_lang_zh;
-  std::wstring menu_lang_en;
-  std::wstring menu_theme_system;
-  std::wstring menu_theme_light;
-  std::wstring menu_theme_dark;
-  std::wstring menu_about;
-  std::wstring about_title;
-  std::wstring about_body;
-  std::wstring status_starting;
-  std::wstring status_ready;
-  std::wstring status_error;
-  std::wstring count_suffix;
-};
+// Host-wide UI strings, keyed exactly like shared/i18n/*.json (the single
+// source of truth). Tables load from <exe_dir>/app/shared/i18n/{zh,en}.json
+// (rivet.rktd `resources`) with an embedded fallback; a missing key degrades
+// to the key itself, never a crash. Defined in MainWindow.xaml.cpp.
+std::wstring t(char const* key);
+std::wstring tf(char const* key, std::wstring const& arg0);
 
-Strings const& S(std::string const& lang);
+// Host helpers shared with MainWindow.Update.cpp (payback's HostHelpers
+// pattern): executable path and UTF conversion.
+std::filesystem::path executable_path();
+std::string utf8(std::filesystem::path const& path);
+std::wstring wide(std::string const& text);
 
 struct MainWindow : MainWindowT<MainWindow> {
   MainWindow();
@@ -77,6 +42,8 @@ struct MainWindow : MainWindowT<MainWindow> {
                     Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnThemeDark(winrt::Windows::Foundation::IInspectable const&,
                    Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnCheckUpdates(winrt::Windows::Foundation::IInspectable const&,
+                      Microsoft::UI::Xaml::RoutedEventArgs const&);
   winrt::fire_and_forget OnAbout(
       winrt::Windows::Foundation::IInspectable const&,
       Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -153,6 +120,27 @@ private:
   void OnDeleteTask(winrt::Windows::Foundation::IInspectable const&,
                     Microsoft::UI::Xaml::RoutedEventArgs const&);
 
+  // Updates (shared/spec/UPDATE.md; flow lives in MainWindow.Update.cpp)
+  winrt::fire_and_forget AutoCheckUpdatesAsync();
+  void RunSilentUpdateCheck();
+  void RunUpdateCheck(bool silent);
+  void HandleUpdateCheckResult(bool ok, rivet_app::UpdateCheck const& check,
+                               std::string const& failure, bool silent);
+  void RecordUpdateCheck();
+  void StartDownload();
+  void PollUpdateState(
+      std::shared_ptr<rivet::windows::Backend> const& backend);
+  void HandleUpdatePoll(rivet_app::Result<rivet_app::UpdateState> const& result);
+  void FailDownload(std::string const& message);
+  winrt::fire_and_forget ShowInstallConsent(std::wstring const& path);
+  void InstallDownloadedUpdate(std::wstring const& zip_path);
+  void HandleInstallMarkers();
+  bool IsDevCopy();
+  winrt::fire_and_forget ShowUpdateDialog(
+      std::wstring const& title, std::wstring const& body,
+      std::wstring const& primary_button, std::wstring const& close_button,
+      std::function<void()> on_primary);
+
   std::shared_ptr<rivet::windows::Backend> backend_;
   rivet_app::Settings settings_{};
   rivet_app::SmartCounts current_counts_{};
@@ -166,6 +154,8 @@ private:
   bool suppress_selection_{false};
   std::atomic<bool> reload_in_flight_{false};
   winrt::Microsoft::UI::Xaml::DispatcherTimer poll_timer_{nullptr};
+  winrt::Microsoft::UI::Xaml::DispatcherTimer update_timer_{nullptr};
+  bool update_downloading_{false};
 };
 
 }  // namespace winrt::RivetHost::implementation

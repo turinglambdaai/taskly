@@ -2,9 +2,11 @@ import AppKit
 import CryptoKit
 import Foundation
 
-/// Online update service (shared/spec/UPDATE.md). Feed: update-manifest.json
-/// + Ed25519 signature from the latest GitHub Release; install: zip →
-/// sha256 → ditto → atomic in-place swap of the running bundle.
+/// Online update service (shared/spec/UPDATE.md). Feed: the single
+/// self-contained signed manifest wrapper (update-manifest.json — schema +
+/// base64 payload + Ed25519 signature block, the family format the backend
+/// verifies via rivet/distribution); install: zip → sha256 → ditto →
+/// atomic in-place swap of the running bundle.
 ///
 /// Only a copy under /Applications (or ~/Applications) can self-update —
 /// debug builds and random folders get the "not installed" answer.
@@ -15,7 +17,12 @@ public final class UpdateService {
     /// manifests (generate: scripts/update-keys.sh).
     nonisolated public static let publicKeyBase64 = "lgCdBU0qFDNgamTJBIVX2jjPzehbTmCp3eV5ViubtF0="
 
-    public static let releasesAPI = "https://api.github.com/repos/turinglambdaai/taskly/releases/latest"
+    /// The manifest must carry this key id — rotation ships a build that
+    /// trusts the next key before releases stop being signed with this one.
+    nonisolated public static let expectedKeyID = "taskly-2026-10"
+
+    public static let manifestURL = URL(string:
+        "https://github.com/turinglambdaai/taskly/releases/latest/download/update-manifest.json")!
     public static let releasesPage = "https://github.com/turinglambdaai/taskly/releases/latest"
 
     public enum UpdateError: LocalizedError {        case notInstalled
@@ -39,29 +46,48 @@ public final class UpdateService {
         }
     }
 
+    /// The signed wrapper: the inner manifest travels base64-encoded so the
+    /// Ed25519 signature covers the exact bytes every client verifies
+    /// (rivet/distribution's signed-wrapper format).
+    struct SignedWrapper: Decodable {
+        struct SignatureBlock: Decodable {
+            let algorithm: String
+            let keyId: String
+            let value: String
+        }
+        let schema: Int
+        let payload: String
+        let signature: SignatureBlock
+    }
+
     public struct Manifest: Decodable {
-        struct PlatformArtifact: Decodable {
+        public struct Artifact: Decodable {
+            let platform: String
+            let architecture: String
             let url: URL
             let sha256: String
             let size: Int
         }
         let version: String
-        let notesUrl: String
-        let platforms: [String: PlatformArtifact]
+        let artifacts: [Artifact]
+
+        func artifact(forPlatform platform: String) -> Artifact? {
+            artifacts.first { $0.platform == platform }
+        }
     }
 
     private let i18n: I18nService
     private var session: URLSession
-    /// Releases API endpoint; injectable only for tests (URLProtocol stubs)
+    /// Manifest endpoint; injectable only for tests (URLProtocol stubs)
     /// — production callers use the default.
-    private let apiURL: URL
+    private let feedURL: URL
     /// Test seams for the runtime environment; nil = derive from Bundle.main.
     private let injectedBundleURL: URL?
     private let injectedCurrentVersion: String?
     /// Test-only embedded-key override (release env signs with the real key).
     nonisolated private let injectedKeyBase64: String?
 
-    init(i18n: I18nService = .shared, apiURL: URL? = nil,
+    init(i18n: I18nService = .shared, feedURL: URL? = nil,
                 bundleURL: URL? = nil, currentVersion: String? = nil,
                 sessionConfiguration: URLSessionConfiguration? = nil,
                 keyOverride: String? = nil) {
@@ -70,7 +96,7 @@ public final class UpdateService {
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 600
         self.session = URLSession(configuration: config)
-        self.apiURL = apiURL ?? URL(string: Self.releasesAPI)!
+        self.feedURL = feedURL ?? Self.manifestURL
         self.injectedBundleURL = bundleURL
         self.injectedCurrentVersion = currentVersion
         self.injectedKeyBase64 = keyOverride
@@ -121,65 +147,48 @@ public final class UpdateService {
     }
 
     private func fetchSignedManifest() async throws -> Manifest {
-        guard let (data, response) = try? await session.data(from: apiURL) else {
+        guard let (data, response) = try? await session.data(from: feedURL) else {
             throw UpdateError.network(i18n.t("updateCheckFailed"))
         }
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw UpdateError.network("HTTP \((response as? HTTPURLResponse)?.statusCode ?? -1)")
         }
-        let assets = try Self.parseReleaseAssets(data)
-        guard let manifestAsset = assets.manifest, let sigAsset = assets.signature else {
-            throw UpdateError.manifestMissing
-        }
-
-        let (manifestBytes, mResponse) = try await session.data(from: manifestAsset)
-        guard (mResponse as? HTTPURLResponse)?.statusCode == 200 else {
-            throw UpdateError.network("manifest download failed")
-        }
-        let (sigBytes, sResponse) = try await session.data(from: sigAsset)
-        guard (sResponse as? HTTPURLResponse)?.statusCode == 200 else {
-            throw UpdateError.network("signature download failed")
-        }
-        return try Self.verifyManifest(manifestBytes, signature: sigBytes,
-                                       keyBase64: injectedKeyBase64)
+        return try Self.verifyManifest(data, keyBase64: injectedKeyBase64)
     }
 
     // MARK: - Pure steps (unit-tested)
 
-    /// Extracts the download URLs of update-manifest.json / manifest.sig
-    /// from a GitHub `releases/latest` API response.
-    nonisolated static func parseReleaseAssets(_ apiResponse: Data) throws
-        -> (manifest: URL?, signature: URL?) {
-        struct Release: Decodable {
-            struct Asset: Decodable {
-                let name: String
-                let browser_download_url: URL
-            }
-            let assets: [Asset]
-        }
-        let release: Release
-        do {
-            release = try JSONDecoder().decode(Release.self, from: apiResponse)
-        } catch {
-            throw UpdateError.network("release metadata unparsable")
-        }
-        return (release.assets.first { $0.name == "update-manifest.json" }?.browser_download_url,
-                release.assets.first { $0.name == "manifest.sig" }?.browser_download_url)
-    }
-
-    /// Ed25519 verification over the exact manifest bytes, then decode.
-    nonisolated static func verifyManifest(_ manifestBytes: Data, signature: Data,
+    /// Verifies the signed wrapper (schema, key id, Ed25519 over the exact
+    /// payload bytes) and decodes the inner manifest.
+    nonisolated static func verifyManifest(_ wrapperBytes: Data,
                                            keyBase64: String? = nil) throws -> Manifest {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let wrapper: SignedWrapper
+        do {
+            wrapper = try decoder.decode(SignedWrapper.self, from: wrapperBytes)
+        } catch {
+            throw UpdateError.manifestMissing
+        }
+        guard wrapper.schema == 1 else { throw UpdateError.manifestMissing }
+        guard wrapper.signature.algorithm == "ed25519",
+              wrapper.signature.keyId == expectedKeyID else {
+            throw UpdateError.signatureInvalid
+        }
+        guard let payload = Data(base64Encoded: wrapper.payload),
+              let signature = Data(base64Encoded: wrapper.signature.value) else {
+            throw UpdateError.signatureInvalid
+        }
         guard signature.count == 64 else { throw UpdateError.signatureInvalid }
         guard let keyData = Data(base64Encoded: keyBase64 ?? publicKeyBase64),
               let publicKey = try? Curve25519.Signing.PublicKey(rawRepresentation: keyData) else {
             throw UpdateError.badPublicKey
         }
-        guard publicKey.isValidSignature(signature, for: manifestBytes) else {
+        guard publicKey.isValidSignature(signature, for: payload) else {
             throw UpdateError.signatureInvalid
         }
         do {
-            return try JSONDecoder().decode(Manifest.self, from: manifestBytes)
+            return try decoder.decode(Manifest.self, from: payload)
         } catch {
             throw UpdateError.network("manifest unparsable")
         }
@@ -194,7 +203,7 @@ public final class UpdateService {
     public func downloadAndInstall(_ manifest: Manifest,
                                    onProgress: ((Int) -> Void)? = nil) async throws {
         guard let bundleURL = installedBundleURL else { throw UpdateError.notInstalled }
-        guard let artifact = manifest.platforms["macos"] else {
+        guard let artifact = manifest.artifact(forPlatform: "macos") else {
             throw UpdateError.manifestMissing
         }
 

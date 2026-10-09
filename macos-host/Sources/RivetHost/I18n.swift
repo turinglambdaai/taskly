@@ -1,8 +1,8 @@
 import Foundation
 
-/// Bilingual string service. Strings come from bundled JSON files that are
-/// byte-identical copies of shared/i18n/{zh,en}.json (CI-verified via
-/// scripts/sync-i18n.sh). Lookup: current language → zh fallback → key
+/// Bilingual string service. Strings come from the staged res/i18n JSON
+/// files (byte-identical to shared/i18n/{zh,en}.json, staged by the release
+/// pipeline). Lookup: current language → zh fallback → key
 /// itself. `{0}` placeholders are formatted positionally.
 final class I18nService: @unchecked Sendable {
     static let shared = I18nService()
@@ -58,9 +58,10 @@ final class I18nService: @unchecked Sendable {
     // MARK: - Resource loading
 
     private static func loadTable(_ lang: String) -> [String: String] {
-        // Prefer the bundle copy (works for SPM dev runs and the .app).
-        let bundle = Bundle.module
-        if let url = bundle.url(forResource: lang, withExtension: "json"),
+        // Staged product resource (Contents/Resources/res in the .app,
+        // <stage>/res or the dev tree otherwise) — same mechanism on all
+        // three platforms; see HostResources.
+        if let url = HostResources.locate(i18n: lang),
            let data = try? Data(contentsOf: url),
            let table = try? JSONDecoder().decode([String: String].self, from: data) {
             return table

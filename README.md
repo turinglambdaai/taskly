@@ -43,17 +43,16 @@ interact; all logic lives in the backend.
   with stable `--json` output, fixed exit codes, and byte-level
   cross-platform parity pinned by a 61-case golden suite. Spec:
   [CLI-SPEC](shared/spec/CLI-SPEC.md).
-- **Online updates (macOS)** — silent check at launch plus a manual
-  check in Settings; the release pipeline signs an
-  [update manifest](shared/spec/UPDATE.md) (Ed25519) that the app
-  verifies before installing.
+- **Online updates (all platforms)** — silent check at launch plus a
+  manual check in Settings; the backend verifies the signed
+  [update manifest](shared/spec/UPDATE.md) (Ed25519) and downloads the
+  artifact, the host installs it. macOS swaps the bundle in place,
+  Windows swaps the install directory via a quit-and-install handoff,
+  Linux downloads in-app and installs by extracting over the current
+  folder.
 
 ## Honest gaps
 
-- **Windows / Linux in-app updaters aren't built yet** — the signed
-  update feed ships for all three platforms, but today only the macOS
-  host installs updates in-app; on Windows/Linux, grab the new release
-  from the [Releases](https://github.com/turinglambdaai/taskly/releases/latest) page.
 - **The release packages don't include a standalone CLI binary yet** —
   the CLI runs from source today (see below); a packaged CLI distribution
   is on the roadmap.

@@ -1,67 +1,53 @@
 #!/bin/bash
-# Syncs shared/i18n/*.json into each platform app and verifies byte-identity.
-#   scripts/sync-i18n.sh          copy + verify
-#   scripts/sync-i18n.sh --check  verify only (CI mode)
+# Verifies the shared string sources stay coherent (shared/spec/UPDATE.md,
+# DATA-FORMAT §"i18n").
+#
+# The hosts no longer carry file copies: Linux/Windows/macOS all read the
+# staged res/i18n at runtime (the release pipeline copies shared/i18n into
+# the package), so there is nothing to sync — this check validates the
+# source of truth instead:
+#   - shared/i18n/{zh,en}.json parse as flat string→string objects
+#   - both languages expose the exact same key set
+#   - shared/emoji.json parses as JSON
+#   scripts/sync-i18n.sh          validate (+ kept for call compat)
+#   scripts/sync-i18n.sh --check  validate (CI mode)
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# File-based targets. The Linux (GTK4) and Windows (WinRT) hosts embed their
-# string tables in source (linux/src/main.cpp / windows MainWindow), so only
-# the macOS SwiftPM host consumes JSON resources today.
-declare -a EMOJI_TARGETS=(
-  "macos-host/Sources/RivetHost/Resources"
-)
-
-declare -a TARGETS=(
-  "macos-host/Sources/RivetHost/Resources"
-)
-
-# The Linux host reads shared/i18n directly (dev tree + staged res/i18n);
-# the Windows host carries its own compiled-in strings (M3) and migrates to
-# the shared source with the i18n milestone.
-
-copy() {
-  for target in "${TARGETS[@]}"; do
-    mkdir -p "$target"
-    cp shared/i18n/zh.json "$target/zh.json"
-    cp shared/i18n/en.json "$target/en.json"
-    echo "synced → $target"
-  done
-  for target in "${EMOJI_TARGETS[@]}"; do
-    mkdir -p "$target"
-    cp shared/emoji.json "$target/emoji.json"
-    echo "synced → $target/emoji.json"
-  done
-}
-
 check() {
   local status=0
-  for target in "${TARGETS[@]}"; do
-    for lang in zh en; do
-      if ! diff -q "shared/i18n/$lang.json" "$target/$lang.json" >/dev/null 2>&1; then
-        echo "✗ i18n drift: $target/$lang.json differs from shared/i18n/$lang.json"
-        echo "  run: scripts/sync-i18n.sh"
-        status=1
-      fi
-    done
-  done
-  for target in "${EMOJI_TARGETS[@]}"; do
-    if ! diff -q "shared/emoji.json" "$target/emoji.json" >/dev/null 2>&1; then
-      echo "✗ emoji drift: $target/emoji.json differs from shared/emoji.json"
-      echo "  run: scripts/sync-i18n.sh"
-      status=1
-    fi
-  done
-  if [[ $status -eq 0 ]]; then
-    echo "✓ i18n in sync across all platforms"
-  fi
+  python3 - <<'PY' || status=1
+import json, sys
+
+def load(path):
+    with open(path, encoding="utf-8") as f:
+        value = json.load(f)
+    if not isinstance(value, dict) or not all(isinstance(k, str) and isinstance(v, str)
+                                              for k, v in value.items()):
+        print(f"✗ {path} is not a flat string→string object")
+        sys.exit(1)
+    return value
+
+zh = load("shared/i18n/zh.json")
+en = load("shared/i18n/en.json")
+missing_zh = set(en) - set(zh)
+missing_en = set(zh) - set(en)
+if missing_zh or missing_en:
+    for key in sorted(missing_zh):
+        print(f"✗ key only in en.json: {key}")
+    for key in sorted(missing_en):
+        print(f"✗ key only in zh.json: {key}")
+    sys.exit(1)
+with open("shared/emoji.json", encoding="utf-8") as f:
+    json.load(f)
+print(f"✓ i18n sources coherent ({len(zh)} keys, zh/en parity, emoji.json valid)")
+PY
   return $status
 }
 
 if [[ "${1:-}" == "--check" ]]; then
   check
 else
-  copy
   check
 fi

@@ -60,7 +60,7 @@ enum Palette {
     /// [categoryId → emojis], parsed once from shared/emoji.json.
     static let emojiCategories: [String: [String]] = {
         var map: [String: [String]] = [:]
-        if let url = Bundle.module.url(forResource: "emoji", withExtension: "json"),
+        if let url = HostResources.locateEmoji(),
            let data = try? Data(contentsOf: url),
            let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let categories = root["categories"] as? [[String: Any]] {

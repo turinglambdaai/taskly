@@ -12,6 +12,7 @@
 #include <gtk/gtk.h>
 #include <json-glib/json-glib.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
@@ -113,6 +114,21 @@ char const* kFallbackZhKeys[] = {
     "subtitleToday",          "{0}年{1}{2}日 {3}",
     "subtitleOpenTasks",      "{0} 个未完成",
     "subtitleCompleted",      "{0} 个已完成",
+    "updateCheckNow",         "检查更新…",
+    "updateChecking",         "正在检查更新…",
+    "updateUpToDate",         "当前已是最新版本",
+    "updateAvailableTitle",   "发现新版本",
+    "updateAvailableBody",    "新版本 {0} 可用，是否立即安装并重启？",
+    "updateRestart",          "立即更新",
+    "updateCheckFailed",      "检查更新失败：{0}",
+    "updateDownloading",      "正在下载新版本…",
+    "updateDownloadPercent",  "正在下载新版本… {0}%",
+    "updateDownloaded",       "更新已下载",
+    "updateInstallHint",      "安装方法：解压下载的压缩包并覆盖当前 Taskly 目录。",
+    // Host-side stopgap: the Linux open-folder hand-off has no shared i18n
+    // key yet — copied here so the fallback stays byte-usable; promote it
+    // to shared/i18n when another platform needs it.
+    "updateOpenFolder",       "打开文件夹",
     "aboutContent",
     "一款专注高效的个人任务管理工具\n帮助您轻松规划、组织和完成各项任务",
     nullptr,
@@ -189,6 +205,20 @@ char const* kFallbackEnKeys[] = {
     "subtitleToday",          "{3}, {1} {2}, {0}",
     "subtitleOpenTasks",      "{0} open",
     "subtitleCompleted",      "{0} completed",
+    "updateCheckNow",         "Check for Updates…",
+    "updateChecking",         "Checking for updates…",
+    "updateUpToDate",         "You're up to date",
+    "updateAvailableTitle",   "Update available",
+    "updateAvailableBody",    "Version {0} is available. Install and restart now?",
+    "updateRestart",          "Update and restart",
+    "updateCheckFailed",      "Update check failed: {0}",
+    "updateDownloading",      "Downloading the new version…",
+    "updateDownloadPercent",  "Downloading the new version… {0}%",
+    "updateDownloaded",       "Update downloaded",
+    "updateInstallHint",      "To install, extract the downloaded archive over "
+                              "your current Taskly folder.",
+    // Host-side stopgap: see the zh table note above.
+    "updateOpenFolder",       "Open Folder",
     "aboutContent",
     "A focused and efficient personal task management tool\nHelping you "
     "plan, organize and complete tasks easily",
@@ -238,8 +268,12 @@ bool load_i18n_file(char const* path, int lang) {
 
 void load_i18n(std::filesystem::path const& exe_dir) {
   load_fallback_i18n();
+  // Staged product resources: rivet.rktd declares shared/i18n under
+  // `resources`, so packages carry it at <dir>/app/shared/i18n (the .app
+  // puts it in Contents/Resources/app/shared/i18n); the dev tree wins for
+  // `raco rivet dev` runs where nothing is packaged yet.
   std::filesystem::path const candidates[] = {
-      exe_dir / "res" / "i18n",
+      exe_dir / "app" / "shared" / "i18n",
       exe_dir / ".." / ".." / "shared" / "i18n",  // dev tree: .rivet/stage
   };
   char const* names[] = {"zh.json", "en.json"};
@@ -995,6 +1029,382 @@ void check_reminders(bool startup) {
 int on_reminder_timer(gpointer) {
   check_reminders(false);
   return G_SOURCE_CONTINUE;
+}
+
+// ---------------------------------------------------------------------------
+// Online update flow (shared/spec/UPDATE.md; ported from the family pattern,
+// syncpilot's update_flow). The backend verifies and downloads the signed
+// tar.gz; this host owns only the UI: one silent throttled launch check, a
+// Settings ▸ Check for Updates… entry that bypasses the throttle, a consent
+// dialog, 400 ms progress polling, and a hand-off dialog with an open-folder
+// action. The Linux artifact is a tar.gz, so installation stays manual
+// (extract the archive over the Taskly directory) — nothing ever relaunches.
+// Every dialog parents to the main window: it outlives everything else, and
+// a download finishing later must not point a modal at a dead parent.
+// ---------------------------------------------------------------------------
+
+struct UpdateFlowState {
+  guint auto_check_source{0};  // one-shot 3 s launch-check timer
+  guint poll_source{0};        // 400 ms update_state poll
+  GtkWindow* progress_dialog{nullptr};
+  GtkProgressBar* progress_bar{nullptr};
+  GtkLabel* progress_label{nullptr};
+  bool check_in_flight{false};
+  bool download_in_flight{false};
+};
+
+UpdateFlowState g_update;
+
+// UPDATE.md: at most one silent attempt per 4 hours, unix epoch seconds in
+// the config key below (integer-as-string per DATA-FORMAT §7).
+constexpr long long kUpdateThrottleSeconds = 4 * 60 * 60;
+char const* kUpdateCheckSetting = "last-update-check";
+
+void start_update_download();
+
+void stop_update_poll() {
+  if (g_update.poll_source != 0) {
+    g_source_remove(g_update.poll_source);
+    g_update.poll_source = 0;
+  }
+}
+
+void close_update_progress() {
+  if (g_update.progress_dialog != nullptr) {
+    gtk_window_destroy(g_update.progress_dialog);
+    g_update.progress_dialog = nullptr;
+    g_update.progress_bar = nullptr;
+    g_update.progress_label = nullptr;
+  }
+}
+
+void show_update_message(std::string const& title, std::string const& body) {
+  auto* dialog = gtk_dialog_new_with_buttons(
+      title.c_str(), g_state.window,
+      static_cast<GtkDialogFlags>(GTK_DIALOG_MODAL |
+                                  GTK_DIALOG_DESTROY_WITH_PARENT),
+      tr("dialogConfirm").c_str(), GTK_RESPONSE_CLOSE, nullptr);
+  auto* area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  auto* text = gtk_label_new(body.c_str());
+  gtk_label_set_wrap(GTK_LABEL(text), TRUE);
+  gtk_label_set_max_width_chars(GTK_LABEL(text), 60);
+  gtk_widget_set_margin_top(text, 12);
+  gtk_widget_set_margin_bottom(text, 6);
+  gtk_widget_set_margin_start(text, 12);
+  gtk_widget_set_margin_end(text, 12);
+  gtk_box_append(GTK_BOX(area), text);
+  g_signal_connect(
+      dialog, "response",
+      G_CALLBACK(+[](GtkDialog* dialog, gint, gpointer) {
+        gtk_window_destroy(GTK_WINDOW(dialog));
+      }),
+      nullptr);
+  gtk_window_present(GTK_WINDOW(dialog));
+}
+
+void show_update_error(std::string const& message) {
+  show_update_message("Taskly",
+                      format_positional(tr("updateCheckFailed"), message));
+}
+
+// Downloaded: hand off the verified tar.gz. Installation stays manual, so
+// the dialog explains the step (updateInstallHint) and points at the file's
+// folder; nothing is ever executed or moved by the host.
+void show_downloaded_dialog(std::string const& path) {
+  auto* dialog = gtk_dialog_new_with_buttons(
+      tr("updateDownloaded").c_str(), g_state.window,
+      static_cast<GtkDialogFlags>(GTK_DIALOG_MODAL |
+                                  GTK_DIALOG_DESTROY_WITH_PARENT),
+      tr("dialogConfirm").c_str(), GTK_RESPONSE_CLOSE, nullptr);
+  auto* area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  auto* content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+  gtk_widget_set_margin_top(content, 12);
+  gtk_widget_set_margin_bottom(content, 6);
+  gtk_widget_set_margin_start(content, 12);
+  gtk_widget_set_margin_end(content, 12);
+  gtk_box_append(GTK_BOX(area), content);
+
+  auto* hint = gtk_label_new(tr("updateInstallHint").c_str());
+  gtk_label_set_wrap(GTK_LABEL(hint), TRUE);
+  gtk_label_set_max_width_chars(GTK_LABEL(hint), 60);
+  gtk_box_append(GTK_BOX(content), hint);
+
+  // The backend stages the archive under <data-dir>/updates/.
+  if (!path.empty()) {
+    auto* path_label = gtk_label_new(path.c_str());
+    gtk_label_set_selectable(GTK_LABEL(path_label), TRUE);
+    gtk_label_set_wrap(GTK_LABEL(path_label), TRUE);
+    gtk_widget_add_css_class(path_label, "meta-text");
+    gtk_box_append(GTK_BOX(content), path_label);
+
+    auto* open = gtk_button_new_with_label(tr("updateOpenFolder").c_str());
+    g_object_set_data_full(G_OBJECT(open), "update-open-path",
+                           new std::string(path),
+                           +[](gpointer data) {
+                             delete static_cast<std::string*>(data);
+                           });
+    g_signal_connect(
+        open, "clicked",
+        G_CALLBACK(+[](GtkButton* button, gpointer) {
+          auto const* p = static_cast<std::string const*>(
+              g_object_get_data(G_OBJECT(button), "update-open-path"));
+          if (p == nullptr) return;
+          // Parent directory of the file, POSIX paths only: plain string
+          // arithmetic keeps this noexcept inside a GTK callback.
+          auto const slash = p->find_last_of('/');
+          if (slash == std::string::npos) return;
+          std::string const dir = p->substr(0, slash);
+          if (dir.empty()) return;
+          GFile* folder = g_file_new_for_path(dir.c_str());
+          gchar* uri = g_file_get_uri(folder);
+          gtk_show_uri(g_state.window, uri, GDK_CURRENT_TIME);
+          g_free(uri);
+          g_object_unref(folder);
+        }),
+        nullptr);
+    gtk_box_append(GTK_BOX(content), open);
+  }
+
+  g_signal_connect(
+      dialog, "response",
+      G_CALLBACK(+[](GtkDialog* dialog, gint, gpointer) {
+        gtk_window_destroy(GTK_WINDOW(dialog));
+      }),
+      nullptr);
+  gtk_window_present(GTK_WINDOW(dialog));
+}
+
+int on_update_poll_tick(gpointer) {
+  if (g_state.api == nullptr || g_update.progress_dialog == nullptr) {
+    g_update.poll_source = 0;
+    return G_SOURCE_REMOVE;
+  }
+  g_state.api->update_state_async(
+      [](rivet_app::Result<rivet_app::UpdateState> result) {
+        dispatch_ui([result = std::move(result)]() mutable {
+          if (g_update.progress_dialog == nullptr) return;  // detached UI
+          if (!result.succeeded()) return;  // keep polling through hiccups
+          rivet_app::UpdateState const& state = result.get();
+          auto const percent = std::clamp<std::int64_t>(state.percent, 0, 100);
+          if (g_update.progress_bar != nullptr) {
+            gtk_progress_bar_set_fraction(g_update.progress_bar,
+                                          static_cast<double>(percent) /
+                                              100.0);
+          }
+          if (g_update.progress_label != nullptr) {
+            gtk_label_set_text(
+                g_update.progress_label,
+                format_positional(tr("updateDownloadPercent"),
+                                  std::to_string(percent))
+                    .c_str());
+          }
+          if (state.phase != "downloaded" && state.phase != "error") {
+            return;
+          }
+          stop_update_poll();
+          close_update_progress();
+          g_update.download_in_flight = false;
+          if (state.phase == "error") {
+            show_update_error(state.message.value_or("unknown failure"));
+            return;
+          }
+          show_downloaded_dialog(state.downloaded_path.value_or(""));
+        });
+      });
+  return G_SOURCE_CONTINUE;
+}
+
+void start_update_download() {
+  if (g_state.api == nullptr || g_update.download_in_flight) return;
+  g_update.download_in_flight = true;
+
+  auto* dialog = gtk_dialog_new_with_buttons(
+      tr("updateDownloading").c_str(), g_state.window,
+      static_cast<GtkDialogFlags>(GTK_DIALOG_MODAL |
+                                  GTK_DIALOG_DESTROY_WITH_PARENT),
+      tr("dialogCancel").c_str(), GTK_RESPONSE_CANCEL, nullptr);
+  auto* area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  auto* content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+  gtk_widget_set_margin_top(content, 12);
+  gtk_widget_set_margin_bottom(content, 6);
+  gtk_widget_set_margin_start(content, 12);
+  gtk_widget_set_margin_end(content, 12);
+  gtk_box_append(GTK_BOX(area), content);
+  auto* bar = gtk_progress_bar_new();
+  gtk_widget_set_size_request(bar, 300, -1);
+  gtk_box_append(GTK_BOX(content), bar);
+  auto* label = gtk_label_new(tr("updateDownloading").c_str());
+  gtk_box_append(GTK_BOX(content), label);
+
+  // Canceling only detaches the progress UI — the backend keeps downloading
+  // (family parity: there is no cancel RPC).
+  g_signal_connect(
+      dialog, "response",
+      G_CALLBACK(+[](GtkDialog* dialog, gint, gpointer) {
+        stop_update_poll();
+        g_update.progress_dialog = nullptr;
+        g_update.progress_bar = nullptr;
+        g_update.progress_label = nullptr;
+        g_update.download_in_flight = false;
+        gtk_window_destroy(GTK_WINDOW(dialog));
+      }),
+      nullptr);
+  // DESTROY_WITH_PARENT: if the main window goes away the dialog dies with
+  // it — clear the raw pointers and the poll so no tick touches dead
+  // widgets.
+  g_signal_connect(
+      dialog, "destroy",
+      G_CALLBACK(+[](GtkWidget*, gpointer) {
+        g_update.progress_dialog = nullptr;
+        g_update.progress_bar = nullptr;
+        g_update.progress_label = nullptr;
+        stop_update_poll();
+      }),
+      nullptr);
+  gtk_window_present(GTK_WINDOW(dialog));
+  g_update.progress_dialog = GTK_WINDOW(dialog);
+  g_update.progress_bar = GTK_PROGRESS_BAR(bar);
+  g_update.progress_label = GTK_LABEL(label);
+  g_update.poll_source = g_timeout_add(400, on_update_poll_tick, nullptr);
+
+  g_state.api->start_download_async(
+      [](rivet_app::Result<void> result) {
+        dispatch_ui([result = std::move(result)]() mutable {
+          if (g_update.progress_dialog == nullptr) return;  // detached UI
+          if (result.succeeded()) return;  // the poll owns the rest
+          // The download never started; stop staring at a 0% bar.
+          stop_update_poll();
+          close_update_progress();
+          g_update.download_in_flight = false;
+          std::string message = "unknown failure";
+          try {
+            std::rethrow_exception(result.error);
+          } catch (std::exception const& e) {
+            message = e.what();
+          } catch (...) {
+          }
+          show_update_error(message);
+        });
+      });
+}
+
+void show_update_consent(rivet_app::UpdateCheck const& check) {
+  std::string const version = check.available_version.value_or("?");
+  auto* dialog = gtk_dialog_new_with_buttons(
+      tr("updateAvailableTitle").c_str(), g_state.window,
+      static_cast<GtkDialogFlags>(GTK_DIALOG_MODAL |
+                                  GTK_DIALOG_DESTROY_WITH_PARENT),
+      tr("dialogCancel").c_str(), GTK_RESPONSE_CANCEL,
+      tr("updateRestart").c_str(), GTK_RESPONSE_ACCEPT, nullptr);
+  auto* area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  auto* text = gtk_label_new(
+      format_positional(tr("updateAvailableBody"), version).c_str());
+  gtk_label_set_wrap(GTK_LABEL(text), TRUE);
+  gtk_label_set_max_width_chars(GTK_LABEL(text), 60);
+  gtk_widget_set_margin_top(text, 12);
+  gtk_widget_set_margin_bottom(text, 6);
+  gtk_widget_set_margin_start(text, 12);
+  gtk_widget_set_margin_end(text, 12);
+  gtk_box_append(GTK_BOX(area), text);
+  g_signal_connect(
+      dialog, "response",
+      G_CALLBACK(+[](GtkDialog* dialog, gint response, gpointer) {
+        bool const go = response == GTK_RESPONSE_ACCEPT;
+        gtk_window_destroy(GTK_WINDOW(dialog));
+        if (go) {
+          start_update_download();
+        }
+      }),
+      nullptr);
+  gtk_window_present(GTK_WINDOW(dialog));
+}
+
+// Check for updates. `silent` keeps every outcome except an available
+// update invisible (startup auto-check — never nag); a manual check reports
+// everything. Any settled check records `last-update-check`, so the next
+// launch's silent attempt stays inside the 4-hour throttle (UPDATE.md).
+void check_for_updates(bool silent) {
+  if (g_state.api == nullptr || g_update.check_in_flight ||
+      g_update.download_in_flight) {
+    return;
+  }
+  g_update.check_in_flight = true;
+  if (!silent) {
+    flash_status(tr("updateChecking"));
+  }
+  g_state.api->check_updates_async(
+      [silent](rivet_app::Result<rivet_app::UpdateCheck> result) {
+        dispatch_ui([result = std::move(result), silent]() mutable {
+          g_update.check_in_flight = false;
+          if (!result.succeeded()) {
+            // Transport-level failure: the backend is going away, so do not
+            // pretend a check happened.
+            if (silent) return;
+            std::string message = "unknown failure";
+            try {
+              std::rethrow_exception(result.error);
+            } catch (std::exception const& e) {
+              message = e.what();
+            } catch (...) {
+            }
+            show_update_error(message);
+            return;
+          }
+          // The check settled (any status): record the timestamp so the next
+          // launch's silent attempt stays inside the 4-hour throttle.
+          save_setting(kUpdateCheckSetting,
+                       std::to_string(std::time(nullptr)));
+          rivet_app::UpdateCheck const& check = result.get();
+          if (check.status == "available") {
+            show_update_consent(check);
+            return;
+          }
+          if (silent) return;  // auto-check only speaks when there is news
+          if (check.status == "error") {
+            show_update_error(check.error.value_or("unknown failure"));
+            return;
+          }
+          // "up-to-date": nothing to do.
+          show_update_message("Taskly", tr("updateUpToDate"));
+        });
+      });
+}
+
+void on_menu_check_updates(GSimpleAction*, GVariant*, gpointer) {
+  check_for_updates(/*silent=*/false);
+}
+
+// Silent launch check: once per process, 3 s after the backend is up, gated
+// by the 4-hour throttle. A failed throttle read counts as "never checked" —
+// silent mode ignores errors by contract.
+gboolean on_update_auto_check(gpointer) {
+  g_update.auto_check_source = 0;
+  if (g_state.api == nullptr ||
+      g_state.shutting_down.load(std::memory_order_acquire)) {
+    return G_SOURCE_REMOVE;
+  }
+  g_state.api->get_setting_async(
+      kUpdateCheckSetting,
+      [](rivet_app::Result<std::string> result) {
+        dispatch_ui([result = std::move(result)]() mutable {
+          if (g_state.api == nullptr ||
+              g_state.shutting_down.load(std::memory_order_acquire)) {
+            return;
+          }
+          long long last = 0;
+          if (result.succeeded()) {
+            try {
+              last = std::stoll(result.get());
+            } catch (...) {
+              last = 0;  // unset ("") or malformed → never checked
+            }
+          }
+          auto const now = static_cast<long long>(std::time(nullptr));
+          if (now - last < kUpdateThrottleSeconds) return;  // throttled
+          check_for_updates(/*silent=*/true);
+        });
+      });
+  return G_SOURCE_REMOVE;
 }
 
 // ---------------------------------------------------------------------------
@@ -2259,6 +2669,13 @@ void build_menubar() {
   g_menu_append(theme_section, tr("themeDark").c_str(), "win.theme-dark");
   g_menu_append_section(settings_menu, nullptr, G_MENU_MODEL(theme_section));
   g_object_unref(theme_section);
+  // Settings ▸ Check for Updates… (UPDATE.md trigger contract; bypasses the
+  // launch throttle).
+  auto* update_section = g_menu_new();
+  g_menu_append(update_section, tr("updateCheckNow").c_str(),
+                "win.check-updates");
+  g_menu_append_section(settings_menu, nullptr, G_MENU_MODEL(update_section));
+  g_object_unref(update_section);
   g_menu_append_submenu(menu, tr("menuSettings").c_str(),
                         G_MENU_MODEL(settings_menu));
   g_object_unref(settings_menu);
@@ -2589,6 +3006,10 @@ int on_backend_finished(gpointer) {
   g_timeout_add_seconds(2, on_poll_timer, nullptr);
   // Reminders: one check at startup (after the DB opens) + every 60 s.
   g_timeout_add_seconds(60, on_reminder_timer, nullptr);
+  // Update flow: one silent check 3 s after the backend is up, gated by the
+  // 4-hour last-update-check throttle (UPDATE.md).
+  g_update.auto_check_source =
+      g_timeout_add_seconds(3, on_update_auto_check, nullptr);
 
   g_state.api->get_settings_async(
       [](rivet_app::Result<rivet_app::Settings> result) {
@@ -2926,6 +3347,8 @@ void on_activate(GtkApplication* app, gpointer) {
                     on_menu_theme_dark, false);
   add_window_action(GTK_APPLICATION_WINDOW(window), "about", on_menu_about,
                     false);
+  add_window_action(GTK_APPLICATION_WINDOW(window), "check-updates",
+                    on_menu_check_updates, false);
   add_window_action(GTK_APPLICATION_WINDOW(window), "view-today",
                     on_action_view_today, false);
   add_window_action(GTK_APPLICATION_WINDOW(window), "view-planned",
@@ -2993,6 +3416,15 @@ void on_activate(GtkApplication* app, gpointer) {
 
 void on_shutdown(GApplication*, gpointer) {
   g_state.shutting_down.store(true, std::memory_order_release);
+  // Update flow first: its poll and the pending launch check must not fire
+  // an RPC against a stopped backend, and the progress dialog is modal to
+  // the main window that is about to go away (family contract).
+  if (g_update.auto_check_source != 0) {
+    g_source_remove(g_update.auto_check_source);
+    g_update.auto_check_source = 0;
+  }
+  stop_update_poll();
+  close_update_progress();
   if (g_state.startup_thread.joinable()) {
     g_state.startup_thread.join();
   }

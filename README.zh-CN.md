@@ -22,11 +22,10 @@ Taskly 构建在 [Rivet](https://github.com/turinglambdaai/rivet) 之上：全�
 - **到期提醒通知**——60 秒轮询 + 启动检查，去重，超过三条合并为一条汇总。
 - **单文件数据**——所有任务存在一个 SQLite 文件（`~/.taskly/tasks.db`，WAL），丢进 iCloud/OneDrive/Dropbox 即可同步。格式文档化且稳定：[DATA-FORMAT](shared/spec/DATA-FORMAT.md)。
 - **面向 agent 的 CLI**——`taskly list|add|update|done|rm|search|mklist…`，`--json` 输出稳定、退出码固定、跨平台字节级一致（61 例 golden 套件钉死）。规格：[CLI-SPEC](shared/spec/CLI-SPEC.md)。
-- **在线更新（macOS）**——启动时静默检查 + 设置里手动检查；发布管线为每个版本签发 [更新清单](shared/spec/UPDATE.md)（Ed25519），应用验证后才安装。
+- **在线更新（三平台）**——启动时静默检查 + 设置里手动检查；后端验证 [更新清单](shared/spec/UPDATE.md)（Ed25519）并下载产物，宿主负责安装：macOS 原地换装 bundle，Windows 退出并换装安装目录，Linux 应用内下载、解压覆盖完成安装。
 
 ## 诚实差距
 
-- **Windows / Linux 的应用内更新器还没做**——三平台的签名更新 feed 都已随版本发布，但目前只有 macOS 宿主支持应用内更新；Windows/Linux 请到 [Releases](https://github.com/turinglambdaai/taskly/releases/latest) 页下载新版本。
 - **发布包暂不含独立 CLI 二进制**——CLI 目前从源码运行（见下节），打包分发在路线图上。
 
 ## 安装

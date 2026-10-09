@@ -5,15 +5,22 @@
 #endif
 #include "GeneratedBackend.hpp"
 
+#include <fstream>
 #include <functional>
+#include <iterator>
+#include <map>
 #include <shobjidl_core.h>
 #include <stdexcept>
 
 namespace winrt::RivetHost::implementation {
-namespace {
 
 namespace mx = winrt::Microsoft::UI::Xaml;
 namespace mxc = winrt::Microsoft::UI::Xaml::Controls;
+
+// ---------------------------------------------------------------------------
+// Host helpers shared with MainWindow.Update.cpp (payback's HostHelpers
+// pattern): executable path and UTF conversion.
+// ---------------------------------------------------------------------------
 
 std::filesystem::path executable_path() {
   std::wstring buffer(32768, L'\0');
@@ -27,20 +34,20 @@ std::filesystem::path executable_path() {
 }
 
 std::string utf8(std::filesystem::path const& path) {
-  auto const wide = path.wstring();
-  if (wide.empty()) {
+  auto const wide_path = path.wstring();
+  if (wide_path.empty()) {
     return {};
   }
   auto const size = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
-                                          wide.data(),
-                                          static_cast<int>(wide.size()),
+                                          wide_path.data(),
+                                          static_cast<int>(wide_path.size()),
                                           nullptr, 0, nullptr, nullptr);
   if (size <= 0) {
     throw std::runtime_error("WideCharToMultiByte failed");
   }
   std::string result(static_cast<std::size_t>(size), '\0');
   if (::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
-                            wide.data(), static_cast<int>(wide.size()),
+                            wide_path.data(), static_cast<int>(wide_path.size()),
                             result.data(), size, nullptr, nullptr) != size) {
     throw std::runtime_error("WideCharToMultiByte failed");
   }
@@ -62,6 +69,8 @@ std::wstring wide(std::string const& text) {
                         static_cast<int>(text.size()), result.data(), size);
   return result;
 }
+
+namespace {
 
 rivet::windows::RacketRuntimeConfig runtime_config() {
   auto const exe = executable_path();
@@ -127,102 +136,329 @@ T const* find_by_id(std::vector<T> const& items, std::int64_t id) {
   return nullptr;
 }
 
+std::wstring replace_all(std::wstring text, std::wstring const& from,
+                         std::wstring const& to) {
+  std::size_t position = 0;
+  while ((position = text.find(from, position)) != std::wstring::npos) {
+    text.replace(position, from.size(), to);
+    position += to.size();
+  }
+  return text;
+}
+
 }  // namespace
 
-Strings const& S(std::string const& lang) {
-  static Strings const zh = [] {
-    Strings s;
-    s.search_placeholder = L"搜索任务";
-    s.smart_lists = L"智能清单";
-    s.my_lists = L"我的清单";
-    s.new_list = L"＋ 新建清单";
-    s.today = L"今天";
-    s.planned = L"已计划";
-    s.all = L"全部";
-    s.completed = L"已完成";
-    s.new_task_placeholder = L"新提醒";
-    s.show_completed = L"显示已完成";
-    s.due_today = L"今天";
-    s.due_tomorrow = L"明天";
-    s.due_clear = L"清除日期";
-    s.delete_task = L"删除提醒";
-    s.rename_list = L"重命名清单";
-    s.delete_list = L"删除清单";
-    s.new_list_dialog_title = L"新建清单";
-    s.new_list_dialog_placeholder = L"清单名称";
-    s.rename_list_dialog_title = L"重命名清单";
-    s.edit_task_dialog_title = L"编辑提醒";
-    s.ok = L"确定";
-    s.cancel = L"取消";
-    s.menu_file = L"文件";
-    s.menu_settings = L"设置";
-    s.menu_help = L"帮助";
-    s.menu_new_db = L"新建数据库…";
-    s.menu_open_db = L"打开数据库…";
-    s.menu_close_db = L"关闭数据库";
-    s.menu_exit = L"退出";
-    s.menu_lang_zh = L"中文";
-    s.menu_lang_en = L"English";
-    s.menu_theme_system = L"主题：跟随系统";
-    s.menu_theme_light = L"主题：浅色";
-    s.menu_theme_dark = L"主题：深色";
-    s.menu_about = L"关于 Taskly";
-    s.about_title = L"Taskly";
-    s.about_body =
-        L"Taskly — 跨平台待办事项\n由 Rivet 驱动：Racket 后端 + 原生界面";
-    s.status_starting = L"正在启动嵌入式 Racket…";
-    s.status_ready = L"就绪";
-    s.status_error = L"错误";
-    s.count_suffix = L" 项";
-    return s;
-  }();
-  static Strings const en = [] {
-    Strings s;
-    s.search_placeholder = L"Search tasks";
-    s.smart_lists = L"Smart lists";
-    s.my_lists = L"My lists";
-    s.new_list = L"＋ New list";
-    s.today = L"Today";
-    s.planned = L"Planned";
-    s.all = L"All";
-    s.completed = L"Completed";
-    s.new_task_placeholder = L"New reminder";
-    s.show_completed = L"Show completed";
-    s.due_today = L"Today";
-    s.due_tomorrow = L"Tomorrow";
-    s.due_clear = L"Clear date";
-    s.delete_task = L"Delete reminder";
-    s.rename_list = L"Rename list";
-    s.delete_list = L"Delete list";
-    s.new_list_dialog_title = L"New list";
-    s.new_list_dialog_placeholder = L"List name";
-    s.rename_list_dialog_title = L"Rename list";
-    s.edit_task_dialog_title = L"Edit reminder";
-    s.ok = L"OK";
-    s.cancel = L"Cancel";
-    s.menu_file = L"File";
-    s.menu_settings = L"Settings";
-    s.menu_help = L"Help";
-    s.menu_new_db = L"New database…";
-    s.menu_open_db = L"Open database…";
-    s.menu_close_db = L"Close database";
-    s.menu_exit = L"Exit";
-    s.menu_lang_zh = L"中文";
-    s.menu_lang_en = L"English";
-    s.menu_theme_system = L"Theme: Follow system";
-    s.menu_theme_light = L"Theme: Light";
-    s.menu_theme_dark = L"Theme: Dark";
-    s.menu_about = L"About Taskly";
-    s.about_title = L"Taskly";
-    s.about_body =
-        L"Taskly — cross-platform reminders\nPowered by Rivet: a Racket backend with a native UI";
-    s.status_starting = L"Starting embedded Racket…";
-    s.status_ready = L"Ready";
-    s.status_error = L"Error";
-    s.count_suffix = L" items";
-    return s;
-  }();
-  return lang == "en" ? en : zh;
+// ---------------------------------------------------------------------------
+// i18n — strings load from <exe_dir>/app/shared/i18n/{zh,en}.json, byte
+// copies of shared/i18n/*.json (the single source of truth; flat
+// string→string JSON, UTF-8 without BOM, machine-generated with indent=2 so
+// a line-based parser is enough). rivet.rktd declares shared/i18n under
+// `resources`, so packages carry it at <dir>/app/shared/i18n. An embedded
+// fallback table mirrors every key the host uses; lookup order: active
+// language → other language → the key itself.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+struct I18nEntry {
+  char const* key;
+  char const* zh;
+  char const* en;
+};
+
+constexpr I18nEntry kI18nFallback[] = {
+    {"menuFile", "文件", "File"},
+    {"menuSettings", "设置", "Settings"},
+    {"menuHelp", "帮助", "Help"},
+    {"menuNewDatabase", "新建数据库", "New Database"},
+    {"menuOpenDatabase", "打开数据库", "Open Database"},
+    {"menuCloseDatabase", "关闭数据库", "Close Database"},
+    {"menuExit", "退出", "Exit"},
+    {"menuLangZh", "简体中文", "Simplified Chinese"},
+    {"menuLangEn", "English", "English"},
+    {"menuTheme", "主题", "Theme"},
+    {"themeFollowSystem", "跟随系统", "Follow system"},
+    {"themeLight", "浅色", "Light"},
+    {"themeDark", "深色", "Dark"},
+    {"menuAbout", "关于", "About"},
+    {"aboutContent",
+     "一款专注高效的个人任务管理工具\n帮助您轻松规划、组织和完成各项任务",
+     "A focused and efficient personal task management tool\nHelping you "
+     "plan, organize and complete tasks easily"},
+    {"navToday", "今天", "Today"},
+    {"navPlanned", "计划", "Planned"},
+    {"navAll", "全部", "All"},
+    {"navCompleted", "完成", "Completed"},
+    {"sectionMyLists", "我的列表", "My Lists"},
+    {"searchHint", "搜索任务", "Search tasks"},
+    {"taskListInputHint", "+ 添加任务", "+ Add Task"},
+    {"showCompletedToggle", "显示已完成", "Show Completed"},
+    {"dateTomorrow", "明天", "Tomorrow"},
+    {"dialogConfirm", "确定", "OK"},
+    {"dialogCancel", "取消", "Cancel"},
+    {"dialogClear", "清除", "Clear"},
+    {"dialogCreateList", "创建列表", "Create List"},
+    {"dialogEditList", "编辑列表", "Edit List"},
+    {"dialogInputListName", "请输入列表名称", "Please enter list name"},
+    {"dialogTaskDetail", "任务详情", "Task Detail"},
+    {"contextMenuDetails", "详细信息", "Details"},
+    {"taskDelete", "删除", "Delete"},
+    {"listDelete", "删除列表", "Delete List"},
+    {"statusDatabaseNotConnected", "未连接数据库", "Database Not Connected"},
+    {"statusDatabaseConnected", "数据库已连接", "Database Connected"},
+    {"subtitleOpenTasks", "{0} 个未完成", "{0} open"},
+    {"updateCheckNow", "检查更新…", "Check for Updates…"},
+    {"updateChecking", "正在检查更新…", "Checking for updates…"},
+    {"updateUpToDate", "当前已是最新版本", "You're up to date"},
+    {"updateAvailableTitle", "发现新版本", "Update available"},
+    {"updateAvailableBody", "新版本 {0} 可用，是否立即安装并重启？",
+     "Version {0} is available. Install and restart now?"},
+    {"updateRestart", "立即更新", "Update and restart"},
+    {"updateCheckFailed", "检查更新失败：{0}", "Update check failed: {0}"},
+    {"updateDownloading", "正在下载新版本…", "Downloading the new version…"},
+    {"updateDownloadPercent", "正在下载新版本… {0}%",
+     "Downloading the new version… {0}%"},
+    {"updateDownloaded", "更新已下载", "Update downloaded"},
+    {"updateQuitAndInstall", "退出并安装", "Quit and install"},
+    {"updateReadyBody", "新版本已就绪，将重启应用完成安装。",
+     "The new version is ready — Taskly will restart to install it."},
+    {"updateInstallFailed", "安装更新失败：{0}。当前版本未受影响。",
+     "Installing the update failed: {0}. Your current version is unaffected."},
+    {"updateNotInstalled", "当前为开发副本，自动更新不可用。",
+     "This is a development copy — auto-update is unavailable."},
+    {"updatePortable",
+     "当前为便携版，不支持自动更新，请从发布页重新下载。",
+     "This portable copy can't auto-update — please re-download from the "
+     "releases page."},
+    {"updateOpenReleases", "打开发布页", "Open releases page"},
+};
+
+using I18nTable = std::map<std::string, std::wstring>;
+
+I18nTable g_i18n[2];    // 0 = zh, 1 = en
+int g_i18n_active = 1;  // "en" until get_settings reports the user's choice
+
+std::string narrow(std::wstring const& text) {
+  if (text.empty()) {
+    return {};
+  }
+  auto const size = ::WideCharToMultiByte(CP_UTF8, 0, text.data(),
+                                          static_cast<int>(text.size()),
+                                          nullptr, 0, nullptr, nullptr);
+  if (size <= 0) {
+    return {};
+  }
+  std::string result(static_cast<std::size_t>(size), '\0');
+  ::WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()),
+                        result.data(), size, nullptr, nullptr);
+  return result;
+}
+
+// Index of the closing quote for the JSON string starting at `start`
+// (which points at '"'), honoring backslash escapes.
+std::size_t i18n_string_end(std::wstring const& line, std::size_t start) {
+  for (std::size_t i = start + 1; i < line.size(); ++i) {
+    if (line[i] == L'\\') {
+      ++i;
+      continue;
+    }
+    if (line[i] == L'"') {
+      return i;
+    }
+  }
+  return std::wstring::npos;
+}
+
+std::wstring i18n_unescape(std::wstring const& raw) {
+  std::wstring out;
+  out.reserve(raw.size());
+  for (std::size_t i = 0; i < raw.size(); ++i) {
+    if (raw[i] != L'\\') {
+      out.push_back(raw[i]);
+      continue;
+    }
+    if (++i >= raw.size()) {
+      break;
+    }
+    switch (raw[i]) {
+      case L'"':
+        out.push_back(L'"');
+        break;
+      case L'\\':
+        out.push_back(L'\\');
+        break;
+      case L'/':
+        out.push_back(L'/');
+        break;
+      case L'n':
+        out.push_back(L'\n');
+        break;
+      case L't':
+        out.push_back(L'\t');
+        break;
+      case L'r':
+        out.push_back(L'\r');
+        break;
+      case L'b':
+        out.push_back(L'\b');
+        break;
+      case L'f':
+        out.push_back(L'\f');
+        break;
+      case L'u': {
+        if (i + 4 >= raw.size()) {
+          i = raw.size();
+          break;
+        }
+        unsigned int code = 0;
+        bool valid = true;
+        for (int digit = 1; digit <= 4; ++digit) {
+          wchar_t const h = raw[i + digit];
+          code <<= 4;
+          if (h >= L'0' && h <= L'9') {
+            code += static_cast<unsigned int>(h - L'0');
+          } else if (h >= L'a' && h <= L'f') {
+            code += static_cast<unsigned int>(h - L'a') + 10;
+          } else if (h >= L'A' && h <= L'F') {
+            code += static_cast<unsigned int>(h - L'A') + 10;
+          } else {
+            valid = false;
+            break;
+          }
+        }
+        if (!valid) {
+          i = raw.size();
+          break;
+        }
+        i += 4;
+        // Consecutive \uXXXX escapes concatenate into (surrogate) pairs.
+        out.push_back(static_cast<wchar_t>(code));
+        break;
+      }
+      default:
+        out.push_back(raw[i]);
+        break;
+    }
+  }
+  return out;
+}
+
+// Tolerant loader for the flat "key": "value" table. Returns true when at
+// least one entry was read; a malformed line is skipped, never fatal.
+bool load_i18n_file(std::filesystem::path const& path, int lang) {
+  std::ifstream file(path, std::ios::binary);
+  if (!file) {
+    return false;
+  }
+  std::string bytes((std::istreambuf_iterator<char>(file)),
+                    std::istreambuf_iterator<char>());
+  if (bytes.size() >= 3 && bytes[0] == '\xEF' && bytes[1] == '\xBB' &&
+      bytes[2] == '\xBF') {
+    bytes.erase(0, 3);  // tolerate a BOM; the generator does not emit one
+  }
+  if (bytes.empty()) {
+    return false;
+  }
+  auto const size = ::MultiByteToWideChar(CP_UTF8, 0, bytes.data(),
+                                          static_cast<int>(bytes.size()),
+                                          nullptr, 0);
+  if (size <= 0) {
+    return false;
+  }
+  std::wstring text(static_cast<std::size_t>(size), L'\0');
+  ::MultiByteToWideChar(CP_UTF8, 0, bytes.data(), static_cast<int>(bytes.size()),
+                        text.data(), size);
+
+  auto& table = g_i18n[lang];
+  bool loaded_any = false;
+  std::size_t begin = 0;
+  while (begin < text.size()) {
+    auto end = text.find(L'\n', begin);
+    if (end == std::wstring::npos) {
+      end = text.size();
+    }
+    auto line = text.substr(begin, end - begin);
+    begin = end + 1;
+    if (!line.empty() && line.back() == L'\r') {
+      line.pop_back();
+    }
+
+    auto const key_start = line.find(L'"');
+    if (key_start == std::wstring::npos) {
+      continue;
+    }
+    auto const key_end = i18n_string_end(line, key_start);
+    if (key_end == std::wstring::npos) {
+      continue;
+    }
+    auto const colon = line.find(L':', key_end);
+    if (colon == std::wstring::npos) {
+      continue;
+    }
+    auto const value_start = line.find(L'"', colon + 1);
+    if (value_start == std::wstring::npos) {
+      continue;
+    }
+    auto const value_end = i18n_string_end(line, value_start);
+    if (value_end == std::wstring::npos) {
+      continue;
+    }
+    table[narrow(line.substr(key_start + 1, key_end - key_start - 1))] =
+        i18n_unescape(line.substr(value_start + 1,
+                                  value_end - value_start - 1));
+    loaded_any = true;
+  }
+  return loaded_any;
+}
+
+void load_i18n(std::filesystem::path const& exe_dir) {
+  char const* names[] = {"zh.json", "en.json"};
+  for (int lang = 0; lang < 2; ++lang) {
+    auto& table = g_i18n[lang];
+    table.clear();
+    for (auto const& entry : kI18nFallback) {
+      table.emplace(entry.key, wide(lang == 0 ? entry.zh : entry.en));
+    }
+    // Staged product resources: rivet.rktd declares shared/i18n under
+    // `resources`, so packages carry it at <dir>/app/shared/i18n; the dev
+    // tree wins for `raco rivet dev` runs where nothing is packaged yet.
+    std::filesystem::path const candidates[] = {
+        exe_dir / L"app" / L"shared" / L"i18n",
+        exe_dir / L".." / L".." / L"shared" / L"i18n",  // dev: .rivet/stage
+    };
+    for (auto const& dir : candidates) {
+      auto const path = dir / names[lang];
+      std::error_code ec;
+      if (!std::filesystem::exists(path, ec)) {
+        continue;
+      }
+      if (load_i18n_file(path, lang)) {
+        break;
+      }
+    }
+  }
+}
+
+void set_i18n_language(std::string const& lang) {
+  g_i18n_active = (lang == "en") ? 1 : 0;
+}
+
+}  // namespace
+
+std::wstring t(char const* key) {
+  std::string const needle(key);
+  for (int attempt = 0; attempt < 2; ++attempt) {
+    auto const& table = g_i18n[(g_i18n_active + attempt) % 2];
+    auto const it = table.find(needle);
+    if (it != table.end()) {
+      return it->second;
+    }
+  }
+  return wide(key);  // unknown key: render the key itself, never crash
+}
+
+std::wstring tf(char const* key, std::wstring const& arg0) {
+  return replace_all(t(key), L"{0}", arg0);
 }
 
 std::string MainWindow::ViewStringFor(ViewKind kind) {
@@ -243,7 +479,13 @@ std::string MainWindow::ViewStringFor(ViewKind kind) {
 MainWindow::MainWindow() {
   InitializeComponent();
   Title(L"Taskly");
-  SetStatus(S("zh").status_starting);
+  try {
+    load_i18n(executable_path().parent_path());
+  } catch (...) {
+    // The fallback tables stay usable even if the exe path fails.
+  }
+  set_i18n_language("en");  // corrected once get_settings reports
+  SetStatus(t("statusDatabaseNotConnected"));
   InitializeBackendAsync();
 }
 
@@ -308,7 +550,12 @@ winrt::fire_and_forget MainWindow::InitializeBackendAsync() {
                       current->settings_ = settings;
                       current->ApplyTheme(settings.theme);
                       current->ApplyLanguage();
+                      // A previous update run may have left a failure report
+                      // (shared/spec/UPDATE.md); surface it once, then start
+                      // the throttled silent check.
+                      current->HandleInstallMarkers();
                       current->OpenDefaultDatabaseAsync();
+                      current->AutoCheckUpdatesAsync();
                     }
                   });
                 } catch (std::exception const& e) {
@@ -346,26 +593,27 @@ winrt::fire_and_forget MainWindow::InitializeBackendAsync() {
 // ---------------------------------------------------------------------------
 
 void MainWindow::ApplyLanguage() {
-  auto const& s = S(settings_.language);
-  MenuFile().Title(s.menu_file);
-  MenuSettings().Title(s.menu_settings);
-  MenuHelp().Title(s.menu_help);
-  MenuNewDatabase().Text(s.menu_new_db);
-  MenuOpenDatabase().Text(s.menu_open_db);
-  MenuCloseDatabase().Text(s.menu_close_db);
-  MenuExit().Text(s.menu_exit);
-  MenuLangZh().Text(s.menu_lang_zh);
-  MenuLangEn().Text(s.menu_lang_en);
-  MenuThemeSystem().Text(s.menu_theme_system);
-  MenuThemeLight().Text(s.menu_theme_light);
-  MenuThemeDark().Text(s.menu_theme_dark);
-  MenuAbout().Text(s.menu_about);
-  SearchBox().PlaceholderText(s.search_placeholder);
-  SmartListsHeader().Text(s.smart_lists);
-  MyListsHeader().Text(s.my_lists);
-  NewListButton().Content(winrt::box_value(s.new_list));
-  NewTaskBox().PlaceholderText(s.new_task_placeholder);
-  ShowCompletedCheck().Content(winrt::box_value(s.show_completed));
+  set_i18n_language(settings_.language);
+  MenuFile().Title(t("menuFile"));
+  MenuSettings().Title(t("menuSettings"));
+  MenuHelp().Title(t("menuHelp"));
+  MenuNewDatabase().Text(t("menuNewDatabase"));
+  MenuOpenDatabase().Text(t("menuOpenDatabase"));
+  MenuCloseDatabase().Text(t("menuCloseDatabase"));
+  MenuExit().Text(t("menuExit"));
+  MenuLangZh().Text(t("menuLangZh"));
+  MenuLangEn().Text(t("menuLangEn"));
+  MenuTheme().Text(t("menuTheme"));
+  MenuThemeSystem().Text(t("themeFollowSystem"));
+  MenuThemeLight().Text(t("themeLight"));
+  MenuThemeDark().Text(t("themeDark"));
+  MenuCheckUpdates().Text(t("updateCheckNow"));
+  MenuAbout().Text(t("menuAbout"));
+  SearchBox().PlaceholderText(t("searchHint"));
+  MyListsHeader().Text(t("sectionMyLists"));
+  NewListButton().Content(winrt::box_value(L"＋ " + t("dialogCreateList")));
+  NewTaskBox().PlaceholderText(t("taskListInputHint"));
+  ShowCompletedCheck().Content(winrt::box_value(t("showCompletedToggle")));
   RenderSidebar();
   RenderTasks();
 }
@@ -386,8 +634,6 @@ mx::Media::Brush MainWindow::ThemeBrush(wchar_t const* key) {
 }
 
 void MainWindow::RenderSidebar() {
-  auto const& s = S(settings_.language);
-
   suppress_selection_ = true;
   struct Restore {
     MainWindow* window;
@@ -401,10 +647,10 @@ void MainWindow::RenderSidebar() {
     std::int64_t count;
   };
   SmartEntry const entries[] = {
-      {ViewKind::Today, L"\uE8BF", s.today, current_counts_.today},
-      {ViewKind::Planned, L"\uE787", s.planned, current_counts_.planned},
-      {ViewKind::All, L"\uE8A9", s.all, current_counts_.all},
-      {ViewKind::Completed, L"\uE73E", s.completed,
+      {ViewKind::Today, L"\uE8BF", t("navToday"), current_counts_.today},
+      {ViewKind::Planned, L"\uE787", t("navPlanned"), current_counts_.planned},
+      {ViewKind::All, L"\uE8A9", t("navAll"), current_counts_.all},
+      {ViewKind::Completed, L"\uE73E", t("navCompleted"),
        current_counts_.completed},
   };
 
@@ -466,12 +712,12 @@ void MainWindow::RenderSidebar() {
 
     auto menu = mxc::MenuFlyout{};
     auto rename = mxc::MenuFlyoutItem{};
-    rename.Text(s.rename_list);
+    rename.Text(t("dialogEditList"));
     rename.Tag(winrt::box_value<std::int64_t>(list.id));
     rename.Click({this, &MainWindow::OnRenameList});
     menu.Items().Append(rename);
     auto remove = mxc::MenuFlyoutItem{};
-    remove.Text(s.delete_list);
+    remove.Text(t("listDelete"));
     remove.Tag(winrt::box_value<std::int64_t>(list.id));
     remove.Click({this, &MainWindow::OnDeleteList});
     menu.Items().Append(remove);
@@ -486,9 +732,8 @@ void MainWindow::RenderSidebar() {
 }
 
 void MainWindow::RenderTasks() {
-  auto const& s = S(settings_.language);
   PaneTitle().Text(view_title());
-  PaneCount().Text(std::to_wstring(tasks_.size()) + s.count_suffix);
+  PaneCount().Text(tf("subtitleOpenTasks", std::to_wstring(tasks_.size())));
 
   TaskList().Items().Clear();
   for (auto const& task : tasks_) {
@@ -504,8 +749,6 @@ void MainWindow::RenderSearchResults() {
 }
 
 mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
-  auto const& s = S(settings_.language);
-
   auto row = mxc::Grid{};
   row.ColumnDefinitions().Append(mxc::ColumnDefinition{});
   row.ColumnDefinitions().Append(mxc::ColumnDefinition{});
@@ -559,28 +802,28 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
 
   auto menu = mxc::MenuFlyout{};
   auto due_today = mxc::MenuFlyoutItem{};
-  due_today.Text(s.due_today);
+  due_today.Text(t("navToday"));
   due_today.Tag(winrt::box_value<std::int64_t>(task.id));
   due_today.Click({this, &MainWindow::OnDueToday});
   menu.Items().Append(due_today);
   auto due_tomorrow = mxc::MenuFlyoutItem{};
-  due_tomorrow.Text(s.due_tomorrow);
+  due_tomorrow.Text(t("dateTomorrow"));
   due_tomorrow.Tag(winrt::box_value<std::int64_t>(task.id));
   due_tomorrow.Click({this, &MainWindow::OnDueTomorrow});
   menu.Items().Append(due_tomorrow);
   auto due_clear = mxc::MenuFlyoutItem{};
-  due_clear.Text(s.due_clear);
+  due_clear.Text(t("dialogClear"));
   due_clear.Tag(winrt::box_value<std::int64_t>(task.id));
   due_clear.Click({this, &MainWindow::OnDueClear});
   menu.Items().Append(due_clear);
   menu.Items().Append(mxc::MenuFlyoutSeparator{});
   auto edit = mxc::MenuFlyoutItem{};
-  edit.Text(s.edit_task_dialog_title);
+  edit.Text(t("contextMenuDetails"));
   edit.Tag(winrt::box_value<std::int64_t>(task.id));
   edit.Click({this, &MainWindow::OnEditTask});
   menu.Items().Append(edit);
   auto remove = mxc::MenuFlyoutItem{};
-  remove.Text(s.delete_task);
+  remove.Text(t("taskDelete"));
   remove.Tag(winrt::box_value<std::int64_t>(task.id));
   remove.Click({this, &MainWindow::OnDeleteTask});
   menu.Items().Append(remove);
@@ -594,37 +837,35 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
 winrt::hstring MainWindow::DueLabel(std::string const& due_date) const {
   auto const today = date_string(0);
   auto const compare = date_compare(due_date, today);
-  auto const& s = S(settings_.language);
   if (compare == 0) {
-    return winrt::hstring(s.due_today);
+    return winrt::hstring(t("navToday"));
   }
   if (compare < 0) {
     return winrt::hstring(due_tail(due_date));
   }
   if (date_compare(due_date, date_string(1)) == 0) {
-    return winrt::hstring(s.due_tomorrow);
+    return winrt::hstring(t("dateTomorrow"));
   }
   return winrt::hstring(due_tail(due_date));
 }
 
 std::wstring MainWindow::view_title() const {
-  auto const& s = S(settings_.language);
   switch (view_) {
     case ViewKind::Today:
-      return s.today;
+      return t("navToday");
     case ViewKind::Planned:
-      return s.planned;
+      return t("navPlanned");
     case ViewKind::Completed:
-      return s.completed;
+      return t("navCompleted");
     case ViewKind::List: {
       if (auto const* list = find_by_id(lists_, view_list_id_)) {
         return wide(list->name);
       }
-      return s.all;
+      return t("navAll");
     }
     case ViewKind::All:
     default:
-      return s.all;
+      return t("navAll");
   }
 }
 
@@ -637,7 +878,7 @@ void MainWindow::SetStatus(std::wstring const& message) {
 }
 
 void MainWindow::SetError(std::string const& message) {
-  SetStatus(S(settings_.language).status_error + L": " + wide(message));
+  SetStatus(wide(message));
 }
 
 winrt::fire_and_forget MainWindow::PromptAsync(
@@ -648,12 +889,11 @@ winrt::fire_and_forget MainWindow::PromptAsync(
   input.PlaceholderText(placeholder);
   input.Text(initial);
 
-  auto const& s = S(settings_.language);
   auto dialog = mxc::ContentDialog{};
   dialog.Title(winrt::box_value(title));
   dialog.Content(input);
-  dialog.PrimaryButtonText(s.ok);
-  dialog.CloseButtonText(s.cancel);
+  dialog.PrimaryButtonText(t("dialogConfirm"));
+  dialog.CloseButtonText(t("dialogCancel"));
   dialog.DefaultButton(mxc::ContentDialogButton::Primary);
   dialog.XamlRoot(Content().XamlRoot());
 
@@ -679,7 +919,6 @@ winrt::fire_and_forget MainWindow::ReloadTasksAsync() {
   auto const view_kind = view_;
   auto const list_id = view_list_id_;
   auto const include_completed = show_completed_;
-  auto const lang = settings_.language;
   auto backend = backend_;
 
   bool started = false;
@@ -691,8 +930,7 @@ winrt::fire_and_forget MainWindow::ReloadTasksAsync() {
             ? std::optional<std::int64_t>(list_id)
             : std::nullopt,
         include_completed,
-        [dispatcher, weak,
-         lang](rivet_app::Result<rivet_app::Snapshot> result) {
+        [dispatcher, weak](rivet_app::Result<rivet_app::Snapshot> result) {
           // Release the reload gate on every terminal path so later
           // polls and `changed` events are not swallowed.
           dispatcher.TryEnqueue([weak] {
@@ -703,14 +941,17 @@ winrt::fire_and_forget MainWindow::ReloadTasksAsync() {
           });
           try {
             auto const snapshot = result.get();
-            dispatcher.TryEnqueue([weak, snapshot, lang] {
+            dispatcher.TryEnqueue([weak, snapshot] {
               if (auto window = weak.get()) {
                 window->current_counts_ = snapshot.counts;
                 window->lists_ = snapshot.lists;
                 window->tasks_ = snapshot.tasks;
                 window->RenderSidebar();
                 window->RenderTasks();
-                window->SetStatus(S(lang).status_ready);
+                // An in-flight download owns the status line.
+                if (!window->update_downloading_) {
+                  window->SetStatus(t("statusDatabaseConnected"));
+                }
               }
             });
           } catch (std::exception const& e) {
@@ -791,7 +1032,10 @@ winrt::fire_and_forget MainWindow::OpenDatabaseAsync(std::wstring const& path) {
                 }
                 window->RenderSidebar();
                 window->RenderTasks();
-                window->SetStatus(S(window->settings_.language).status_ready);
+                // An in-flight download owns the status line.
+                if (!window->update_downloading_) {
+                  window->SetStatus(t("statusDatabaseConnected"));
+                }
               }
             });
           } catch (std::exception const& e) {
@@ -1146,9 +1390,8 @@ winrt::fire_and_forget MainWindow::RunSearchAsync(std::wstring const& keyword) {
 
 void MainWindow::OnNewDatabase(winrt::Windows::Foundation::IInspectable const&,
                                Microsoft::UI::Xaml::RoutedEventArgs const&) {
-  auto const& s = S(settings_.language);
   auto const weak = get_weak();
-  PromptAsync(s.menu_new_db, s.new_list_dialog_placeholder, L"",
+  PromptAsync(t("menuNewDatabase"), t("dialogInputListName"), L"",
               [weak](std::wstring const& path) {
                 if (auto window = weak.get()) {
                   window->OpenDatabaseAsync(path);
@@ -1252,11 +1495,10 @@ void MainWindow::OnThemeDark(winrt::Windows::Foundation::IInspectable const&,
 winrt::fire_and_forget MainWindow::OnAbout(
     winrt::Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) {
-  auto const& s = S(settings_.language);
   auto dialog = mxc::ContentDialog{};
-  dialog.Title(winrt::box_value(s.about_title));
-  dialog.Content(winrt::box_value(s.about_body));
-  dialog.CloseButtonText(s.ok);
+  dialog.Title(winrt::box_value(L"Taskly"));
+  dialog.Content(winrt::box_value(t("aboutContent")));
+  dialog.CloseButtonText(t("dialogConfirm"));
   dialog.XamlRoot(Content().XamlRoot());
   co_await dialog.ShowAsync();
 }
@@ -1326,9 +1568,8 @@ void MainWindow::OnUserListSelectionChanged(
 
 void MainWindow::OnNewList(winrt::Windows::Foundation::IInspectable const&,
                            Microsoft::UI::Xaml::RoutedEventArgs const&) {
-  auto const& s = S(settings_.language);
   auto const weak = get_weak();
-  PromptAsync(s.new_list_dialog_title, s.new_list_dialog_placeholder, L"",
+  PromptAsync(t("dialogCreateList"), t("dialogInputListName"), L"",
               [weak](std::wstring const& name) {
                 if (auto window = weak.get()) {
                   window->CreateListAsync(name);
@@ -1345,9 +1586,8 @@ void MainWindow::OnRenameList(
   if (list == nullptr) {
     return;
   }
-  auto const& s = S(settings_.language);
   auto const weak = get_weak();
-  PromptAsync(s.rename_list_dialog_title, s.new_list_dialog_placeholder,
+  PromptAsync(t("dialogEditList"), t("dialogInputListName"),
               wide(list->name), [weak, id](std::wstring const& name) {
                 if (auto window = weak.get()) {
                   window->RenameListAsync(id, name);
@@ -1437,9 +1677,8 @@ void MainWindow::OnEditTask(
   if (task == nullptr) {
     return;
   }
-  auto const& s = S(settings_.language);
   auto const weak = get_weak();
-  PromptAsync(s.edit_task_dialog_title, L"", wide(task->text),
+  PromptAsync(t("dialogTaskDetail"), L"", wide(task->text),
               [weak, id](std::wstring const& text) {
                 if (auto window = weak.get()) {
                   window->RenameTaskAsync(id, text);

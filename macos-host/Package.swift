@@ -30,13 +30,6 @@ let package = Package(
                 .product(name: "RivetSystem", package: "macos")
             ],
             path: "Sources/RivetHost",
-            resources: [
-                // Byte-identical copies of shared/i18n + shared/emoji.json,
-                // kept in sync by scripts/sync-i18n.sh (CI-verified).
-                .copy("Resources/zh.json"),
-                .copy("Resources/en.json"),
-                .copy("Resources/emoji.json"),
-            ],
             linkerSettings: [
                 .unsafeFlags(["-F", racketFrameworkDir]),
                 .linkedFramework("Racket")

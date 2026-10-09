@@ -54,9 +54,13 @@
                 <MenuFlyoutItem x:Name="MenuLangZh" Click="OnLangZh" />
                 <MenuFlyoutItem x:Name="MenuLangEn" Click="OnLangEn" />
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem x:Name="MenuThemeSystem" Click="OnThemeSystem" />
-                <MenuFlyoutItem x:Name="MenuThemeLight" Click="OnThemeLight" />
-                <MenuFlyoutItem x:Name="MenuThemeDark" Click="OnThemeDark" />
+                <MenuFlyoutSubItem x:Name="MenuTheme">
+                    <MenuFlyoutItem x:Name="MenuThemeSystem" Click="OnThemeSystem" />
+                    <MenuFlyoutItem x:Name="MenuThemeLight" Click="OnThemeLight" />
+                    <MenuFlyoutItem x:Name="MenuThemeDark" Click="OnThemeDark" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="MenuCheckUpdates" Click="OnCheckUpdates" />
             </MenuBarItem>
             <MenuBarItem Title="Help" x:Name="MenuHelp">
                 <MenuFlyoutItem x:Name="MenuAbout" Click="OnAbout" />
@@ -80,11 +84,6 @@
 
                 <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <TextBlock
-                            x:Name="SmartListsHeader"
-                            Margin="16,8,16,4"
-                            FontSize="12"
-                            Foreground="{ThemeResource TasklyMutedTextBrush}" />
                         <ListView
                             x:Name="SmartList"
                             SelectionMode="Single"

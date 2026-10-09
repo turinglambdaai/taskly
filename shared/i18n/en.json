@@ -140,5 +140,12 @@
   "emojiCat_activity": "Activity",
   "emojiCat_travel": "Travel",
   "emojiCat_objects": "Objects",
-  "emojiCat_symbols": "Symbols"
+  "emojiCat_symbols": "Symbols",
+  "updateCheckNow": "Check for Updates…",
+  "updateChecking": "Checking for updates…",
+  "updateDownloadPercent": "Downloading the new version… {0}%",
+  "updateDownloaded": "Update downloaded",
+  "updateQuitAndInstall": "Quit and install",
+  "updateInstallHint": "To install, extract the downloaded archive over your current Taskly folder.",
+  "updateOpenFolder": "Open Folder"
 }
