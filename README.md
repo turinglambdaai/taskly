@@ -6,7 +6,7 @@ agent-facing CLI, and a single local SQLite file.
 
 [![release](https://img.shields.io/github/v/release/turinglambdaai/taskly)](https://github.com/turinglambdaai/taskly/releases/latest) ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-**English** · [中文](README.zh-CN.md) · 🌐 [taskly.jrtx.site](https://taskly.jrtx.site/)
+**English** · [中文](README.zh-CN.md)
 
 Taskly is built on [Rivet](https://github.com/turinglambdaai/rivet): the
 entire domain — SQLite storage, scheduling, natural-language dates,

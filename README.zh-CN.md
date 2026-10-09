@@ -4,7 +4,7 @@
 
 [![release](https://img.shields.io/github/v/release/turinglambdaai/taskly)](https://github.com/turinglambdaai/taskly/releases/latest) ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-[English](README.md) · **中文** · 🌐 [taskly.jrtx.site](https://taskly.jrtx.site/)
+[English](README.md) · **中文**
 
 Taskly 构建在 [Rivet](https://github.com/turinglambdaai/rivet) 之上：全部领域逻辑——SQLite 存储、排程、自然语言日期、校验、CLI——都在一个 Racket CS 核心里，每个桌面通过类型化 RPC 获得一个轻薄的第一方宿主。宿主只负责渲染和交互，所有逻辑都在后端。
 
