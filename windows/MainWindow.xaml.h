@@ -136,6 +136,7 @@ private:
   void InstallDownloadedUpdate(std::wstring const& zip_path);
   void HandleInstallMarkers();
   bool IsDevCopy();
+  bool IsMsiInstall();
   winrt::fire_and_forget ShowUpdateDialog(
       std::wstring const& title, std::wstring const& body,
       std::wstring const& primary_button, std::wstring const& close_button,

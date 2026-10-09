@@ -167,6 +167,9 @@ void MainWindow::RunSilentUpdateCheck() {
   if (IsDevCopy()) {
     return;  // dev copies never phone home (UPDATE.md silent mode)
   }
+  if (IsMsiInstall()) {
+    return;  // MSI installs take the manual path, never the silent one
+  }
   // Host-side throttle: at most one silent check per 4 h, persisted as the
   // `last-update-check` setting (unix epoch seconds, shared with the other
   // platforms' hosts). Manual checks bypass this entirely.
@@ -206,6 +209,14 @@ void MainWindow::RunUpdateCheck(bool silent) {
   if (IsDevCopy()) {
     if (!silent) {
       ShowUpdateDialog(L"Taskly", t("updateNotInstalled"),
+                       t("updateOpenReleases"), t("dialogConfirm"),
+                       [] { open_releases_page(); });
+    }
+    return;
+  }
+  if (IsMsiInstall()) {
+    if (!silent) {
+      ShowUpdateDialog(L"Taskly", t("updateMsiInstalled"),
                        t("updateOpenReleases"), t("dialogConfirm"),
                        [] { open_releases_page(); });
     }
@@ -556,6 +567,29 @@ bool MainWindow::IsDevCopy() {
   } catch (...) {
     return true;
   }
+}
+
+// MSI 安装版语义: the MSI lands under Program Files, where the in-place
+// zip swap has no write access — those installs get the manual path
+// (per-user zip installs stay fully automatic).
+bool MainWindow::IsMsiInstall() {
+  wchar_t buffer[32768]{};
+  auto const under_program_files = [&](wchar_t const* variable) {
+    DWORD const length = ::GetEnvironmentVariableW(variable, buffer, 32768);
+    if (length == 0 || length >= 32768) return false;
+    std::wstring program_files = lowercase(std::wstring{buffer});
+    while (!program_files.empty() && program_files.back() == L'\\') {
+      program_files.pop_back();
+    }
+    if (program_files.empty()) return false;
+    std::wstring const directory =
+        lowercase(executable_path().parent_path().wstring());
+    return directory == program_files ||
+           directory.rfind(program_files + L"\\", 0) == 0;
+  };
+  return under_program_files(L"ProgramFiles") ||
+         under_program_files(L"ProgramFiles(x86)") ||
+         under_program_files(L"ProgramW6432");
 }
 
 // ---------- update dialogs -------------------------------------------------------

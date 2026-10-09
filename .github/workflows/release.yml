@@ -18,14 +18,24 @@ env:
 
 jobs:
   macos:
-    name: macOS package (arm64)
-    runs-on: macos-latest
+    name: macOS package (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-latest
+            racket-arch: arm64
+          - arch: x64
+            runner: macos-15-intel
+            racket-arch: x64
     steps:
       - uses: actions/checkout@v4
       - name: Set up Racket CS
         uses: Bogdanp/setup-racket@v1.15
         with:
-          architecture: arm64
+          architecture: ${{ matrix.racket-arch }}
           distribution: full
           variant: CS
           version: '9.3'
@@ -43,11 +53,18 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           cd dist
-          zip -qry "taskly-${VERSION}-macos-arm64.zip" taskly.app
-          shasum -a 256 "taskly-${VERSION}-macos-arm64.zip" > "taskly-${VERSION}-macos-arm64.sha256"
+          zip -qry "taskly-${VERSION}-macos-${{ matrix.arch }}.zip" taskly.app
+          shasum -a 256 "taskly-${VERSION}-macos-${{ matrix.arch }}.zip" > "taskly-${VERSION}-macos-${{ matrix.arch }}.sha256"
+      - name: Human installer (DMG, drag to Applications)
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          hdiutil create -volname "Taskly ${VERSION}" -srcfolder dist/taskly.app \
+            -ov -format UDZO "dist/taskly-${VERSION}-macos-${{ matrix.arch }}.dmg"
+          shasum -a 256 "dist/taskly-${VERSION}-macos-${{ matrix.arch }}.dmg" \
+            > "dist/taskly-${VERSION}-macos-${{ matrix.arch }}.dmg.sha256"
       - uses: actions/upload-artifact@v4
         with:
-          name: macos-package
+          name: macos-package-${{ matrix.arch }}
           path: dist/taskly-*
 
   windows:
@@ -81,6 +98,36 @@ jobs:
           Compress-Archive -Path 'dist\*\*' -DestinationPath "taskly-$version-windows-x64.zip"
           $hash = (Get-FileHash "taskly-$version-windows-x64.zip" -Algorithm SHA256).Hash.ToLower()
           "$hash  taskly-$version-windows-x64.zip" | Set-Content "taskly-$version-windows-x64.sha256"
+      - name: Install WiX (v5; rivet's MSI toolchain)
+        run: dotnet tool install --global wix --version 5.0.2
+        shell: bash
+      - name: Install crypto (rivet/distribution dependency)
+        run: raco pkg install --auto --no-docs crypto
+        shell: pwsh
+      - name: Human installer (MSI via raco rivet release)
+        env:
+          UPDATE_ED25519_PRIVATE_KEY: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${UPDATE_ED25519_PRIVATE_KEY:-}" ]]; then
+            echo "::warning::UPDATE_ED25519_PRIVATE_KEY not set — release ships without the MSI installer"
+            exit 0
+          fi
+          VERSION="${GITHUB_REF_NAME#v}"
+          KEY_PEM="$RUNNER_TEMP/update-signing-key.pem"
+          KEY_DER="$RUNNER_TEMP/update-signing-key.der"
+          printf '%s\n' "$UPDATE_ED25519_PRIVATE_KEY" > "$KEY_PEM"
+          openssl pkey -in "$KEY_PEM" -outform DER -out "$KEY_DER"
+          export RIVET_UPDATE_BASE_URL="https://github.com/turinglambdaai/taskly/releases/download/${{ github.ref_name }}"
+          export RIVET_UPDATE_KEY_ID="taskly-2026-10"
+          export RIVET_UPDATE_PRIVATE_KEY="$KEY_DER"
+          raco rivet release
+          # taskly signs one merged feed in the publish job; the
+          # per-windows manifest rivet emits here is not shipped.
+          rm -f dist/update-*.json
+          mv dist/*.msi "taskly-${VERSION}-windows-x64.msi"
+          sha256sum "taskly-${VERSION}-windows-x64.msi" > "taskly-${VERSION}-windows-x64.msi.sha256"
       - uses: actions/upload-artifact@v4
         with:
           name: windows-package
@@ -207,7 +254,8 @@ jobs:
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p dist
-          mv artifacts/macos-package/* artifacts/windows-package/* artifacts/linux-package/* dist/
+          mv artifacts/macos-package-arm64/* artifacts/macos-package-x64/* \
+             artifacts/windows-package/* artifacts/linux-package/* dist/
           # Sign the update feed (shared/spec/UPDATE.md). Missing secret →
           # warn and publish without a manifest; the app then reports
           # "up to date" instead of failing the release.
@@ -228,4 +276,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "Taskly ${VERSION}" \
             --notes-file /tmp/notes.md \
-            *.zip *.tar.gz *.sha256 SHA256SUMS update-manifest.json
+            *.zip *.tar.gz *.dmg *.msi *.sha256 SHA256SUMS update-manifest.json

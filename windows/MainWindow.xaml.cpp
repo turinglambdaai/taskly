@@ -226,6 +226,10 @@ constexpr I18nEntry kI18nFallback[] = {
      "Installing the update failed: {0}. Your current version is unaffected."},
     {"updateNotInstalled", "当前为开发副本，自动更新不可用。",
      "This is a development copy — auto-update is unavailable."},
+    {"updateMsiInstalled",
+     "当前副本通过 MSI 安装器安装，暂不支持应用内更新，请到发布页下载新的安装包。",
+     "This copy was installed via the MSI installer — in-app update isn't "
+     "available for it. Grab the new installer from the releases page."},
     {"updatePortable",
      "当前为便携版，不支持自动更新，请从发布页重新下载。",
      "This portable copy can't auto-update — please re-download from the "

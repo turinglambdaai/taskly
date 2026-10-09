@@ -28,6 +28,7 @@ VERSION="${TAG#v}"
   echo "error: tag $TAG does not match VERSION '$(cat "$ROOT/VERSION")'" >&2; exit 1; }
 
 for artifact in "$DIST/taskly-$VERSION-macos-arm64.zip" \
+                "$DIST/taskly-$VERSION-macos-x64.zip" \
                 "$DIST/taskly-$VERSION-windows-x64.zip" \
                 "$DIST/taskly-$VERSION-linux-x64.tar.gz"; do
   [[ -f "$artifact" ]] || { echo "error: missing $artifact" >&2; exit 1; }
@@ -105,6 +106,8 @@ cat > "$SCRIPT" <<RKT
                    100
                    (list (artifact 'macos 'arm64
                                    (format "taskly-~a-macos-arm64.zip" version) 'zip)
+                         (artifact 'macos 'x64
+                                   (format "taskly-~a-macos-x64.zip" version) 'zip)
                          (artifact 'windows 'x64
                                    (format "taskly-~a-windows-x64.zip" version) 'zip)
                          (artifact 'linux 'x64
@@ -121,7 +124,7 @@ cat > "$SCRIPT" <<RKT
                            key-id
                            out)
     (newline out)))
-(printf "manifest: ~a (3 artifacts, key-id ~a)\\n"
+(printf "manifest: ~a (4 artifacts, key-id ~a)\\n"
         (build-path dist "update-manifest.json") key-id)
 RKT
 

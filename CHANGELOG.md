@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-10-09
+
+### Added
+- **Intel Mac support.** Every macOS release now ships both
+  architectures — `taskly-<version>-macos-arm64.zip` (Apple silicon)
+  and `taskly-<version>-macos-x64.zip` (Intel, built on Intel
+  runners). The signed update feed carries both, and each host picks
+  its own architecture at compile time.
+- **macOS drag-to-install images.** Both macOS architectures also ship
+  a `taskly-<version>-macos-<arch>.dmg` alongside the portable zip.
+- **Windows MSI installer.** `taskly-<version>-windows-x64.msi` joins
+  the portable zip, built by rivet's native installer pipeline
+  (WiX v5). Portable zip installs keep the fully automatic in-place
+  update; MSI installs live under Program Files, so their updater
+  explains the manual path instead of attempting a swap it cannot
+  make — the guidance dialog opens the releases page.
+
+### Documented
+- **Windows ARM64** runs the x64 build through Windows on ARM's
+  built-in x64 emulation (Racket ships no Windows-on-ARM runtime, so
+  no native arm64 Windows package exists to build against).
+- Linux native installers (deb/rpm/AppImage) land with rivet's
+  installer pipeline (rivet#167) and will ride a following release.
+
 ## [1.2.1] - 2026-10-09
 
 ### Fixed

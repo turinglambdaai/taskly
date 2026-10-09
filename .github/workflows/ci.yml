@@ -139,8 +139,18 @@ jobs:
           kill $APP_PID
 
   macos-host:
-    name: macOS host (SwiftUI build)
-    runs-on: macos-15
+    name: macOS host (${{ matrix.arch }} build)
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+            racket-arch: arm64
+          - arch: x64
+            runner: macos-15-intel
+            racket-arch: x64
     steps:
       - uses: actions/checkout@v4
       - name: Checkout Rivet at pin
@@ -152,9 +162,9 @@ jobs:
       - name: Setup Racket CS 9.3
         uses: Bogdanp/setup-racket@v1.15
         with:
-          # arm64 Racket → arm64 Racket.framework → the host links native,
-          # not x86_64-under-Rosetta (release.yml macos job matches).
-          architecture: arm64
+          # Each leg builds the architecture it will package (release.yml
+          # macos matrix matches).
+          architecture: ${{ matrix.racket-arch }}
           distribution: full
           variant: CS
           version: '9.3'

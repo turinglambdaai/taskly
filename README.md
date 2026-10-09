@@ -59,11 +59,21 @@ interact; all logic lives in the backend.
 
 ## Install
 
-Grab the archive for your platform from
+Grab your build from
 [Releases](https://github.com/turinglambdaai/taskly/releases/latest):
-`taskly-<version>-macos-arm64.zip`, `taskly-<version>-windows-x64.zip`,
-or `taskly-<version>-linux-x64.tar.gz`. Every release carries a
-`SHA256SUMS` manifest and a signed `update-manifest.json`.
+
+| Platform | Portable zip (in-app updates) | Installer |
+|---|---|---|
+| macOS Apple silicon | `taskly-<version>-macos-arm64.zip` | `taskly-<version>-macos-arm64.dmg` |
+| macOS Intel | `taskly-<version>-macos-x64.zip` | `taskly-<version>-macos-x64.dmg` |
+| Windows x64 | `taskly-<version>-windows-x64.zip` | `taskly-<version>-windows-x64.msi` |
+| Windows ARM64 | runs the x64 build via Windows on ARM's x64 emulation | — |
+| Linux x64 | `taskly-<version>-linux-x64.tar.gz` | native deb/rpm/AppImage planned (rivet#167) |
+
+Every release carries a `SHA256SUMS` manifest and a signed
+`update-manifest.json` — the in-app updater's feed. Portable zip
+installs update themselves in place; MSI installs get pointed at the
+releases page.
 
 macOS builds are ad-hoc signed; if Gatekeeper complains on first launch,
 run `xattr -cr /Applications/Taskly.app`.

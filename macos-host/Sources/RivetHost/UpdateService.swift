@@ -71,8 +71,22 @@ public final class UpdateService {
         let version: String
         let artifacts: [Artifact]
 
+        /// The release feed carries one artifact per platform × architecture;
+        /// each built host targets exactly one architecture, so the match is
+        /// compile-time ("x64" on Intel builds, "arm64" on Apple silicon).
+        nonisolated static let hostArchitecture: String = {
+            #if arch(x86_64)
+            return "x64"
+            #elseif arch(arm64)
+            return "arm64"
+            #else
+            #error("unsupported macOS architecture")
+            #endif
+        }()
+
         func artifact(forPlatform platform: String) -> Artifact? {
-            artifacts.first { $0.platform == platform }
+            artifacts.first { $0.platform == platform
+                && $0.architecture == Self.hostArchitecture }
         }
     }
 

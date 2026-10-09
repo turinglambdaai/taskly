@@ -45,9 +45,11 @@ exists on all platforms from day one.
 
 | Platform | Feed | Install | Integrity | Status |
 |---|---|---|---|---|
-| macOS | `update-manifest.json` (this contract) | zip → sha256 → ditto → atomic swap in place (`.old` copy kept until relaunch) | Ed25519 wrapper signature (CryptoKit, `UpdateService.swift`) + artifact sha256 | wired since 1.1.1 (family manifest format since 1.2.0) |
-| Windows | `update-manifest.json` (this contract, `windows` entry) | backend downloads the zip → handoff `update-install.cmd`: wait for app exit → `tar -xf` extract → swap install dir in place → relaunch; failure marker (`update-failed.txt`) reported on next launch | Ed25519 wrapper signature (backend, libcrypto) + artifact sha256 | wired since 1.2.0 |
-| Linux | `update-manifest.json` (this contract, `linux` entry) | backend downloads the tar.gz → dialog offers "open folder"; install is a manual extract over the current folder (tarball installs have no fixed prefix to self-swap) | Ed25519 wrapper signature (backend, libcrypto) + artifact sha256 | wired since 1.2.0 (download in-app, install manual) |
+| macOS Apple silicon | feed `macos`/`arm64` zip entry | zip → sha256 → ditto → atomic swap in place (`.old` copy kept until relaunch); the DMG is the human installer, not a feed artifact | Ed25519 wrapper signature (CryptoKit, `UpdateService.swift`) + artifact sha256 | wired since 1.1.1 |
+| macOS Intel | feed `macos`/`x64` zip entry | same swap flow on the x64 build (hosts match their compile-time architecture) | same | wired since 1.3.0 |
+| Windows x64 | feed `windows`/`x64` zip entry | zip → handoff `update-install.cmd`: wait for app exit → `tar -xf` extract → swap install dir in place → relaunch; failure marker (`update-failed.txt`) reported on next launch. MSI installs under Program Files get guidance to the releases page instead of a swap they cannot make | Ed25519 wrapper signature (backend, libcrypto) + artifact sha256 | wired since 1.2.0 (MSI guidance since 1.3.0) |
+| Windows ARM64 | — | no native package exists (Racket ships no Windows-on-ARM runtime); run the x64 build under Windows on ARM's built-in x64 emulation | — | documented since 1.3.0 |
+| Linux x64 | feed `linux`/`x64` tar.gz entry | backend downloads the tar.gz → dialog offers "open folder"; install is a manual extract over the current folder (tarball installs have no fixed prefix to self-swap) | Ed25519 wrapper signature (backend, libcrypto) + artifact sha256 | wired since 1.2.0 (download in-app, install manual) |
 
 (The frozen v1 line used Velopack on Windows and a tarball replacer on
 Linux; those mechanisms died with that line — the Rivet hosts start from
@@ -86,8 +88,9 @@ Inner manifest (decoded `payload`) — rivet's manifest schema:
   "rollout": 100,
   "artifacts": [
     { "platform": "macos", "architecture": "arm64",
-      "url": "https://…/taskly-1.2.0-macos-arm64.zip",
+      "url": "https://…/taskly-1.3.0-macos-arm64.zip",
       "sha256": "<hex>", "size": 12345678, "installer": "zip", "arguments": [] },
+    { "platform": "macos", "architecture": "x64", "…": "…" },
     { "platform": "windows", "architecture": "x64", "…": "…" },
     { "platform": "linux", "architecture": "x64", "…": "…" }
   ]

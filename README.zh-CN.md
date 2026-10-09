@@ -30,7 +30,17 @@ Taskly 构建在 [Rivet](https://github.com/turinglambdaai/rivet) 之上：全�
 
 ## 安装
 
-到 [Releases](https://github.com/turinglambdaai/taskly/releases/latest) 下载对应平台的压缩包：`taskly-<version>-macos-arm64.zip`、`taskly-<version>-windows-x64.zip` 或 `taskly-<version>-linux-x64.tar.gz`。每个版本都带 `SHA256SUMS` 清单和签名的 `update-manifest.json`。
+到 [Releases](https://github.com/turinglambdaai/taskly/releases/latest) 下载你的版本：
+
+| 平台 | 便携 zip（应用内更新） | 安装器 |
+|---|---|---|
+| macOS Apple silicon | `taskly-<version>-macos-arm64.zip` | `taskly-<version>-macos-arm64.dmg` |
+| macOS Intel | `taskly-<version>-macos-x64.zip` | `taskly-<version>-macos-x64.dmg` |
+| Windows x64 | `taskly-<version>-windows-x64.zip` | `taskly-<version>-windows-x64.msi` |
+| Windows ARM64 | 通过 Windows on ARM 的 x64 模拟运行 x64 包 | — |
+| Linux x64 | `taskly-<version>-linux-x64.tar.gz` | 原生 deb/rpm/AppImage 规划中（rivet#167） |
+
+每个版本都带 `SHA256SUMS` 清单和签名的 `update-manifest.json`（应用内更新的 feed）。便携 zip 安装原地自动更新；MSI 安装版会引导到发布页。
 
 macOS 包为 ad-hoc 签名；首次启动如被 Gatekeeper 拦截，执行 `xattr -cr /Applications/Taskly.app` 即可。
 
