@@ -60,8 +60,8 @@ public final class UpdateService {
         let signature: SignatureBlock
     }
 
-    public struct Manifest: Decodable {
-        public struct Artifact: Decodable {
+    public struct Manifest: Decodable, Sendable {
+        public struct Artifact: Decodable, Sendable {
             let platform: String
             let architecture: String
             let url: URL
@@ -93,7 +93,7 @@ public final class UpdateService {
                 keyOverride: String? = nil) {
         self.i18n = i18n
         let config = sessionConfiguration ?? URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForRequest = 60
         config.timeoutIntervalForResource = 600
         self.session = URLSession(configuration: config)
         self.feedURL = feedURL ?? Self.manifestURL
@@ -201,18 +201,40 @@ public final class UpdateService {
     /// install when anything is off. `onProgress` reports download percent
     /// (0…100) on the main actor for the update sheet.
     public func downloadAndInstall(_ manifest: Manifest,
-                                   onProgress: ((Int) -> Void)? = nil) async throws {
+                                   onProgress: (@Sendable (Int) -> Void)? = nil) async throws {
         guard let bundleURL = installedBundleURL else { throw UpdateError.notInstalled }
         guard let artifact = manifest.artifact(forPlatform: "macos") else {
             throw UpdateError.manifestMissing
         }
+        try await Self.downloadAndSwap(artifact: artifact,
+                                       bundleURL: bundleURL,
+                                       expectedVersion: manifest.version,
+                                       onProgress: onProgress ?? { _ in })
+    }
 
+    /// The whole download → verify → swap sequence, deliberately off the
+    /// main actor: consuming AsyncBytes on the main actor starves the
+    /// transfer (every element hops through the main executor, the
+    /// connection stalls and URLSession times out — observed live against
+    /// the GitHub CDN: the identical loop completes in seconds off the
+    /// main actor and dies partway through on it).
+    nonisolated private static func downloadAndSwap(
+        artifact: Manifest.Artifact,
+        bundleURL: URL,
+        expectedVersion: String,
+        onProgress: @Sendable (Int) -> Void
+    ) async throws {
         // Download to a temp directory.
         let workDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("taskly-update-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: workDir, withIntermediateDirectories: true)
         let zipURL = workDir.appendingPathComponent("taskly-update.zip")
         defer { try? FileManager.default.removeItem(at: workDir) }
+
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 60
+        config.timeoutIntervalForResource = 600
+        let session = URLSession(configuration: config)
 
         do {
             let (bytes, response) = try await session.bytes(from: artifact.url)
@@ -224,17 +246,33 @@ public final class UpdateService {
             data.reserveCapacity(artifact.size)
             let total = max(artifact.size, 1)
             var lastPercent = -1
-            for try await byte in bytes {
-                hasher.update(data: [byte])
-                data.append(byte)
-                if onProgress != nil {
-                    let percent = min(100, data.count * 100 / total)
-                    if percent != lastPercent {
-                        lastPercent = percent
-                        onProgress?(percent)
-                    }
+            // Consume AsyncBytes through a 64 KiB buffer: hashing/appending
+            // per byte (31M CryptoKit calls) is far slower than the wire.
+            var buffer = [UInt8]()
+            buffer.reserveCapacity(65_536)
+            func absorb(_ chunk: [UInt8]) {
+                hasher.update(data: chunk)
+                data.append(contentsOf: chunk)
+                let percent = min(100, data.count * 100 / total)
+                if percent != lastPercent {
+                    lastPercent = percent
+                    onProgress(percent)
                 }
             }
+            for try await byte in bytes {
+                buffer.append(byte)
+                if buffer.count == buffer.capacity
+                    || data.count + buffer.count >= total {
+                    absorb(buffer)
+                    buffer.removeAll(keepingCapacity: true)
+                }
+                // The signed manifest pins the exact size — stop as soon as
+                // we have it. Waiting for the stream's own EOF can hang
+                // forever on responses whose end-of-stream flag never
+                // surfaces to AsyncBytes.
+                if data.count >= total { break }
+            }
+            if !buffer.isEmpty { absorb(buffer) }
             let digest = hasher.finalize().map { String(format: "%02x", $0) }.joined()
             guard digest == artifact.sha256.lowercased() else {
                 throw UpdateError.checksumMismatch
@@ -257,15 +295,13 @@ public final class UpdateService {
         guard ditto.terminationStatus == 0 else { throw UpdateError.checksumMismatch }
 
         let newBundle = unpacked.appendingPathComponent("Taskly.app")
-        let newInfoPlist = newBundle.appendingPathComponent("Contents/Info.plist")
         guard let newVersion = Bundle(url: newBundle)?
             .infoDictionary?["CFBundleShortVersionString"] as? String else {
-            throw UpdateError.versionMismatch(expected: manifest.version, got: "missing")
+            throw UpdateError.versionMismatch(expected: expectedVersion, got: "missing")
         }
-        guard newVersion == manifest.version else {
-            throw UpdateError.versionMismatch(expected: manifest.version, got: newVersion)
+        guard newVersion == expectedVersion else {
+            throw UpdateError.versionMismatch(expected: expectedVersion, got: newVersion)
         }
-        _ = newInfoPlist
 
         // Swap: the shell script survives our exit; it also restores the
         // old bundle if the new one fails to move in. ~/.taskly is never
@@ -300,10 +336,10 @@ public final class UpdateService {
         bash.executableURL = URL(fileURLWithPath: "/bin/bash")
         bash.arguments = [swapPath.path]
         try bash.run()
-        NSApplication.shared.terminate(nil)
+        await MainActor.run { NSApplication.shared.terminate(nil) }
     }
 
-    private static func q(_ path: String) -> String {
+    nonisolated private static func q(_ path: String) -> String {
         "'" + path.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 

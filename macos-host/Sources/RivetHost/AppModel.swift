@@ -319,7 +319,13 @@ final class AppModel {
             guard let self else { return }
             do {
                 try await updateService.downloadAndInstall(manifest) { [weak self] percent in
-                    self?.updateProgressPercent = percent
+                    // The download runs off the main actor; hop the
+                    // observable write back so SwiftUI sees it.
+                    // (_Concurrency-prefixed: the generated Task record
+                    // shadows the concurrency Task in this module.)
+                    _Concurrency.Task { @MainActor [weak self] in
+                        self?.updateProgressPercent = percent
+                    }
                 }
             } catch {
                 updateErrorMessage = t("updateInstallFailed", Self.cleanError(error))
