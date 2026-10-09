@@ -152,7 +152,9 @@ jobs:
       - name: Setup Racket CS 9.3
         uses: Bogdanp/setup-racket@v1.15
         with:
-          architecture: x64
+          # arm64 Racket → arm64 Racket.framework → the host links native,
+          # not x86_64-under-Rosetta (release.yml macos job matches).
+          architecture: arm64
           distribution: full
           variant: CS
           version: '9.3'

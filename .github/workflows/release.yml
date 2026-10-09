@@ -25,7 +25,7 @@ jobs:
       - name: Set up Racket CS
         uses: Bogdanp/setup-racket@v1.15
         with:
-          architecture: x64
+          architecture: arm64
           distribution: full
           variant: CS
           version: '9.3'
