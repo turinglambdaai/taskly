@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-10-09
+
+### Fixed
+- **The macOS in-app updater could not finish its own download.** The
+  artifact loop ran on the main actor: every byte hopped through the
+  main executor, the transfer starved and URLSession aborted with
+  request timeouts — and when all bytes did arrive, the loop suspended
+  forever waiting for a stream end that HTTP/2 never signaled. The
+  identical loop completes in seconds off the main actor. The download
+  → verify → swap sequence now runs off the main actor, consumes the
+  stream through a 64 KiB buffer (the old code hashed and appended per
+  byte — 31 million CryptoKit calls), and stops at the size the signed
+  manifest pins instead of waiting for EOF. Verified end-to-end against
+  the live feed: check → offer → download → swap → relaunch.
+
 ## [1.2.0] - 2026-10-09
 
 ### Fixed
