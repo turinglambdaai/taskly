@@ -12,24 +12,21 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Migration policy: exact Rivet pins in release builds (docs/RIVET-MIGRATION.md §6).
-  # Kept identical to RIVET_PIN in ci.yml — CI verifies what releases ship.
-  RIVET_COMMIT: 2fcdd091ddd7fd157fa934ac6053cdf4f9ab6100
+  # Exact rivet commit releases build against (family pin discipline).
+  # v0.6.0 — native Linux deb/rpm/AppImage, portable zips beside every
+  # installer, RivetTypes codegen with the upstream canary.
+  RIVET_COMMIT: e8e4079c42e3567549576b0c29a34d98697c39ff
 
 jobs:
   macos:
-    name: macOS package (${{ matrix.arch }})
+    name: macOS (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - arch: arm64
-            runner: macos-latest
-            racket-arch: arm64
-          - arch: x64
-            runner: macos-15-intel
-            racket-arch: x64
+          - { arch: arm64, runner: macos-latest, racket-arch: arm64 }
+          - { arch: x64, runner: macos-15-intel, racket-arch: x64 }
     steps:
       - uses: actions/checkout@v4
       - name: Set up Racket CS
@@ -45,30 +42,33 @@ jobs:
           git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
           git -C "$RUNNER_TEMP/rivet" checkout "$RIVET_COMMIT"
           raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
-      - name: Version preflight (VERSION == rivet.rktd == tag)
+      - name: Version preflight (VERSION == rivet.rktd == updater == tag)
         run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
-      - name: Package
-        run: raco rivet package
-      - name: Zip + checksum
+      # DMG (human installer) + portable zip + SBOM + notices, launch
+      # smoke included. The macOS update feed entry is the portable zip,
+      # assembled by scripts/make-update-manifest.sh in the publish job.
+      - name: Release (DMG + portable zip)
+        run: raco rivet release --without-updates --development
+      - name: Family naming + checksums
         run: |
+          set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
+          ARCH="${{ matrix.arch }}"
           cd dist
-          zip -qry "taskly-${VERSION}-macos-${{ matrix.arch }}.zip" taskly.app
-          shasum -a 256 "taskly-${VERSION}-macos-${{ matrix.arch }}.zip" > "taskly-${VERSION}-macos-${{ matrix.arch }}.sha256"
-      - name: Human installer (DMG, drag to Applications)
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          hdiutil create -volname "Taskly ${VERSION}" -srcfolder dist/taskly.app \
-            -ov -format UDZO "dist/taskly-${VERSION}-macos-${{ matrix.arch }}.dmg"
-          shasum -a 256 "dist/taskly-${VERSION}-macos-${{ matrix.arch }}.dmg" \
-            > "dist/taskly-${VERSION}-macos-${{ matrix.arch }}.dmg.sha256"
+          mv "taskly-${VERSION}-macos.dmg" "taskly-${VERSION}-macos-${ARCH}.dmg"
+          shasum -a 256 "taskly-${VERSION}-macos-${ARCH}.dmg" > "taskly-${VERSION}-macos-${ARCH}.dmg.sha256"
+          mv "taskly.app.zip" "taskly-${VERSION}-macos-${ARCH}.zip"
+          mv "taskly.app.zip.sha256" "taskly-${VERSION}-macos-${ARCH}.zip.sha256"
+          sed -i '' "s/taskly\.app\.zip/taskly-${VERSION}-macos-${ARCH}.zip/" "taskly-${VERSION}-macos-${ARCH}.zip.sha256"
+          mv sbom.cdx.json "taskly-${VERSION}-macos-${ARCH}.sbom.cdx.json"
+          mv THIRD_PARTY_NOTICES.txt "taskly-${VERSION}-macos-${ARCH}-THIRD_PARTY_NOTICES.txt"
       - uses: actions/upload-artifact@v4
         with:
-          name: macos-package-${{ matrix.arch }}
+          name: macos-${{ matrix.arch }}
           path: dist/taskly-*
 
   windows:
-    name: Windows package (x64)
+    name: Windows (x64)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -85,58 +85,91 @@ jobs:
           git clone https://github.com/turinglambdaai/rivet.git "$env:RUNNER_TEMP\rivet"
           git -C "$env:RUNNER_TEMP\rivet" checkout $env:RIVET_COMMIT
           raco pkg install --auto --no-docs --name rivet --link "$env:RUNNER_TEMP\rivet"
-      - name: Version preflight (VERSION == rivet.rktd == tag)
-        shell: bash
-        run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
-      - name: Package
-        shell: pwsh
-        run: raco rivet package --skip-launch-smoke
-      - name: Zip + checksum
-        shell: pwsh
-        run: |
-          $version = $env:GITHUB_REF_NAME.TrimStart('v')
-          Compress-Archive -Path 'dist\*\*' -DestinationPath "taskly-$version-windows-x64.zip"
-          $hash = (Get-FileHash "taskly-$version-windows-x64.zip" -Algorithm SHA256).Hash.ToLower()
-          "$hash  taskly-$version-windows-x64.zip" | Set-Content "taskly-$version-windows-x64.sha256"
       - name: Install WiX (v5; rivet's MSI toolchain)
         run: dotnet tool install --global wix --version 5.0.2
         shell: bash
       - name: Install crypto (rivet/distribution dependency)
         run: raco pkg install --auto --no-docs crypto
         shell: pwsh
-      - name: Human installer (MSI via raco rivet release)
-        env:
-          UPDATE_ED25519_PRIVATE_KEY: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY }}
+      - name: Version preflight (VERSION == rivet.rktd == updater == tag)
+        shell: bash
+        run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
+      - name: Release (MSI + portable zip)
+        shell: pwsh
+        run: raco rivet release --without-updates --development
+      - name: Family naming + checksums
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${UPDATE_ED25519_PRIVATE_KEY:-}" ]]; then
-            echo "::warning::UPDATE_ED25519_PRIVATE_KEY not set — release ships without the MSI installer"
-            exit 0
-          fi
           VERSION="${GITHUB_REF_NAME#v}"
-          KEY_PEM="$RUNNER_TEMP/update-signing-key.pem"
-          KEY_DER="$RUNNER_TEMP/update-signing-key.der"
-          printf '%s\n' "$UPDATE_ED25519_PRIVATE_KEY" > "$KEY_PEM"
-          openssl pkey -in "$KEY_PEM" -outform DER -out "$KEY_DER"
-          export RIVET_UPDATE_BASE_URL="https://github.com/turinglambdaai/taskly/releases/download/${{ github.ref_name }}"
-          export RIVET_UPDATE_KEY_ID="taskly-2026-10"
-          export RIVET_UPDATE_PRIVATE_KEY="$KEY_DER"
-          # Development signing (ad-hoc) — the family ships ad-hoc until a
-          # code-signing certificate lands in secrets.
-          raco rivet release --development
-          # taskly signs one merged feed in the publish job; the
-          # per-windows manifest rivet emits here is not shipped.
-          rm -f dist/update-*.json
-          mv dist/*.msi "taskly-${VERSION}-windows-x64.msi"
+          cd dist
+          mv "taskly-windows-x64.zip" "taskly-${VERSION}-windows-x64.zip"
+          sha256sum "taskly-${VERSION}-windows-x64.zip" > "taskly-${VERSION}-windows-x64.zip.sha256"
           sha256sum "taskly-${VERSION}-windows-x64.msi" > "taskly-${VERSION}-windows-x64.msi.sha256"
+          mv sbom.cdx.json "taskly-${VERSION}-windows-x64.sbom.cdx.json"
+          mv THIRD_PARTY_NOTICES.txt "taskly-${VERSION}-windows-x64-THIRD_PARTY_NOTICES.txt"
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-package
-          path: taskly-*
+          name: windows
+          path: dist/taskly-*
 
   linux:
-    name: Linux package (x64)
+    name: Linux (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up embeddable Racket CS
+        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@v0.6.0
+      - name: Install pinned Rivet
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch v0.6.0 https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
+          raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
+      - name: Install GTK4, rpm and packaging tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            libgtk-4-dev libadwaita-1-dev libjson-glib-dev libsecret-1-dev \
+            libglib2.0-dev cmake ninja-build pkg-config file \
+            rpm desktop-file-utils
+      - name: Version preflight (VERSION == rivet.rktd == updater == tag)
+        run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
+      # tar.gz (the update-feed payload) + deb + rpm + AppImage + portable
+      # zip + SBOM, launch smoke included. The AppImage carries its own
+      # GTK4 dependency closure; APPIMAGE_EXTRACT_AND_RUN lets
+      # appimagetool run on the runner.
+      - name: Release (tar.gz + deb + rpm + AppImage + portable zip)
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: raco rivet release --without-updates --development
+      - name: Family naming + checksums
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          ARCH="${{ matrix.arch }}"
+          cd dist
+          mv sbom.cdx.json "taskly-${VERSION}-linux-${ARCH}.sbom.cdx.json"
+          mv THIRD_PARTY_NOTICES.txt "taskly-${VERSION}-linux-${ARCH}-THIRD_PARTY_NOTICES.txt"
+          for f in taskly-*; do
+            case "$f" in
+              *.sha256) ;;
+              *) [ -f "$f.sha256" ] || sha256sum "$f" > "$f.sha256" ;;
+            esac
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: dist/taskly-*
+
+  publish:
+    name: Publish
+    needs: [macos, windows, linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -153,102 +186,10 @@ jobs:
           git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
           git -C "$RUNNER_TEMP/rivet" checkout "$RIVET_COMMIT"
           raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
-      - name: Install GTK toolchain
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build pkg-config \
-            libgtk-4-dev libadwaita-1-dev libjson-glib-dev \
-            libsecret-1-dev libglib2.0-dev xvfb
-      - name: Cache embeddable Racket CS
-        id: cache-racket-embed
-        uses: actions/cache/restore@v5
-        with:
-          path: ${{ runner.temp }}/racket-embed
-          key: racket-embed-9.3-${{ runner.os }}-${{ runner.arch }}-v1
-      - name: Build embeddable Racket CS
-        if: steps.cache-racket-embed.outputs.cache-hit != 'true'
-        run: |
-          set -euo pipefail
-          archive="$RUNNER_TEMP/racket-minimal-9.3-src-builtpkgs.tgz"
-          source_root="$RUNNER_TEMP/racket-9.3"
-          build_root="$RUNNER_TEMP/racket-embed-build"
-          embed_prefix="$RUNNER_TEMP/racket-embed"
-          curl --fail --location --retry 3 --output "$archive" \
-            https://download.racket-lang.org/releases/9.3/installers/racket-minimal-9.3-src-builtpkgs.tgz
-          echo "3a01324d559a15e3f1f58b0c57a92bb344dce534e72e564e0d8b75e3b9c65295  $archive" | sha256sum --check
-          tar -xzf "$archive" -C "$RUNNER_TEMP"
-          mkdir -p "$build_root"
-          cd "$build_root"
-          "$source_root/src/configure" --prefix="$embed_prefix"
-          make -j2
-          make install
-      - name: Save embeddable Racket CS cache
-        if: steps.cache-racket-embed.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
-        with:
-          path: ${{ runner.temp }}/racket-embed
-          key: racket-embed-9.3-${{ runner.os }}-${{ runner.arch }}-v1
-      - name: Expose embeddable runtime paths
-        run: |
-          set -euo pipefail
-          embed_prefix="$RUNNER_TEMP/racket-embed"
-          racket_include="$(racket -e '(require setup/dirs) (display (path->string (find-include-dir)))')"
-          petite="$(find "$embed_prefix" -maxdepth 6 -name petite.boot -print -quit)"
-          scheme="$(find "$embed_prefix" -maxdepth 6 -name scheme.boot -print -quit)"
-          racket_boot="$(find "$embed_prefix" -maxdepth 6 -name racket.boot -print -quit)"
-          test -n "$petite" && test -n "$scheme" && test -n "$racket_boot"
-          library="$(find "$embed_prefix" -maxdepth 6 -name 'libracketcs*.a' -print -quit)"
-          test -n "$library"
-          boot_dir="$(dirname "$petite")"
-          echo "RIVET_RACKET_INCLUDE=$racket_include" >> "$GITHUB_ENV"
-          echo "RIVET_RACKET_LIB_DIR=$(dirname "$library")" >> "$GITHUB_ENV"
-          echo "RIVET_RACKET_LIBRARY=$library" >> "$GITHUB_ENV"
-          echo "RIVET_RACKET_BOOT_DIR=$boot_dir" >> "$GITHUB_ENV"
-      - name: Version preflight (VERSION == rivet.rktd == tag)
-        run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
-      - name: Build host
-        run: raco rivet build
-      # Launch smoke included: the packaged app must survive launch under
-      # xvfb, same bar the CI linux-host job holds. Product resources
-      # (shared/i18n + emoji.json) ride in via the rivet.rktd `resources`
-      # declaration — rivet stages them into the package itself.
-      - name: Package (with launch smoke)
-        run: xvfb-run -a raco rivet package
-      - name: Tar + checksum
-        run: |
-          set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
-          test -d dist/taskly-linux-x64
-          tar -czf "taskly-${VERSION}-linux-x64.tar.gz" -C dist taskly-linux-x64
-          sha256sum "taskly-${VERSION}-linux-x64.tar.gz" > "taskly-${VERSION}-linux-x64.sha256"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux-package
-          path: taskly-*
-
-  release:
-    name: Publish
-    needs: [macos, windows, linux]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Racket CS
-        uses: Bogdanp/setup-racket@v1.15
-        with:
-          architecture: x64
-          distribution: full
-          variant: CS
-          version: '9.3'
-      - name: Install pinned Rivet (manifest signer)
-        run: |
-          set -euo pipefail
-          git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
-          git -C "$RUNNER_TEMP/rivet" checkout "$RIVET_COMMIT"
-          raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-      - name: Gather + publish (notes = CHANGELOG section for this version)
+      - name: Gather + sign the update feed + publish
         env:
           GH_TOKEN: ${{ github.token }}
           UPDATE_ED25519_PRIVATE_KEY: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY }}
@@ -256,15 +197,15 @@ jobs:
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p dist
-          mv artifacts/macos-package-arm64/* artifacts/macos-package-x64/* \
-             artifacts/windows-package/* artifacts/linux-package/* dist/
-          # Sign the update feed (shared/spec/UPDATE.md). Missing secret →
-          # warn and publish without a manifest; the app then reports
-          # "up to date" instead of failing the release.
-          if [[ -n "$UPDATE_ED25519_PRIVATE_KEY" ]]; then
-            KEY_FILE="$RUNNER_TEMP/update-signing-key.pem"
-            printf '%s\n' "$UPDATE_ED25519_PRIVATE_KEY" > "$KEY_FILE"
-            scripts/make-update-manifest.sh "$GITHUB_REF_NAME" dist "$KEY_FILE"
+          mv artifacts/macos-arm64/* artifacts/macos-x64/* artifacts/windows/* \
+             artifacts/linux-x64/* artifacts/linux-arm64/* dist/
+          # The portable zips are the update feed (macOS/Windows hosts swap
+          # them in place; Linux updates through the tar.gz). Missing
+          # secret → warn and publish without a manifest.
+          if [[ -n "${UPDATE_ED25519_PRIVATE_KEY:-}" ]]; then
+            KEY_PEM="$RUNNER_TEMP/update-signing-key.pem"
+            printf '%s\n' "$UPDATE_ED25519_PRIVATE_KEY" > "$KEY_PEM"
+            scripts/make-update-manifest.sh "$GITHUB_REF_NAME" dist "$KEY_PEM"
           else
             echo "::warning::UPDATE_ED25519_PRIVATE_KEY not set — release ships without an update manifest"
           fi
@@ -274,8 +215,10 @@ jobs:
             on {print}
           ' CHANGELOG.md > /tmp/notes.md
           cd dist
+          for f in *.sha256; do [ -s "$f" ] || rm -f "$f"; done
           cat *.sha256 > SHA256SUMS
           gh release create "$GITHUB_REF_NAME" \
             --title "Taskly ${VERSION}" \
             --notes-file /tmp/notes.md \
-            *.zip *.tar.gz *.dmg *.msi *.sha256 SHA256SUMS update-manifest.json
+            *.zip *.tar.gz *.dmg *.msi *.deb *.rpm *.AppImage \
+            *.sha256 SHA256SUMS update-manifest.json

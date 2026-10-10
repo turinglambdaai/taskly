@@ -70,9 +70,9 @@ final class AppModel {
     private var previewSequence = 0
 
     // Data
-    var lists: [TodoList] = []
-    var tasks: [Task] = []
-    var counts = SmartCounts(today: 0, planned: 0, all: 0, completed: 0)
+    var lists: [RivetTypes.TodoList] = []
+    var tasks: [RivetTypes.Task] = []
+    var counts = RivetTypes.SmartCounts(today: 0, planned: 0, all: 0, completed: 0)
     var currentView: SmartView = .all
     var showCompleted = false
     var isConnected = false
@@ -356,7 +356,7 @@ final class AppModel {
 
     /// Full snapshot of the planned view — every dated incomplete task,
     /// due ones first; the reminder poll filters by time (spec §9).
-    func currentSnapshotForReminders() async throws -> Snapshot {
+    func currentSnapshotForReminders() async throws -> RivetTypes.Snapshot {
         guard let api else {
             throw HostError.missingRuntimeLayout("backend not started")
         }
@@ -391,7 +391,7 @@ final class AppModel {
             reminder?.stop()
             lists = []
             tasks = []
-            counts = SmartCounts(today: 0, planned: 0, all: 0, completed: 0)
+            counts = RivetTypes.SmartCounts(today: 0, planned: 0, all: 0, completed: 0)
             currentView = .all
             clearTaskSelection()
             expandedTaskID = nil
@@ -541,7 +541,7 @@ final class AppModel {
     // MARK: - Refresh
 
     /// Absorb a backend snapshot into the observable state.
-    private func absorb(_ snapshot: Snapshot) {
+    private func absorb(_ snapshot: RivetTypes.Snapshot) {
         counts = snapshot.counts
         lists = snapshot.lists
         withAnimation(.easeOut(duration: 0.15)) {
@@ -714,7 +714,7 @@ final class AppModel {
         return out.string(from: date)
     }
 
-    func toggleCompleted(_ task: Task) {
+    func toggleCompleted(_ task: RivetTypes.Task) {
         guard let api else { return }
         _Concurrency.Task {
             do {
@@ -727,7 +727,7 @@ final class AppModel {
         }
     }
 
-    func saveTask(_ task: Task) {
+    func saveTask(_ task: RivetTypes.Task) {
         guard let api else { return }
         _Concurrency.Task {
             do {
@@ -740,13 +740,13 @@ final class AppModel {
         }
     }
 
-    func deleteTask(_ task: Task) {
+    func deleteTask(_ task: RivetTypes.Task) {
         deleteTasks([task])
     }
 
     /// Batch delete with one combined undo banner. When the deleted row is
     /// part of the active selection, the whole selection is the target.
-    func deleteTasks(_ tasks: [Task]) {
+    func deleteTasks(_ tasks: [RivetTypes.Task]) {
         guard !tasks.isEmpty, let api else { return }
         let targets = tasks
         _Concurrency.Task {
@@ -775,7 +775,7 @@ final class AppModel {
 
     /// One-step undo for delete: re-adds the tasks (each receives a new
     /// id — position/order follows the current view's sort).
-    private func restoreTasks(_ tasks: [Task]) {
+    private func restoreTasks(_ tasks: [RivetTypes.Task]) {
         guard let api else { return }
         _Concurrency.Task {
             do {
@@ -795,9 +795,9 @@ final class AppModel {
         }
     }
 
-    func moveTask(_ task: Task, to list: TodoList) {
+    func moveTask(_ task: RivetTypes.Task, to list: RivetTypes.TodoList) {
         guard let api else { return }
-        let updated = Task(
+        let updated = RivetTypes.Task(
             id: task.id, list_id: list.id, list_name: list.name, text: task.text,
             completed: task.completed, due_date: task.due_date, due_time: task.due_time,
             notes: task.notes, created_at: task.created_at)
@@ -907,9 +907,9 @@ final class AppModel {
         }
     }
 
-    func updateList(_ list: TodoList, name: String, icon: String?, color: Int64?) {
+    func updateList(_ list: RivetTypes.TodoList, name: String, icon: String?, color: Int64?) {
         guard let api else { return }
-        let updated = TodoList(
+        let updated = RivetTypes.TodoList(
             id: list.id, name: name, icon: icon, color: color,
             pending_count: list.pending_count)
         _Concurrency.Task {
@@ -923,7 +923,7 @@ final class AppModel {
         }
     }
 
-    func deleteList(_ list: TodoList) {
+    func deleteList(_ list: RivetTypes.TodoList) {
         guard let api else { return }
         _Concurrency.Task {
             do {
@@ -944,7 +944,7 @@ final class AppModel {
 
     /// The list-color ring/dot for a task (accent fallback when the list is
     /// missing or colorless — spec §5 / DESIGN-TOKENS).
-    func listColor(for task: Task) -> Color {
+    func listColor(for task: RivetTypes.Task) -> Color {
         Color(argb: lists.first { $0.id == task.list_id }?.color)
     }
 }
@@ -953,8 +953,8 @@ final class AppModel {
 
 // The generated DTOs are plain structs; equality is needed for edit-commit
 // diffs. Synthesis cannot cross files, so compare fields by hand.
-extension Task: Equatable {
-    public static func == (lhs: Task, rhs: Task) -> Bool {
+extension RivetTypes.Task: Equatable {
+    public static func == (lhs: RivetTypes.Task, rhs: RivetTypes.Task) -> Bool {
         lhs.id == rhs.id && lhs.list_id == rhs.list_id && lhs.list_name == rhs.list_name
             && lhs.text == rhs.text && lhs.completed == rhs.completed
             && lhs.due_date == rhs.due_date && lhs.due_time == rhs.due_time
@@ -962,14 +962,14 @@ extension Task: Equatable {
     }
 }
 
-extension TodoList: Equatable {
-    public static func == (lhs: TodoList, rhs: TodoList) -> Bool {
+extension RivetTypes.TodoList: Equatable {
+    public static func == (lhs: RivetTypes.TodoList, rhs: RivetTypes.TodoList) -> Bool {
         lhs.id == rhs.id && lhs.name == rhs.name && lhs.icon == rhs.icon
             && lhs.color == rhs.color && lhs.pending_count == rhs.pending_count
     }
 }
 
-extension TodoList {
+extension RivetTypes.TodoList {
     var defaultIcon: String { "📋" }
 }
 
@@ -977,7 +977,7 @@ extension TodoList {
 struct ListEditContext: Identifiable {
     enum Mode {
         case create
-        case edit(TodoList)
+        case edit(RivetTypes.TodoList)
     }
 
     let id = UUID()

@@ -12,7 +12,7 @@ permissions:
 env:
   # Exact Rivet commit the hosts build against (migration policy: pinned).
   # Bump together with host code; local dev may track rivet main.
-  RIVET_PIN: 2fcdd091ddd7fd157fa934ac6053cdf4f9ab6100
+  RIVET_PIN: e8e4079c42e3567549576b0c29a34d98697c39ff
 
 jobs:
   contract:
@@ -78,53 +78,11 @@ jobs:
             libsecret-1-dev libglib2.0-dev
       - name: Link Rivet
         run: raco pkg install --auto --no-docs --name rivet --link "$GITHUB_WORKSPACE/rivet"
-      - name: Cache embeddable Racket CS
-        id: cache-racket-embed
-        uses: actions/cache/restore@v5
-        with:
-          path: ${{ runner.temp }}/racket-embed
-          key: racket-embed-9.3-${{ runner.os }}-${{ runner.arch }}-v1
-      - name: Build embeddable Racket CS
-        if: steps.cache-racket-embed.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          archive="$RUNNER_TEMP/racket-minimal-9.3-src-builtpkgs.tgz"
-          source_root="$RUNNER_TEMP/racket-9.3"
-          build_root="$RUNNER_TEMP/racket-embed-build"
-          embed_prefix="$RUNNER_TEMP/racket-embed"
-          curl --fail --location --retry 3 --output "$archive" \
-            https://download.racket-lang.org/releases/9.3/installers/racket-minimal-9.3-src-builtpkgs.tgz
-          echo "3a01324d559a15e3f1f58b0c57a92bb344dce534e72e564e0d8b75e3b9c65295  $archive" | sha256sum --check
-          tar -xzf "$archive" -C "$RUNNER_TEMP"
-          mkdir -p "$build_root"
-          cd "$build_root"
-          "$source_root/src/configure" --prefix="$embed_prefix"
-          make -j2
-          make install
-      - name: Save embeddable Racket CS cache
-        if: steps.cache-racket-embed.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
-        with:
-          path: ${{ runner.temp }}/racket-embed
-          key: racket-embed-9.3-${{ runner.os }}-${{ runner.arch }}-v1
-      - name: Expose embeddable runtime paths
-        shell: bash
-        run: |
-          set -euo pipefail
-          embed_prefix="$RUNNER_TEMP/racket-embed"
-          racket_include="$(racket -e '(require setup/dirs) (display (path->string (find-include-dir)))')"
-          petite="$(find "$embed_prefix" -maxdepth 6 -name petite.boot -print -quit)"
-          scheme="$(find "$embed_prefix" -maxdepth 6 -name scheme.boot -print -quit)"
-          racket_boot="$(find "$embed_prefix" -maxdepth 6 -name racket.boot -print -quit)"
-          test -n "$petite" && test -n "$scheme" && test -n "$racket_boot"
-          library="$(find "$embed_prefix" -maxdepth 6 -name 'libracketcs*.a' -print -quit)"
-          test -n "$library"
-          boot_dir="$(dirname "$petite")"
-          echo "RIVET_RACKET_INCLUDE=$racket_include" >> "$GITHUB_ENV"
-          echo "RIVET_RACKET_LIB_DIR=$(dirname "$library")" >> "$GITHUB_ENV"
-          echo "RIVET_RACKET_LIBRARY=$library" >> "$GITHUB_ENV"
-          echo "RIVET_RACKET_BOOT_DIR=$boot_dir" >> "$GITHUB_ENV"
+      # Builds and caches the pinned embeddable Racket CS runtime and
+      # exports RIVET_RACKET_* (rivet's own composite action — replaces the
+      # hand-rolled build+cache steps).
+      - name: Set up embeddable Racket CS
+        uses: ./rivet/.github/actions/setup-embed-racket
       - name: Toolchain doctor
         run: raco rivet doctor --json
       - name: Build host

@@ -68,7 +68,8 @@ Grab your build from
 | macOS Intel | `taskly-<version>-macos-x64.zip` | `taskly-<version>-macos-x64.dmg` |
 | Windows x64 | `taskly-<version>-windows-x64.zip` | `taskly-<version>-windows-x64.msi` |
 | Windows ARM64 | runs the x64 build via Windows on ARM's x64 emulation | — |
-| Linux x64 | `taskly-<version>-linux-x64.tar.gz` | native deb/rpm/AppImage planned (rivet#167) |
+| Linux x64 | `taskly-<version>-linux-x64.tar.gz` | `taskly-<version>-linux-x64.deb` / `.rpm` / `.AppImage` |
+| Linux ARM64 | full Linux artifact set on `ubuntu-24.04-arm` builds (`-linux-arm64`) | — |
 
 Every release carries a `SHA256SUMS` manifest and a signed
 `update-manifest.json` — the in-app updater's feed. Portable zip

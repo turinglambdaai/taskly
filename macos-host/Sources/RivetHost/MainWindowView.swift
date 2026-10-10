@@ -193,7 +193,7 @@ private struct SmartChip: View {
 
 private struct ListRowView: View {
     @Environment(AppModel.self) private var model
-    let list: TodoList
+    let list: RivetTypes.TodoList
 
     private var isSelected: Bool {
         model.currentView.listId == list.id

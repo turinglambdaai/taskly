@@ -38,7 +38,8 @@ Taskly 构建在 [Rivet](https://github.com/turinglambdaai/rivet) 之上：全�
 | macOS Intel | `taskly-<version>-macos-x64.zip` | `taskly-<version>-macos-x64.dmg` |
 | Windows x64 | `taskly-<version>-windows-x64.zip` | `taskly-<version>-windows-x64.msi` |
 | Windows ARM64 | 通过 Windows on ARM 的 x64 模拟运行 x64 包 | — |
-| Linux x64 | `taskly-<version>-linux-x64.tar.gz` | 原生 deb/rpm/AppImage 规划中（rivet#167） |
+| Linux x64 | `taskly-<version>-linux-x64.tar.gz` | `taskly-<version>-linux-x64.deb` / `.rpm` / `.AppImage` |
+| Linux ARM64 | `ubuntu-24.04-arm` 构建全套 Linux 产物（`-linux-arm64`） | — |
 
 每个版本都带 `SHA256SUMS` 清单和签名的 `update-manifest.json`（应用内更新的 feed）。便携 zip 安装原地自动更新；MSI 安装版会引导到发布页。
 

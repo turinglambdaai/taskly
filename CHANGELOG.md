@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-10-10
+
+### Added
+- **Native Linux packages.** Every release now ships `.deb` (installs
+  under /opt/Taskly with a desktop entry), `.rpm`, and an `.AppImage`
+  (self-contained GTK4 closure) alongside the tar.gz — for x64 **and
+  ARM64** Linux, built by rivet 0.6.0's release pipeline. Package-
+  manager installs upgrade through the package manager; the AppImage
+  upgrades by replacing itself; the in-app updater keeps using the
+  tar.gz channel.
+- **Linux ARM64.** A second Linux leg (ubuntu-24.04-arm) produces the
+  full Linux artifact set for ARM64 machines.
+
+### Changed
+- **The release pipeline moved to rivet 0.6.0** and its native
+  `raco rivet release` flow: every platform leg now builds its
+  installer, portable zip, and SBOM through one command (launch smoke
+  included), and the Linux embeddable runtime comes from rivet's
+  checksum-pinned composite action instead of a hand-rolled build.
+- The macOS and Windows hosts migrated to rivet's `RivetTypes` codegen
+  namespace (guarded upstream by a new codegen canary). Portable zips
+  and SBOMs are per-architecture; SHA256SUMS covers every release
+  asset.
+
 ## [1.3.0] - 2026-10-09
 
 ### Added

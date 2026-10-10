@@ -75,7 +75,7 @@ final class ReminderService {
         }
     }
 
-    private func process(_ tasks: [Task], startup: Bool, model: AppModel) {
+    private func process(_ tasks: [RivetTypes.Task], startup: Bool, model: AppModel) {
         let due = tasks.filter { isDue($0) && !notifiedIDs.contains($0.id) }
         // Everything seen now is marked notified, even the summarized ones.
         for task in due {
@@ -97,7 +97,7 @@ final class ReminderService {
     }
 
     /// "<text>\n<reminderDueAt>: <dueDate[ dueTime]>" (PRODUCT-SPEC §9).
-    static func body(_ task: Task, dueAtLabel: String) -> String {
+    static func body(_ task: RivetTypes.Task, dueAtLabel: String) -> String {
         var when = task.due_date ?? ""
         if let time = task.due_time, !time.isEmpty {
             when += " \(time)"
@@ -107,7 +107,7 @@ final class ReminderService {
 
     /// Due = incomplete ∧ has due_date ∧ combine(due_date, due_time|00:00) ≤ now
     /// (overdue included, however old).
-    private func isDue(_ task: Task) -> Bool {
+    private func isDue(_ task: RivetTypes.Task) -> Bool {
         guard !task.completed, let dateOnly = task.due_date, !dateOnly.isEmpty else {
             return false
         }

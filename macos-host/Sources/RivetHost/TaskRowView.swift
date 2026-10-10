@@ -8,7 +8,7 @@ import SwiftUI
 /// - context menu: complete · schedule · details · custom date · move · delete
 struct TaskRowView: View {
     @Environment(AppModel.self) private var model
-    let task: Task
+    let task: RivetTypes.Task
     /// Position in the current view — the ⇧-range and ↑/↓ anchor.
     let index: Int
 
@@ -279,7 +279,7 @@ struct TaskRowView: View {
 
     /// Reschedule: setting a date keeps the existing time; clearing the
     /// date clears the time with it.
-    private func setDue(_ date: Date?, on target: Task? = nil) {
+    private func setDue(_ date: Date?, on target: RivetTypes.Task? = nil) {
         let base = target ?? task
         model.saveTask(withSchedule(
             base,
@@ -287,8 +287,8 @@ struct TaskRowView: View {
             time: (date == nil) ? nil : base.due_time))
     }
 
-    private func withSchedule(_ base: Task, date: String?, time: String?) -> Task {
-        Task(
+    private func withSchedule(_ base: RivetTypes.Task, date: String?, time: String?) -> RivetTypes.Task {
+        RivetTypes.Task(
             id: base.id, list_id: base.list_id, list_name: base.list_name, text: base.text,
             completed: base.completed, due_date: date, due_time: time,
             notes: base.notes, created_at: base.created_at)
@@ -307,7 +307,7 @@ struct TaskRowView: View {
     private func commitExpansion() {
         guard isExpanded else { return }
         let trimmed = expandedText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let updated = Task(
+        let updated = RivetTypes.Task(
             id: task.id, list_id: task.list_id, list_name: task.list_name,
             text: trimmed.isEmpty ? task.text : trimmed,
             completed: task.completed,
@@ -494,7 +494,7 @@ struct TaskRowView: View {
 
     /// Right-clicked a row inside the active selection → the action applies
     /// to the whole selection; otherwise just this row.
-    private var actionTargets: [Task] {
+    private var actionTargets: [RivetTypes.Task] {
         model.selectedTaskIDs.contains(task.id)
             ? model.tasks.filter { model.selectedTaskIDs.contains($0.id) }
             : [task]
