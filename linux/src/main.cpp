@@ -15,7 +15,10 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <cerrno>
+#include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <filesystem>
@@ -26,6 +29,7 @@
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <unistd.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -129,6 +133,9 @@ char const* kFallbackZhKeys[] = {
     // key yet — copied here so the fallback stays byte-usable; promote it
     // to shared/i18n when another platform needs it.
     "updateOpenFolder",       "打开文件夹",
+    "updateUsePackageManager", "此副本由系统包管理器安装，请用系统包管理器升级 Taskly。",
+    "updateAppImageHint",     "更新已就位，重启 Taskly 即可切换到新版本。",
+    "updateRestartNow",       "重启并更新",
     "aboutContent",
     "一款专注高效的个人任务管理工具\n帮助您轻松规划、组织和完成各项任务",
     nullptr,
@@ -219,6 +226,9 @@ char const* kFallbackEnKeys[] = {
                               "your current Taskly folder.",
     // Host-side stopgap: see the zh table note above.
     "updateOpenFolder",       "Open Folder",
+    "updateUsePackageManager", "This copy came from the system package manager — use it to upgrade Taskly.",
+    "updateAppImageHint",     "The update is in place — restart Taskly to switch to the new version.",
+    "updateRestartNow",       "Restart and update",
     "aboutContent",
     "A focused and efficient personal task management tool\nHelping you "
     "plan, organize and complete tasks easily",
@@ -486,6 +496,20 @@ void on_result(rivet_app::Result<T> result, Then then) {
 
 std::filesystem::path executable_path() {
   return std::filesystem::read_symlink("/proc/self/exe");
+}
+
+// Install shape for the update flow (UPDATE.md): the AppImage runtime
+// exports APPIMAGE pointing at the running image; deb lands under
+// /opt/taskly and rpm under /usr — those upgrade through the package
+// manager; everything else is the portable tarball layout.
+std::string install_shape() {
+  char const* appimage = getenv("APPIMAGE");
+  if (appimage != nullptr && appimage[0] != '\0') return "appimage";
+  auto const exe = executable_path().string();
+  if (exe.rfind("/opt/taskly/", 0) == 0 || exe.rfind("/usr/", 0) == 0) {
+    return "package";
+  }
+  return "tarball";
 }
 
 template <typename T>
@@ -1107,6 +1131,82 @@ void show_update_error(std::string const& message) {
                       format_positional(tr("updateCheckFailed"), message));
 }
 
+// AppImage: the backend already swapped the sibling .AppImage over the
+// running image atomically (checksummed against the release sidecar), so
+// the only step left is the user's consent to re-exec — the process image
+// becomes the replaced build, Tauri-2 style. Declining keeps the current
+// (old) process running; the next launch is the new version regardless.
+void show_appimage_restart_dialog() {
+  auto* dialog = gtk_dialog_new_with_buttons(
+      tr("updateDownloaded").c_str(), g_state.window,
+      static_cast<GtkDialogFlags>(GTK_DIALOG_MODAL |
+                                  GTK_DIALOG_DESTROY_WITH_PARENT),
+      tr("updateRestartNow").c_str(), GTK_RESPONSE_ACCEPT,
+      tr("dialogCancel").c_str(), GTK_RESPONSE_CLOSE, nullptr);
+  auto* area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  auto* content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+  gtk_widget_set_margin_top(content, 12);
+  gtk_widget_set_margin_bottom(content, 6);
+  gtk_widget_set_margin_start(content, 12);
+  gtk_widget_set_margin_end(content, 12);
+  gtk_box_append(GTK_BOX(area), content);
+  auto* hint = gtk_label_new(tr("updateAppImageHint").c_str());
+  gtk_label_set_wrap(GTK_LABEL(hint), TRUE);
+  gtk_label_set_max_width_chars(GTK_LABEL(hint), 60);
+  gtk_box_append(GTK_BOX(content), hint);
+  g_signal_connect(
+      dialog, "response",
+      G_CALLBACK(+[](GtkDialog* dialog, gint response, gpointer) {
+        gtk_window_destroy(GTK_WINDOW(dialog));
+        if (response != GTK_RESPONSE_ACCEPT) return;
+        char const* self = getenv("APPIMAGE");
+        if (self == nullptr || self[0] == '\0') return;
+        execl(self, self, static_cast<char*>(nullptr));
+        // execl only returns on failure — surface it, the old image keeps
+        // running either way.
+        show_update_error(std::string("re-exec failed: ") +
+                          std::strerror(errno));
+      }),
+      nullptr);
+  gtk_window_present(GTK_WINDOW(dialog));
+}
+
+// deb/rpm installs: the download cannot self-swap a system-managed prefix,
+// so the dialog explains the upgrade path and still opens the file's folder
+// for whoever wants the archive itself.
+void show_package_manager_dialog(std::string const& path) {
+  auto* dialog = gtk_dialog_new_with_buttons(
+      tr("updateDownloaded").c_str(), g_state.window,
+      static_cast<GtkDialogFlags>(GTK_DIALOG_MODAL |
+                                  GTK_DIALOG_DESTROY_WITH_PARENT),
+      tr("dialogConfirm").c_str(), GTK_RESPONSE_CLOSE, nullptr);
+  auto* area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  auto* content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+  gtk_widget_set_margin_top(content, 12);
+  gtk_widget_set_margin_bottom(content, 6);
+  gtk_widget_set_margin_start(content, 12);
+  gtk_widget_set_margin_end(content, 12);
+  gtk_box_append(GTK_BOX(area), content);
+  auto* hint = gtk_label_new(tr("updateUsePackageManager").c_str());
+  gtk_label_set_wrap(GTK_LABEL(hint), TRUE);
+  gtk_label_set_max_width_chars(GTK_LABEL(hint), 60);
+  gtk_box_append(GTK_BOX(content), hint);
+  if (!path.empty()) {
+    auto* path_label = gtk_label_new(path.c_str());
+    gtk_label_set_selectable(GTK_LABEL(path_label), TRUE);
+    gtk_label_set_wrap(GTK_LABEL(path_label), TRUE);
+    gtk_widget_add_css_class(path_label, "meta-text");
+    gtk_box_append(GTK_BOX(content), path_label);
+  }
+  g_signal_connect(
+      dialog, "response",
+      G_CALLBACK(+[](GtkDialog* dialog, gint, gpointer) {
+        gtk_window_destroy(GTK_WINDOW(dialog));
+      }),
+      nullptr);
+  gtk_window_present(GTK_WINDOW(dialog));
+}
+
 // Downloaded: hand off the verified tar.gz. Installation stays manual, so
 // the dialog explains the step (updateInstallHint) and points at the file's
 // folder; nothing is ever executed or moved by the host.
@@ -1208,7 +1308,17 @@ int on_update_poll_tick(gpointer) {
             show_update_error(state.message.value_or("unknown failure"));
             return;
           }
-          show_downloaded_dialog(state.downloaded_path.value_or(""));
+          auto const downloaded = state.downloaded_path.value_or("");
+          auto const shape = install_shape();
+          if (shape == "appimage") {
+            show_appimage_restart_dialog();
+            return;
+          }
+          if (shape == "package") {
+            show_package_manager_dialog(downloaded);
+            return;
+          }
+          show_downloaded_dialog(downloaded);
         });
       });
   return G_SOURCE_CONTINUE;
@@ -1290,6 +1400,12 @@ void start_update_download() {
 
 void show_update_consent(rivet_app::UpdateCheck const& check) {
   std::string const version = check.available_version.value_or("?");
+  if (install_shape() == "package") {
+    // deb/rpm upgrade through the package manager; never download or exec.
+    show_update_message(tr("updateAvailableTitle"),
+                        tr("updateUsePackageManager"));
+    return;
+  }
   auto* dialog = gtk_dialog_new_with_buttons(
       tr("updateAvailableTitle").c_str(), g_state.window,
       static_cast<GtkDialogFlags>(GTK_DIALOG_MODAL |
@@ -3020,6 +3136,10 @@ int on_backend_finished(gpointer) {
               apply_theme(settings.theme.empty() ? "system"
                                                  : settings.theme);
               apply_language();
+              // Stamp the install shape so the backend picks the matching
+              // update flavor (UPDATE.md): appimage in-place, package
+              // manager guidance, portable tarball download.
+              save_setting("install-flavor", install_shape());
               open_default_database();
             });
       });

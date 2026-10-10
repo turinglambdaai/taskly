@@ -200,9 +200,10 @@
   '(("language" ("zh" "en"))
     ("theme" ("system" "light" "dark"))
     ("close-to-tray" ("0" "1"))
-    ;; Host-declared install shape (Windows: msi vs portable zip) — the
-    ;; updater picks the download flavor from it (UPDATE.md).
-    ("install-flavor" ("zip" "msi"))))
+    ;; Host-declared install shape (Windows: msi vs portable zip; Linux:
+    ;; appimage vs deb/rpm vs tarball) — the updater picks the download
+    ;; flavor from it (UPDATE.md).
+    ("install-flavor" ("zip" "msi" "appimage" "package" "tarball"))))
 
 ;; Integer-as-string per DATA-FORMAT §7: sidebar selection and the
 ;; update-check throttle (shared/spec/UPDATE.md) persist as plain integers.

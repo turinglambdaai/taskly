@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the published `.msi.sha256` sidecar, and the install handoff runs a
   `msiexec /passive /norestart` upgrade (per-machine installs surface
   one UAC consent; msiexec log lands in `%TEMP%\taskly-update`).
+- **Linux AppImage installs update in place.** When running as an
+  AppImage, the backend derives the sibling `.AppImage` asset from the
+  feed's tar.gz entry (arch names mapped: x64→x86_64, arm64→aarch64),
+  verifies it against the release's `.AppImage.sha256` sidecar, stages
+  it next to the running image and atomically renames it over
+  `$APPIMAGE` with exec bits set — the host then asks for consent and
+  re-execs the replaced image, Tauri-2 style. deb/rpm installs get
+  pointed at the system package manager instead; tarball installs keep
+  the download + manual-extract flow.
 
 ### Fixed
 - **The Windows hand-built rows kept light colors in dark mode.**

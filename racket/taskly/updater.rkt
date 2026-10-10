@@ -25,6 +25,7 @@
          rivet/distribution
          racket/file
          racket/list
+         racket/path
          racket/port
          racket/string
          "config.rkt"
@@ -44,6 +45,7 @@
          installer-extension
          manifest-url
          destination-path
+         appimage-asset-name
          copy-with-progress!
          update-state-snapshot
          reset-update-state!
@@ -309,6 +311,92 @@
   (and (eq? (platform-symbol) 'windows)
        (equal? (install-flavor) "msi")))
 
+;; ---------- AppImage flavor (Linux installs run from an AppImage) ----------
+;; The feed's linux entry is the tar.gz; AppImage installs update through the
+;; sibling .AppImage release asset. Asset families disagree on arch names —
+;; feed/deb/rpm use x64|arm64, AppImage builds use x86_64|aarch64 — so the
+;; derivation maps the arch before appending. The download lands NEXT TO the
+;; running image (same filesystem → atomic rename) and replaces it after the
+;; sidecar checksum verifies; the host re-execs the replaced image on consent.
+
+(define (appimage-flavor?)
+  (and (eq? (platform-symbol) 'linux)
+       (equal? (install-flavor) "appimage")))
+
+;; Pure so tests can pin the derivation — the arch-name mapping is the trap.
+(define (appimage-asset-name tar-gz-filename architecture)
+  (unless (string-suffix? tar-gz-filename ".tar.gz")
+    (error 'appimage-asset-name "not a tar.gz filename: ~a" tar-gz-filename))
+  (define stem
+    (substring tar-gz-filename 0 (- (string-length tar-gz-filename) 7)))
+  (define feed-arch (string-append "-" (symbol->string architecture)))
+  (unless (string-suffix? stem feed-arch)
+    (error 'appimage-asset-name
+           "feed filename does not end in ~a: ~a" feed-arch stem))
+  (define appimage-arch
+    (case architecture [(arm64) "aarch64"] [else "x86_64"]))
+  (string-append (substring stem 0 (- (string-length stem)
+                                      (string-length feed-arch)))
+                 "-"
+                 appimage-arch
+                 ".AppImage"))
+
+(define (appimage-artifact-urls candidate)
+  (define url (update-artifact-url (update-candidate-artifact candidate)))
+  (define filename
+    (last (string-split (car (string-split url "?")) "/")))
+  (define appimage-name
+    (appimage-asset-name filename (architecture-symbol)))
+  (values (string-replace url filename appimage-name)
+          (string-append (string-replace url filename appimage-name)
+                         ".sha256")))
+
+(define (appimage-download-target)
+  ;; $APPIMAGE (set by the AppImage runtime) points at the running image;
+  ;; stage the download next to it so the final rename stays on one device.
+  (define self (getenv "APPIMAGE"))
+  (unless (and self (non-empty-string? self))
+    (error 'start-download "APPIMAGE is not set; not running as an AppImage"))
+  (values self
+          (make-temporary-file "taskly-update-~a.AppImage"
+                               #f
+                               (path-only self))))
+
+(define (download-appimage-with-progress! candidate)
+  (define-values (appimage-url sidecar-url)
+    (appimage-artifact-urls candidate))
+  (define-values (self temporary) (appimage-download-target))
+  (define expected (fetch-sidecar-sha256! sidecar-url))
+  (with-handlers ([exn:fail?
+                   (lambda (e)
+                     (when (file-exists? temporary)
+                       (delete-file temporary))
+                     (raise e))])
+    (define-values (in total) (open-download-with-total! appimage-url))
+    (dynamic-wind
+      void
+      (lambda ()
+        (call-with-output-file temporary
+          #:exists 'truncate/replace
+          #:mode 'binary
+          (lambda (out) (copy-with-progress! in out total))))
+      (lambda () (close-input-port in)))
+    (define actual (string-downcase (sha256-file/hex temporary)))
+    (unless (string=? actual expected)
+      (raise-arguments-error 'start-download
+                             "downloaded appimage does not match its checksum sidecar"
+                             "expected" expected
+                             "actual" actual))
+    ;; The replaced image must stay executable: rename carries the temp
+    ;; file's modes, so set them explicitly before the swap.
+    (file-or-directory-permissions
+     temporary
+     #(user-read user-write user-execute
+                 group-read group-execute
+                 other-read other-execute))
+    (rename-file-or-directory temporary self #t)
+    self))
+
 (define (msi-artifact-urls candidate)
   (define url (update-artifact-url (update-candidate-artifact candidate)))
   (unless (string-suffix? url ".zip")
@@ -338,7 +426,11 @@
 ;; Content-Length for the progress percent (0 → indeterminate), and hand the
 ;; body port to the same copy loop. Connection: close keeps the copy ending
 ;; at EOF, exactly like the zip flow.
-(define (open-msi-download! url)
+(define (open-download-with-total! url)
+  ;; Shared by the msi and appimage flows: parse the response head so the
+  ;; progress percent can use Content-Length (0 → indeterminate), then hand
+  ;; the body port to the copy loop. Connection: close makes the copy end at
+  ;; EOF like the manifest-verified zip flow.
   (define in (get-impure-port (string->url url)
                               '("User-Agent: Taskly-Updater/1"
                                 "Connection: close")))
@@ -362,7 +454,7 @@
                    (lambda (e)
                      (when (file-exists? temporary) (delete-file temporary))
                      (raise e))])
-    (define-values (in total) (open-msi-download! msi-url))
+    (define-values (in total) (open-download-with-total! msi-url))
     (dynamic-wind
       void
       (lambda ()
@@ -403,9 +495,9 @@
                     (rollout-bucket)
                     maximum-download-bytes))
   (define destination
-    (if (msi-flavor?)
-        (destination-path data-dir candidate ".msi")
-        (destination-path data-dir candidate)))
+    (cond
+      [(msi-flavor?) (destination-path data-dir candidate ".msi")]
+      [else (destination-path data-dir candidate)]))
   (set-box! last-progress-seconds (current-seconds))
   (define worker-thread
     (thread
@@ -422,9 +514,13 @@
                                "update download stalled or timed out"
                                (exn-message e))))])
          (define path
-           (if (msi-flavor?)
-               (download-msi-with-progress! config candidate destination)
-               (download-with-progress! config candidate destination)))
+           (cond
+             [(msi-flavor?)
+              (download-msi-with-progress! config candidate destination)]
+             [(appimage-flavor?)
+              (download-appimage-with-progress! candidate)]
+             [else
+              (download-with-progress! config candidate destination)]))
          (state-set! 'phase "downloaded")
          (state-set! 'percent 100)
          (state-set! 'downloadedPath (path->string path))))))

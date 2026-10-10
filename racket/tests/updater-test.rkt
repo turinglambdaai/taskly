@@ -123,3 +123,15 @@
   (check-equal? app-channel 'stable)
   (check-equal? update-key-id "taskly-2026-10")
   (check-true (string? app-version)))
+
+(test-case "appimage asset derivation maps feed arch names"
+  (check-equal?
+   (appimage-asset-name "taskly-0.1.2-linux-x64.tar.gz" 'x64)
+   "taskly-0.1.2-linux-x86_64.AppImage")
+  (check-equal?
+   (appimage-asset-name "taskly-0.1.2-linux-arm64.tar.gz" 'arm64)
+   "taskly-0.1.2-linux-aarch64.AppImage")
+  (check-exn exn:fail?
+             (lambda () (appimage-asset-name "taskly-0.1.2-linux-x64.zip" 'x64)))
+  (check-exn exn:fail?
+             (lambda () (appimage-asset-name "taskly-0.1.2-linux.tar.gz" 'x64))))

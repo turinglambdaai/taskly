@@ -149,5 +149,8 @@
   "updateQuitAndInstall": "退出并安装",
   "updateInstallHint": "安装方法：解压下载的压缩包并覆盖当前 Taskly 目录。",
   "updateOpenFolder": "打开文件夹",
-  "updateMsiInstalled": "当前副本通过 MSI 安装器安装，暂不支持应用内更新，请到发布页下载新的安装包。"
+  "updateMsiInstalled": "当前副本通过 MSI 安装器安装，暂不支持应用内更新，请到发布页下载新的安装包。",
+  "updateUsePackageManager": "此副本由系统包管理器安装，请用系统包管理器升级 Taskly。",
+  "updateAppImageHint": "更新已就位，重启 Taskly 即可切换到新版本。",
+  "updateRestartNow": "重启并更新"
 }
