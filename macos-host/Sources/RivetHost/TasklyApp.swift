@@ -28,6 +28,14 @@ struct TasklyApp: App {
                     model.aboutVisible = true
                 }
             }
+            // Localized Quit (the system item is AppKit-English regardless of
+            // the app language); terminate stays the normal path.
+            CommandGroup(replacing: .appTermination) {
+                Button(model.t("menuExit")) {
+                    NSApp.terminate(nil)
+                }
+                .keyboardShortcut("q")
+            }
         }
     }
 }

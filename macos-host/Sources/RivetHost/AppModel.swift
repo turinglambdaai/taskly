@@ -129,10 +129,15 @@ final class AppModel {
     init() {
         statusMessage = i18n.t("statusDatabaseNotConnected")
 
+        // System menu titles (File/Edit/…) are AppKit-English templates;
+        // re-apply i18n titles (and prune non-§8 menus) on every resync.
+        MenuBarLocalizer.install()
+
         i18n.onLanguageChanged = { [weak self] in
             _Concurrency.Task { @MainActor [weak self] in
                 self?.languageChangedToken += 1
                 self?.refreshStatusPersistent()
+                MenuBarLocalizer.apply()
             }
         }
 
