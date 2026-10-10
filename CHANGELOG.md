@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.4.1] - 2026-10-10
+## [0.1.1] - 2026-10-10
 
 ### Fixed
 - **The installed app has no icon.** `rivet.rktd` never declared
@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   launcher icons are now generated from `assets/icon_512.png`
   (`assets/taskly.ico`, 7 sizes; `assets/taskly.icns`, full iconset)
   and declared in the project file.
+- **A black console window opened before the app on Windows.** Rivet's
+  default diagnostic sink wrote every RVT1 protocol record to stderr,
+  and the embedded Chez runtime lazily allocates a console on the
+  first stderr write of a GUI-subsystem process. The backend now
+  appends the same JSONL records (plus a local ISO-8601 `ts`) to
+  `~/.taskly/diagnostics.log` instead — stderr is never touched, so
+  no console ever appears.
 - **The Windows sidebar kept twitching.** Every backend snapshot — the
   periodic poll and each `changed` event — rebuilt the list rows even
   when nothing had changed, so "My lists" visibly jumped on every
@@ -27,6 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   both the placeholder and the typed text through the same padding)
   plus `VerticalContentAlignment="Center"` for templates that honor
   it.
+- **An update download could rest at 100% forever.** The download
+  loop waits for EOF with no timeout, so a connection that stalls
+  without RST/FIN parked the backend worker at `downloading`/100
+  indefinitely (and a dead backend left the host polling a frozen
+  percent). The backend now watchdogs each download — 120 s without
+  byte progress or 30 min wall clock breaks the worker into a clean
+  phase=error — and the Windows host applies its own 30-minute total
+  limit, so a download always ends in the consent dialog or a failure
+  dialog.
 
 ## [1.4.0] - 2026-10-10
 

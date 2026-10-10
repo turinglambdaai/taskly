@@ -54,7 +54,7 @@
 ;; Release identity duplicated from rivet.rktd. The packaged app cannot
 ;; read the project file at runtime, so the updater embeds these constants.
 ;; scripts/check-release-version.sh re-checks app-version against VERSION.
-(define app-version "0.1.0")
+(define app-version "0.1.1")
 (define app-build 1)
 (define app-identifier "app.taskly.Taskly")
 (define app-channel 'stable)
@@ -125,6 +125,17 @@
 
 (define candidate-box (box #f))
 (define worker-thread-box (box #f))
+
+;; Download watchdog bounds. The copy loop waits on read-bytes-avail! with
+;; no timeout, so a connection that stalls without RST/FIN parks the worker
+;; thread forever — visibly "stuck at 100%" (all bytes had arrived; the
+;; loop was still waiting for EOF). Two finite bounds keep the phase
+;; machine honest: no byte progress for the stall limit, or wall clock
+;; past the total limit, breaks the worker (it cleans up the .partial and
+;; reports phase=error itself) so the host always gets a terminal state.
+(define download-stall-limit-seconds 120)
+(define download-total-limit-seconds (* 30 60))
+(define last-progress-seconds (box 0))
 
 (define (state-set! key value)
   (set-box! update-state (hash-set (unbox update-state) key value)))
@@ -242,6 +253,9 @@
     (cond
       [(eof-object? count) done]
       [else
+       ;; Every successful read feeds the watchdog's stall clock (not just
+       ;; integer percent changes, so a slow link never false-trips it).
+       (set-box! last-progress-seconds (current-seconds))
        (write-bytes buffer out 0 count)
        (define next (+ done count))
        (define percent
@@ -304,16 +318,43 @@
                     (rollout-bucket)
                     maximum-download-bytes))
   (define destination (destination-path data-dir candidate))
-  (set-box! worker-thread-box
-            (thread
-             (lambda ()
-               (with-handlers
-                   ([exn:fail?
-                     (lambda (e)
-                       (state-set! 'phase "error")
-                       (state-set! 'message (exn-message e)))])
-                 (define path
-                   (download-with-progress! config candidate destination))
-                 (state-set! 'phase "downloaded")
-                 (state-set! 'percent 100)
-                 (state-set! 'downloadedPath (path->string path)))))))
+  (set-box! last-progress-seconds (current-seconds))
+  (define worker-thread
+    (thread
+     (lambda ()
+       ;; The watchdog breaks a stalled worker; exn:break is not an
+       ;; exn:fail, so it needs its own arm — either way the .partial file
+       ;; is removed and the phase lands on error (never mid-flight).
+       (with-handlers
+           ([(lambda (e) (or (exn:fail? e) (exn:break? e)))
+             (lambda (e)
+               (state-set! 'phase "error")
+               (state-set! 'message
+                           (if (exn:break? e)
+                               "update download stalled or timed out"
+                               (exn-message e))))])
+         (define path
+           (download-with-progress! config candidate destination))
+         (state-set! 'phase "downloaded")
+         (state-set! 'percent 100)
+         (state-set! 'downloadedPath (path->string path))))))
+  (set-box! worker-thread-box worker-thread)
+  ;; Watchdog: exits once the worker finishes on its own; otherwise a stall
+  ;; (no byte progress) or the total wall-clock limit breaks the worker so
+  ;; phase never rests on "downloading" indefinitely.
+  (define download-started (current-seconds))
+  (thread
+   (lambda ()
+     (let loop ()
+       (cond
+         [(sync/timeout download-stall-limit-seconds
+                        (thread-dead-evt worker-thread))
+          (void)]
+         [(> (- (current-seconds) (unbox last-progress-seconds))
+             download-stall-limit-seconds)
+          (break-thread worker-thread)]
+         [(> (- (current-seconds) download-started)
+             download-total-limit-seconds)
+          (break-thread worker-thread)]
+         [else (loop)]))))
+  (void))

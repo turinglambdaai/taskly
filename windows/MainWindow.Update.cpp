@@ -333,6 +333,7 @@ void MainWindow::StartDownload() {
     return;
   }
   update_downloading_ = true;
+  update_download_start_ = epoch_seconds();
   SetStatus(t("updateDownloading"));
 
   auto const dispatcher = DispatcherQueue();
@@ -401,6 +402,19 @@ void MainWindow::HandleUpdatePoll(
     state = result.get();
   } catch (...) {
     return;  // transient poll error: the next tick retries
+  }
+  // Total-limit watchdog: the backend has its own stall/total bounds, but
+  // if it died mid-download (or a poll never resolves again) the host still
+  // must reach a terminal state instead of resting on a frozen percent.
+  if (update_download_start_ > 0 &&
+      epoch_seconds() - update_download_start_ > 30 * 60) {
+    if (update_timer_) {
+      update_timer_.Stop();
+      update_timer_ = nullptr;
+    }
+    update_downloading_ = false;
+    FailDownload("download timed out");
+    return;
   }
   if (state.phase == "downloaded") {
     if (update_timer_) {

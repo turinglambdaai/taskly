@@ -183,6 +183,9 @@ private:
   winrt::Microsoft::UI::Xaml::DispatcherTimer update_timer_{nullptr};
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer preview_timer_{nullptr};
   bool update_downloading_{false};
+  // Wall-clock start of the active download; a poll past the total limit
+  // fails the download even if the backend state machine went quiet.
+  std::int64_t update_download_start_{0};
 };
 
 }  // namespace winrt::RivetHost::implementation
