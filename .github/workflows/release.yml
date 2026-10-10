@@ -55,13 +55,14 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           ARCH="${{ matrix.arch }}"
           cd dist
+          # rivet 0.6.1 names the portable zip in family form already; only
+          # the DMG lacks the architecture.
           mv "taskly-${VERSION}-macos.dmg" "taskly-${VERSION}-macos-${ARCH}.dmg"
-          shasum -a 256 "taskly-${VERSION}-macos-${ARCH}.dmg" > "taskly-${VERSION}-macos-${ARCH}.dmg.sha256"
-          mv "taskly.app.zip" "taskly-${VERSION}-macos-${ARCH}.zip"
-          mv "taskly.app.zip.sha256" "taskly-${VERSION}-macos-${ARCH}.zip.sha256"
-          sed -i '' "s/taskly\.app\.zip/taskly-${VERSION}-macos-${ARCH}.zip/" "taskly-${VERSION}-macos-${ARCH}.zip.sha256"
           mv sbom.cdx.json "taskly-${VERSION}-macos-${ARCH}.sbom.cdx.json"
           mv THIRD_PARTY_NOTICES.txt "taskly-${VERSION}-macos-${ARCH}-THIRD_PARTY_NOTICES.txt"
+          for f in taskly-*; do
+            case "$f" in *.sha256) ;; *) [ -f "$f" ] || continue; [ -f "$f.sha256" ] || shasum -a 256 "$f" > "$f.sha256";; esac
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: macos-${{ matrix.arch }}
@@ -103,11 +104,12 @@ jobs:
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           cd dist
-          mv "taskly-windows-x64.zip" "taskly-${VERSION}-windows-x64.zip"
-          sha256sum "taskly-${VERSION}-windows-x64.zip" > "taskly-${VERSION}-windows-x64.zip.sha256"
-          sha256sum "taskly-${VERSION}-windows-x64.msi" > "taskly-${VERSION}-windows-x64.msi.sha256"
+          # rivet 0.6.1 names msi and portable zip in family form already.
           mv sbom.cdx.json "taskly-${VERSION}-windows-x64.sbom.cdx.json"
           mv THIRD_PARTY_NOTICES.txt "taskly-${VERSION}-windows-x64-THIRD_PARTY_NOTICES.txt"
+          for f in taskly-*; do
+            case "$f" in *.sha256) ;; *) [ -f "$f" ] || continue; [ -f "$f.sha256" ] || sha256sum "$f" > "$f.sha256";; esac
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -162,9 +164,7 @@ jobs:
           mv sbom.cdx.json "taskly-${VERSION}-linux-${ARCH}.sbom.cdx.json"
           mv THIRD_PARTY_NOTICES.txt "taskly-${VERSION}-linux-${ARCH}-THIRD_PARTY_NOTICES.txt"
           for f in taskly-*; do
-            case "$f" in
-              *.sha256) ;;
-              *) [ -f "$f.sha256" ] || sha256sum "$f" > "$f.sha256" ;;
+            case "$f" in *.sha256) ;; *) [ -f "$f" ] || continue; [ -f "$f.sha256" ] || sha256sum "$f" > "$f.sha256" ;;
             esac
           done
       - uses: actions/upload-artifact@v4
