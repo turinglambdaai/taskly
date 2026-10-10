@@ -503,6 +503,11 @@ MainWindow::MainWindow() {
   }
   set_i18n_language("en");  // corrected once get_settings reports
   SetStatus(t("statusDatabaseNotConnected"));
+  // ApplyLanguage is the single source for every built-in string: the first
+  // paint is uniformly English (no XAML-default or blank elements), and the
+  // get_settings landing (OnLangZh/OnLangEn too) re-runs it wholesale so the
+  // final state always matches the user's language — never a mix.
+  ApplyLanguage();
   InitializeBackendAsync();
 }
 
