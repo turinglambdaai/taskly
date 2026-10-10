@@ -15,7 +15,7 @@ env:
   # Exact rivet commit releases build against (family pin discipline).
   # v0.6.0 — native Linux deb/rpm/AppImage, portable zips beside every
   # installer, RivetTypes codegen with the upstream canary.
-  RIVET_COMMIT: b7a4b0ff54c3330fb76d93c32da834541f8b6aca
+  RIVET_COMMIT: e8e4079e42bbd2561d530b655f57cc6287c6ef3a
 
 jobs:
   macos:
@@ -129,7 +129,7 @@ jobs:
       - name: Install pinned Rivet
         run: |
           set -euo pipefail
-          git clone --depth 1 --branch v0.6.0 https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
+          git clone --depth 1 --branch main https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
           raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
       - name: Install GTK4, rpm and packaging tooling
         run: |

@@ -12,7 +12,7 @@ permissions:
 env:
   # Exact Rivet commit the hosts build against (migration policy: pinned).
   # Bump together with host code; local dev may track rivet main.
-  RIVET_PIN: b7a4b0ff54c3330fb76d93c32da834541f8b6aca
+  RIVET_PIN: e8e4079e42bbd2561d530b655f57cc6287c6ef3a
 
 jobs:
   contract:
