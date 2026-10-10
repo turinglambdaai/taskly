@@ -15,7 +15,7 @@ env:
   # Exact rivet commit releases build against (family pin discipline).
   # v0.6.0 — native Linux deb/rpm/AppImage, portable zips beside every
   # installer, RivetTypes codegen with the upstream canary.
-  RIVET_COMMIT: e8e4079c42e3567549576b0c29a34d98697c39ff
+  RIVET_COMMIT: b7a4b0ff54c3330fb76d93c32da834541f8b6aca
 
 jobs:
   macos:
