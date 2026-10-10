@@ -125,11 +125,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up embeddable Racket CS
-        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@v0.6.0
+        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@e8e4079e42bbd2561d530b655f57cc6287c6ef3a
       - name: Install pinned Rivet
         run: |
           set -euo pipefail
-          git clone --depth 1 --branch main https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
+          git clone https://github.com/turinglambdaai/rivet.git "$RUNNER_TEMP/rivet"
+          git -C "$RUNNER_TEMP/rivet" checkout "$RIVET_COMMIT"
           raco pkg install --auto --no-docs --name rivet --link "$RUNNER_TEMP/rivet"
       - name: Install GTK4, rpm and packaging tooling
         run: |
