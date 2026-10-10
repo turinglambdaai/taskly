@@ -15,7 +15,7 @@ env:
   # Exact rivet commit releases build against (family pin discipline).
   # v0.6.0 — native Linux deb/rpm/AppImage, portable zips beside every
   # installer, RivetTypes codegen with the upstream canary.
-  RIVET_COMMIT: e8e4079e42bbd2561d530b655f57cc6287c6ef3a
+  RIVET_COMMIT: 410fc7c6987cda5fcf4e4f795d1d4f7a90d4e0f6
 
 jobs:
   macos:
@@ -125,16 +125,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up embeddable Racket CS
-        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@e8e4079e42bbd2561d530b655f57cc6287c6ef3a
-      # Full distribution on PATH for raco (backend db package); the
-      # RIVET_RACKET_* env still points the embed at the minimal runtime.
-      - name: Setup Racket CS 9.3 (full, for raco)
-        uses: Bogdanp/setup-racket@v1.15
-        with:
-          architecture: ${{ matrix.racket-arch }}
-          distribution: full
-          variant: CS
-          version: '9.3'
+        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@410fc7c6987cda5fcf4e4f795d1d4f7a90d4e0f6
+      # The backend needs db (and rivet/distribution needs crypto); install
+      # both into the minimal embeddable runtime the action provisioned.
+      - name: Install backend packages into the embeddable runtime
+        run: raco pkg install --auto --no-docs db crypto
       - name: Install pinned Rivet
         run: |
           set -euo pipefail

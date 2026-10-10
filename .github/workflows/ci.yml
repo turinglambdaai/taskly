@@ -12,7 +12,7 @@ permissions:
 env:
   # Exact Rivet commit the hosts build against (migration policy: pinned).
   # Bump together with host code; local dev may track rivet main.
-  RIVET_PIN: e8e4079e42bbd2561d530b655f57cc6287c6ef3a
+  RIVET_PIN: 410fc7c6987cda5fcf4e4f795d1d4f7a90d4e0f6
 
 jobs:
   contract:
@@ -83,17 +83,10 @@ jobs:
       # hand-rolled build+cache steps).
       - name: Set up embeddable Racket CS
         uses: ./rivet/.github/actions/setup-embed-racket
-      # A full distribution on PATH for raco/compilation (the backend needs
-      # the db package, which the minimal embeddable runtime lacks); the
-      # RIVET_RACKET_* env from the action still points the embed at the
-      # minimal runtime.
-      - name: Setup Racket CS 9.3 (full, for raco)
-        uses: Bogdanp/setup-racket@v1.15
-        with:
-          architecture: x64
-          distribution: full
-          variant: CS
-          version: '9.3'
+      # The backend needs db (and rivet/distribution needs crypto); install
+      # both into the minimal embeddable runtime the action provisioned.
+      - name: Install backend packages into the embeddable runtime
+        run: raco pkg install --auto --no-docs db crypto
       - name: Toolchain doctor
         run: raco rivet doctor --json
       - name: Build host
