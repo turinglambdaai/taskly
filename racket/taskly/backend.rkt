@@ -1,6 +1,10 @@
 #lang racket/base
 
 (require rivet/backend
+         json
+         racket/date
+         racket/file
+         racket/format
          racket/string
          "config.rkt"
          "date-parser.rkt"
@@ -13,6 +17,56 @@
 
 (provide start
          start-stdio)
+
+;; Rivet's diagnostic sink defaults to current-error-port. A Windows
+;; GUI-subsystem process has no console, and the embedded Chez runtime
+;; lazily allocates one on the first stderr write — the black console
+;; window users saw open before the app window, streaming RVT1 protocol
+;; records (on mac/Linux stderr lands in a terminal or /dev/null, so it
+;; never showed there). Diagnostics keep their value as JSONL appended to
+;; ~/.taskly/diagnostics.log instead; stderr is never touched, so no
+;; console is ever allocated. Rivet already swallows sink exceptions, so
+;; an unwritable path drops records rather than failing the backend.
+(define diagnostics-port (box #f))
+(define diagnostics-lock (make-semaphore 1))
+
+(define (diagnostics-log-path)
+  (build-path (taskly-directory) "diagnostics.log"))
+
+(define (diagnostic-timestamp)
+  ;; Local ISO-8601 (no zone suffix): machine-sortable, human-readable.
+  (define d (seconds->date (current-seconds) #f))
+  (format "~a-~a-~aT~a:~a:~a"
+          (date-year d)
+          (~r (date-month d) #:min-width 2 #:pad-string "0")
+          (~r (date-day d) #:min-width 2 #:pad-string "0")
+          (~r (date-hour d) #:min-width 2 #:pad-string "0")
+          (~r (date-minute d) #:min-width 2 #:pad-string "0")
+          (~r (date-second d) #:min-width 2 #:pad-string "0")))
+
+(define (taskly-diagnostic-sink record)
+  (call-with-semaphore
+   diagnostics-lock
+   (lambda ()
+     (define out
+       (or (unbox diagnostics-port)
+           (let ([port
+                  (begin
+                    ;; The directory may not exist yet during the very first
+                    ;; handshake (open_database creates it right after).
+                    (with-handlers ([exn:fail? void])
+                      (make-directory* (taskly-directory)))
+                    (open-output-file (diagnostics-log-path)
+                                      #:exists 'append))])
+             (set-box! diagnostics-port port)
+             port)))
+     (write-json (hash-set record 'ts (diagnostic-timestamp)) out)
+     (newline out)
+     (flush-output out))))
+
+;; Module top level: runs on the boot thread that later invokes `start`,
+;; so serve-fds picks this sink up as its default.
+(current-rivet-diagnostic-sink taskly-diagnostic-sink)
 
 (define current-service (box #f))
 (define-event changed)
@@ -235,7 +289,10 @@
 ;; stdin/stdout. This is deliberately only a transport alternative: the
 ;; Taskly service and RPC surface remain identical to the embedded host.
 (define (start-stdio)
-  (serve (current-input-port) (current-output-port)))
+  (serve (current-input-port) (current-output-port)
+         ;; serve's own default sink is `void`; pass the file sink so the
+         ;; managed dev host records diagnostics like the packaged one.
+         #:diagnostic-sink (current-rivet-diagnostic-sink)))
 
 (module+ main
   (start-stdio))

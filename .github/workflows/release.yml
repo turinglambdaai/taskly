@@ -61,7 +61,14 @@ jobs:
           mv sbom.cdx.json "taskly-${VERSION}-macos-${ARCH}.sbom.cdx.json"
           mv THIRD_PARTY_NOTICES.txt "taskly-${VERSION}-macos-${ARCH}-THIRD_PARTY_NOTICES.txt"
           for f in taskly-*; do
-            case "$f" in *.sha256) ;; *) [ -f "$f" ] || continue; [ -f "$f.sha256" ] || shasum -a 256 "$f" > "$f.sha256";; esac
+            case "$f" in
+              *.sha256) ;;
+              # The sbom/notices/wixpdb bodies stay in the CI artifact only;
+              # a sidecar without its body on the release is a dangling
+              # reference (the 1.4.0 leftover). Checksum what we upload.
+              *.sbom.cdx.json | *-THIRD_PARTY_NOTICES.txt | *.wixpdb) ;;
+              *) [ -f "$f" ] || continue; [ -f "$f.sha256" ] || shasum -a 256 "$f" > "$f.sha256";;
+            esac
           done
       - uses: actions/upload-artifact@v4
         with:
@@ -108,7 +115,14 @@ jobs:
           mv sbom.cdx.json "taskly-${VERSION}-windows-x64.sbom.cdx.json"
           mv THIRD_PARTY_NOTICES.txt "taskly-${VERSION}-windows-x64-THIRD_PARTY_NOTICES.txt"
           for f in taskly-*; do
-            case "$f" in *.sha256) ;; *) [ -f "$f" ] || continue; [ -f "$f.sha256" ] || sha256sum "$f" > "$f.sha256";; esac
+            case "$f" in
+              *.sha256) ;;
+              # The sbom/notices/wixpdb bodies stay in the CI artifact only;
+              # a sidecar without its body on the release is a dangling
+              # reference (the 1.4.0 leftover). Checksum what we upload.
+              *.sbom.cdx.json | *-THIRD_PARTY_NOTICES.txt | *.wixpdb) ;;
+              *) [ -f "$f" ] || continue; [ -f "$f.sha256" ] || sha256sum "$f" > "$f.sha256";;
+            esac
           done
       - uses: actions/upload-artifact@v4
         with:
@@ -164,7 +178,13 @@ jobs:
           mv sbom.cdx.json "taskly-${VERSION}-linux-${ARCH}.sbom.cdx.json"
           mv THIRD_PARTY_NOTICES.txt "taskly-${VERSION}-linux-${ARCH}-THIRD_PARTY_NOTICES.txt"
           for f in taskly-*; do
-            case "$f" in *.sha256) ;; *) [ -f "$f" ] || continue; [ -f "$f.sha256" ] || sha256sum "$f" > "$f.sha256" ;;
+            case "$f" in
+              *.sha256) ;;
+              # The sbom/notices/wixpdb bodies stay in the CI artifact only;
+              # a sidecar without its body on the release is a dangling
+              # reference (the 1.4.0 leftover). Checksum what we upload.
+              *.sbom.cdx.json | *-THIRD_PARTY_NOTICES.txt | *.wixpdb) ;;
+              *) [ -f "$f" ] || continue; [ -f "$f.sha256" ] || sha256sum "$f" > "$f.sha256" ;;
             esac
           done
       - uses: actions/upload-artifact@v4

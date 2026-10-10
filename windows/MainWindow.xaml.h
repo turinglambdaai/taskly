@@ -84,6 +84,7 @@ private:
   void ApplyLanguage();
   void ApplyTheme(std::string const& theme);
   void RefreshSmartTiles();
+  bool ApplySnapshot(rivet_app::Snapshot const& snapshot, bool force);
   void RenderSidebar();
   void RenderTasks();
   void RenderSearchResults();
@@ -173,6 +174,10 @@ private:
   bool suppress_selection_{false};
   bool sidebar_visible_{true};
   std::uint64_t preview_seq_{0};
+  // Snapshot de-duplication: polls and `changed` events re-deliver identical
+  // data; only a different fingerprint re-renders the sidebar/task tree.
+  bool has_applied_snapshot_{false};
+  std::string applied_snapshot_;
   std::atomic<bool> reload_in_flight_{false};
   winrt::Microsoft::UI::Xaml::DispatcherTimer poll_timer_{nullptr};
   winrt::Microsoft::UI::Xaml::DispatcherTimer update_timer_{nullptr};

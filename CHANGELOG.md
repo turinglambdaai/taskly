@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-10-10
+
+### Fixed
+- **The installed app has no icon.** `rivet.rktd` never declared
+  `windows-icon`/`macos-icon`, so the packaged exe carried no icon
+  resource and the macOS bundle fell back to the generic one. The
+  launcher icons are now generated from `assets/icon_512.png`
+  (`assets/taskly.ico`, 7 sizes; `assets/taskly.icns`, full iconset)
+  and declared in the project file.
+- **The Windows sidebar kept twitching.** Every backend snapshot — the
+  periodic poll and each `changed` event — rebuilt the list rows even
+  when nothing had changed, so "My lists" visibly jumped on every
+  pass. Snapshots are now fingerprinted (stable serialization of
+  counts + lists + tasks) and an unchanged snapshot leaves the UI
+  untouched.
+- **The Windows quick-add text sat high in its box.** The 40px input's
+  text rode the template's top-aligned content area instead of
+  centering next to the 22px "+" button. The box now carries
+  symmetric vertical padding (the WinUI 3 TextBox template routes
+  both the placeholder and the typed text through the same padding)
+  plus `VerticalContentAlignment="Center"` for templates that honor
+  it.
+
 ## [1.4.0] - 2026-10-10
 
 ### Added

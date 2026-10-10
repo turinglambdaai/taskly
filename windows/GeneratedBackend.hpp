@@ -18,7 +18,7 @@ namespace rivet_app {
 inline constexpr char kModuleName[] = "backend";
 inline constexpr char kEntryName[] = "start";
 inline constexpr char kDisplayName[] = "taskly";
-inline constexpr char kVersion[] = "1.4.0";
+inline constexpr char kVersion[] = "1.4.1";
 inline constexpr std::int64_t kBuild = 1;
 inline constexpr char kIdentifier[] = "app.taskly.Taskly";
 inline constexpr char kReleaseChannel[] = "stable";

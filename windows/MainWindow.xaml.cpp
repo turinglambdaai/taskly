@@ -1091,6 +1091,103 @@ winrt::fire_and_forget MainWindow::PromptAsync(
 // Data flow
 // ---------------------------------------------------------------------------
 
+namespace {
+
+// One serialized snapshot field. Strings are length-prefixed so adjacent
+// values can never blend into an equal serialization of different data.
+void FingerprintField(std::string& out, std::string const& value) {
+  out += std::to_string(value.size());
+  out += ':';
+  out += value;
+  out += ';';
+}
+
+void FingerprintField(std::string& out, std::int64_t value) {
+  out += std::to_string(value);
+  out += ';';
+}
+
+void FingerprintField(std::string& out, bool value) {
+  out += (value ? '1' : '0');
+  out += ';';
+}
+
+void FingerprintField(std::string& out,
+                      std::optional<std::string> const& value) {
+  if (value.has_value()) {
+    out += 's';
+    FingerprintField(out, *value);
+  } else {
+    out += "n;";
+  }
+}
+
+void FingerprintField(std::string& out,
+                      std::optional<std::int64_t> const& value) {
+  if (value.has_value()) {
+    out += 'i';
+    FingerprintField(out, *value);
+  } else {
+    out += "n;";
+  }
+}
+
+// Everything the snapshot render pass reads (smart-tile counts, sidebar list
+// rows, visible task rows), in the fixed field order of the structs in
+// GeneratedBackend.hpp. Stable across polls, so an unchanged backend reply
+// yields an equal string and the UI stays untouched.
+std::string SnapshotFingerprint(rivet_app::Snapshot const& snapshot) {
+  std::string fp;
+  FingerprintField(fp, snapshot.counts.today);
+  FingerprintField(fp, snapshot.counts.planned);
+  FingerprintField(fp, snapshot.counts.all);
+  FingerprintField(fp, snapshot.counts.completed);
+  for (auto const& list : snapshot.lists) {
+    FingerprintField(fp, list.id);
+    FingerprintField(fp, list.name);
+    FingerprintField(fp, list.icon);
+    FingerprintField(fp, list.color);
+    FingerprintField(fp, list.pending_count);
+  }
+  for (auto const& task : snapshot.tasks) {
+    FingerprintField(fp, task.id);
+    FingerprintField(fp, task.list_id);
+    FingerprintField(fp, task.list_name);
+    FingerprintField(fp, task.text);
+    FingerprintField(fp, task.completed);
+    FingerprintField(fp, task.due_date);
+    FingerprintField(fp, task.due_time);
+    FingerprintField(fp, task.notes);
+    FingerprintField(fp, task.created_at);
+  }
+  return fp;
+}
+
+}  // namespace
+
+// Applies a freshly loaded snapshot to the window. The poll timer and every
+// `changed` event re-deliver a full snapshot; rebuilding the sidebar and task
+// rows on each pass — even when nothing changed — makes the UI visibly
+// jitter. Identical snapshots (same fingerprint) therefore leave the tree
+// untouched. `force` bypasses the check for paths that changed state outside
+// the snapshot (e.g. a new database was opened). Returns true when the
+// render pass ran.
+bool MainWindow::ApplySnapshot(rivet_app::Snapshot const& snapshot,
+                               bool force) {
+  auto const fingerprint = SnapshotFingerprint(snapshot);
+  if (!force && has_applied_snapshot_ && fingerprint == applied_snapshot_) {
+    return false;
+  }
+  has_applied_snapshot_ = true;
+  applied_snapshot_ = fingerprint;
+  current_counts_ = snapshot.counts;
+  lists_ = snapshot.lists;
+  tasks_ = snapshot.tasks;
+  RenderSidebar();
+  RenderTasks();
+  return true;
+}
+
 winrt::fire_and_forget MainWindow::ReloadTasksAsync() {
   if (backend_ == nullptr || !backend_->running() ||
       reload_in_flight_.load(std::memory_order_acquire)) {
@@ -1127,11 +1224,7 @@ winrt::fire_and_forget MainWindow::ReloadTasksAsync() {
             auto const snapshot = result.get();
             dispatcher.TryEnqueue([weak, snapshot] {
               if (auto window = weak.get()) {
-                window->current_counts_ = snapshot.counts;
-                window->lists_ = snapshot.lists;
-                window->tasks_ = snapshot.tasks;
-                window->RenderSidebar();
-                window->RenderTasks();
+                window->ApplySnapshot(snapshot, /*force=*/false);
                 // An in-flight download owns the status line.
                 if (!window->update_downloading_) {
                   window->SetStatus(t("statusDatabaseConnected"));
@@ -1204,18 +1297,18 @@ winrt::fire_and_forget MainWindow::OpenDatabaseAsync(std::wstring const& path) {
             auto const snapshot = result.get();
             dispatcher.TryEnqueue([weak, snapshot] {
               if (auto window = weak.get()) {
-                window->current_counts_ = snapshot.counts;
-                window->lists_ = snapshot.lists;
-                window->tasks_ = snapshot.tasks;
-                // Restore the last-selected list when it still exists.
+                // Restore the last-selected list when it still exists —
+                // checked against the incoming snapshot because ApplySnapshot
+                // owns the render pass.
                 auto const restored = window->settings_.last_selected_list_id;
                 if (restored > 0 &&
-                    find_by_id(window->lists_, restored) != nullptr) {
+                    find_by_id(snapshot.lists, restored) != nullptr) {
                   window->view_ = MainWindow::ViewKind::List;
                   window->view_list_id_ = restored;
                 }
-                window->RenderSidebar();
-                window->RenderTasks();
+                // A different database was just opened: always render, even
+                // if its content matches the previous one byte for byte.
+                window->ApplySnapshot(snapshot, /*force=*/true);
                 // An in-flight download owns the status line.
                 if (!window->update_downloading_) {
                   window->SetStatus(t("statusDatabaseConnected"));
@@ -1623,6 +1716,9 @@ void MainWindow::OnCloseDatabase(
               window->lists_.clear();
               window->tasks_.clear();
               window->current_counts_ = {};
+              // The next snapshot must render even if it matches the one the
+              // closed database ended with.
+              window->has_applied_snapshot_ = false;
               window->RenderSidebar();
               window->RenderTasks();
               window->SetStatus(L"");
