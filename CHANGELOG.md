@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-10-10
+
+### Added
+- **Windows MSI installs update online.** MSI installs used to be pointed
+  at the releases page. The host now declares its install shape
+  (`install-flavor=msi`) and the backend derives the sibling `.msi`
+  asset from the feed's zip entry URL, checksums the download against
+  the published `.msi.sha256` sidecar, and the install handoff runs a
+  `msiexec /passive /norestart` upgrade (per-machine installs surface
+  one UAC consent; msiexec log lands in `%TEMP%\taskly-update`).
+
+### Fixed
+- **The Windows hand-built rows kept light colors in dark mode.**
+  Sidebar and task rows fetch their brushes from code at build time,
+  so XAML theme bindings updated on a theme flip while those rows did
+  not. A theme flip now repaints every hand-built row.
+- **The Windows title bar stayed stock-light over a dark UI.** The
+  native title bar now follows the app theme (Taskly sidebar palette,
+  including buttons, hover, and inactive states).
+- **The macOS menu bar mixed English and Chinese.** The system menus
+  (File/Edit/View/Window/Help) carry AppKit's English template while
+  the app's own menus drew from the i18n table. System menu titles are
+  now re-applied from the i18n table on every menu resync (and pruned
+  when PRODUCT-SPEC §8 does not define them), so zh renders
+  `文件 视图 设置 窗口 帮助` and en renders `File View Settings Window
+  Help`; Quit is localized too.
+
 ## [0.1.1] - 2026-10-10
 
 ### Fixed

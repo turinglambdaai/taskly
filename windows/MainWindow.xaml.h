@@ -99,6 +99,8 @@ private:
   std::wstring full_date_today() const;
   void CommitQuickAdd();
   void RefreshQuickAddPreview();
+  void ApplyTitleBarTheme();
+  void OnEffectiveThemeChanged();
   void SetStatus(std::wstring const& message);
   void SetError(std::string const& message);
   winrt::fire_and_forget PromptAsync(

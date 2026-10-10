@@ -508,6 +508,15 @@ MainWindow::MainWindow() {
   // get_settings landing (OnLangZh/OnLangEn too) re-runs it wholesale so the
   // final state always matches the user's language — never a mix.
   ApplyLanguage();
+  // Hand-built rows take their brushes from code at build time, so a theme
+  // flip must re-render them; the title bar colors ride the same event.
+  RootGrid().ActualThemeChanged(
+      [weak = get_weak()](auto&&, auto&&) {
+        if (auto window = weak.get()) {
+          window->OnEffectiveThemeChanged();
+        }
+      });
+  ApplyTitleBarTheme();
   InitializeBackendAsync();
 }
 
@@ -572,6 +581,12 @@ winrt::fire_and_forget MainWindow::InitializeBackendAsync() {
                       current->settings_ = settings;
                       current->ApplyTheme(settings.theme);
                       current->ApplyLanguage();
+                      // Stamp the install shape so the backend downloads the
+                      // matching update flavor (UPDATE.md): MSI installs
+                      // upgrade through msiexec, portable zips swap in place.
+                      current->SaveSettingAsync(
+                          "install-flavor",
+                          current->IsMsiInstall() ? "msi" : "zip");
                       // A previous update run may have left a failure report
                       // (shared/spec/UPDATE.md); surface it once, then start
                       // the throttled silent check.
@@ -657,6 +672,41 @@ void MainWindow::ApplyTheme(std::string const& theme) {
   } else {
     RootGrid().RequestedTheme(mx::ElementTheme::Default);
   }
+  ApplyTitleBarTheme();
+}
+
+// The native title bar follows the app theme using the TasklySidebarBrush
+// palette (PRODUCT-SPEC §3 surface), so the frame reads as part of the
+// window instead of a stock light strip over a dark UI.
+void MainWindow::ApplyTitleBarTheme() {
+  auto const dark = RootGrid().ActualTheme() == mx::ElementTheme::Dark;
+  auto const background = dark ? winrt::Windows::UI::Color{0xFF, 0x27, 0x24, 0x24}
+                               : winrt::Windows::UI::Color{0xFF, 0xF3, 0xF2, 0xF1};
+  auto const foreground = dark ? winrt::Windows::UI::Color{0xFF, 0xFF, 0xFF, 0xFF}
+                               : winrt::Windows::UI::Color{0xFF, 0x1B, 0x1B, 0x1B};
+  auto const muted = dark ? winrt::Windows::UI::Color{0xFF, 0xA8, 0xA5, 0xA3}
+                          : winrt::Windows::UI::Color{0xFF, 0x79, 0x77, 0x75};
+  auto titleBar = AppWindow().TitleBar();
+  titleBar.BackgroundColor(background);
+  titleBar.ForegroundColor(foreground);
+  titleBar.InactiveBackgroundColor(background);
+  titleBar.InactiveForegroundColor(muted);
+  titleBar.ButtonBackgroundColor(background);
+  titleBar.ButtonForegroundColor(foreground);
+  titleBar.ButtonInactiveBackgroundColor(background);
+  titleBar.ButtonInactiveForegroundColor(muted);
+  titleBar.ButtonHoverBackgroundColor(dark ? winrt::Windows::UI::Color{0xFF, 0x33, 0x2F, 0x2F}
+                                           : winrt::Windows::UI::Color{0xFF, 0xEB, 0xE9, 0xE7});
+}
+
+// Theme flips (OS appearance while following system, or the settings menu)
+// must repaint everything whose brushes were fetched from code at build
+// time — XAML ThemeResource bindings update themselves, hand-built rows do
+// not.
+void MainWindow::OnEffectiveThemeChanged() {
+  ApplyTitleBarTheme();
+  RenderSidebar();
+  RenderTasks();
 }
 
 mx::Media::Brush MainWindow::ThemeBrush(wchar_t const* key) {

@@ -24,6 +24,7 @@
          net/url
          rivet/distribution
          racket/file
+         racket/list
          racket/port
          racket/string
          "config.rkt"
@@ -54,7 +55,7 @@
 ;; Release identity duplicated from rivet.rktd. The packaged app cannot
 ;; read the project file at runtime, so the updater embeds these constants.
 ;; scripts/check-release-version.sh re-checks app-version against VERSION.
-(define app-version "0.1.1")
+(define app-version "0.1.2")
 (define app-build 1)
 (define app-identifier "app.taskly.Taskly")
 (define app-channel 'stable)
@@ -234,13 +235,12 @@
 
 ;; ---------- download ----------
 
-(define (destination-path data-dir candidate)
+(define (destination-path data-dir candidate [extension (installer-extension)])
   (define version
     (update-manifest-version (update-candidate-manifest candidate)))
   (build-path data-dir
               "updates"
-              (string-append app-display-name "-" version
-                             (installer-extension))))
+              (string-append app-display-name "-" version extension)))
 
 ;; Copy with progress; same limits as rivet's download-update but publishes
 ;; integer percent changes to the state box while streaming. Release asset
@@ -295,6 +295,91 @@
     (rename-file-or-directory temporary destination #t)
     destination))
 
+;; ---------- MSI flavor (Windows installs under Program Files) ----------
+;; The feed's windows entry is the portable zip; MSI installs update through
+;; the sibling .msi release asset: same asset base with .zip → .msi, and the
+;; checksum comes from the published .msi.sha256 sidecar. (The Ed25519
+;; manifest still authenticates the zip entry that carried the version; the
+;; sidecar is a plain checksum fetched over the same HTTPS origin.)
+
+(define (install-flavor)
+  (string-downcase (or (config-ref (read-config) "install-flavor") "zip")))
+
+(define (msi-flavor?)
+  (and (eq? (platform-symbol) 'windows)
+       (equal? (install-flavor) "msi")))
+
+(define (msi-artifact-urls candidate)
+  (define url (update-artifact-url (update-candidate-artifact candidate)))
+  (unless (string-suffix? url ".zip")
+    (error 'start-download "cannot derive an msi url from a non-zip feed entry"))
+  (define stem (substring url 0 (- (string-length url) 4)))
+  (values (string-append stem ".msi")
+          (string-append stem ".msi.sha256")))
+
+(define (fetch-sidecar-sha256! url)
+  ;; sha256sum format: "<hex>  <filename>"; the first token is the digest.
+  (define in (get-pure-port (string->url url)
+                            '("User-Agent: Taskly-Updater/1")
+                            #:redirections 10))
+  (dynamic-wind
+    void
+    (lambda ()
+      (define digest
+        (let ([body (string-trim (port->string in))])
+          (if (string=? body "") "" (first (string-split body)))))
+      (unless (regexp-match? #px"^[0-9a-fA-F]{64}$" digest)
+        (error 'start-download "msi checksum sidecar has an unexpected shape"))
+      (string-downcase digest))
+    (lambda () (close-input-port in))))
+
+;; MSI downloads come from the same CDN without a signed manifest, so the
+;; response head is the only total available: open an impure port, parse
+;; Content-Length for the progress percent (0 → indeterminate), and hand the
+;; body port to the same copy loop. Connection: close keeps the copy ending
+;; at EOF, exactly like the zip flow.
+(define (open-msi-download! url)
+  (define in (get-impure-port (string->url url)
+                              '("User-Agent: Taskly-Updater/1"
+                                "Connection: close")))
+  (let loop ([total 0])
+    (define line (read-line in 'return-linefeed))
+    (cond
+      [(eof-object? line) (values in 0)]
+      [(non-empty-string? (string-trim line))
+       (define match
+         (regexp-match #px"(?i:^content-length:\\s*(\\d+))" line))
+       (loop (if match (string->number (second match)) total))]
+      [else (values in total)])))
+
+(define (download-msi-with-progress! config candidate destination)
+  (define-values (msi-url sidecar-url) (msi-artifact-urls candidate))
+  (define expected (fetch-sidecar-sha256! sidecar-url))
+  (make-parent-directory* destination)
+  (define temporary (path-add-extension destination #".partial"))
+  (when (file-exists? temporary) (delete-file temporary))
+  (with-handlers ([exn:fail?
+                   (lambda (e)
+                     (when (file-exists? temporary) (delete-file temporary))
+                     (raise e))])
+    (define-values (in total) (open-msi-download! msi-url))
+    (dynamic-wind
+      void
+      (lambda ()
+        (call-with-output-file temporary
+          #:exists 'truncate/replace
+          #:mode 'binary
+          (lambda (out) (copy-with-progress! in out total))))
+      (lambda () (close-input-port in)))
+    (define actual (string-downcase (sha256-file/hex temporary)))
+    (unless (string=? actual expected)
+      (raise-arguments-error 'start-download
+                             "downloaded msi does not match its checksum sidecar"
+                             "expected" expected
+                             "actual" actual))
+    (rename-file-or-directory temporary destination #t)
+    destination))
+
 ;; Runs on a backend worker thread; the host follows progress via the
 ;; update-state RPC. Never raises: failures surface through the phase.
 (define (start-download! data-dir)
@@ -317,7 +402,10 @@
                     update-key-id
                     (rollout-bucket)
                     maximum-download-bytes))
-  (define destination (destination-path data-dir candidate))
+  (define destination
+    (if (msi-flavor?)
+        (destination-path data-dir candidate ".msi")
+        (destination-path data-dir candidate)))
   (set-box! last-progress-seconds (current-seconds))
   (define worker-thread
     (thread
@@ -334,7 +422,9 @@
                                "update download stalled or timed out"
                                (exn-message e))))])
          (define path
-           (download-with-progress! config candidate destination))
+           (if (msi-flavor?)
+               (download-msi-with-progress! config candidate destination)
+               (download-with-progress! config candidate destination)))
          (state-set! 'phase "downloaded")
          (state-set! 'percent 100)
          (state-set! 'downloadedPath (path->string path))))))

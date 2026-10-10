@@ -167,9 +167,6 @@ void MainWindow::RunSilentUpdateCheck() {
   if (IsDevCopy()) {
     return;  // dev copies never phone home (UPDATE.md silent mode)
   }
-  if (IsMsiInstall()) {
-    return;  // MSI installs take the manual path, never the silent one
-  }
   // Host-side throttle: at most one silent check per 4 h, persisted as the
   // `last-update-check` setting (unix epoch seconds, shared with the other
   // platforms' hosts). Manual checks bypass this entirely.
@@ -202,6 +199,8 @@ void MainWindow::RunSilentUpdateCheck() {
 
 // A manual check surfaces every outcome; a silent (launch-time) check never
 // nags — it only reports an available update through the consent dialog.
+// MSI installs participate fully: the backend downloads the sibling .msi
+// asset and the install step runs a passive msiexec upgrade (UPDATE.md).
 void MainWindow::RunUpdateCheck(bool silent) {
   if (backend_ == nullptr || !backend_->running() || update_downloading_) {
     return;
@@ -209,14 +208,6 @@ void MainWindow::RunUpdateCheck(bool silent) {
   if (IsDevCopy()) {
     if (!silent) {
       ShowUpdateDialog(L"Taskly", t("updateNotInstalled"),
-                       t("updateOpenReleases"), t("dialogConfirm"),
-                       [] { open_releases_page(); });
-    }
-    return;
-  }
-  if (IsMsiInstall()) {
-    if (!silent) {
-      ShowUpdateDialog(L"Taskly", t("updateMsiInstalled"),
                        t("updateOpenReleases"), t("dialogConfirm"),
                        [] { open_releases_page(); });
     }
@@ -472,6 +463,38 @@ winrt::fire_and_forget MainWindow::ShowInstallConsent(
   co_return;
 }
 
+// MSI installs upgrade in place: wait for this process to exit, then a
+// passive msiexec upgrade. Per-machine installs surface one UAC consent
+// (unavoidable under /passive); a failure keeps the old install working —
+// the batch relaunches it and leaves the failure marker for next launch.
+// %1 msi, %2 msiexec log, %3 exe, %4 failure marker.
+std::string msi_install_batch(unsigned long pid) {
+  std::string const pid_text = std::to_string(pid);
+  std::string batch;
+  batch += "@echo off\r\n";
+  batch += "rem Taskly MSI update handoff - auto-generated, safe to delete.\r\n";
+  batch += "set /a n=0\r\n";
+  batch += ":wait\r\n";
+  batch += "tasklist /FI \"PID eq " + pid_text + "\" 2>nul | find \"" +
+           pid_text + "\" >nul\r\n";
+  batch += "if errorlevel 1 goto install\r\n";
+  batch += "ping -n 2 127.0.0.1 >nul\r\n";
+  batch += "set /a n+=1\r\n";
+  batch += "if %n% LSS 30 goto wait\r\n";
+  batch += "> \"%~4\" echo process-exit-timeout\r\n";
+  batch += "exit /b 1\r\n";
+  batch += ":install\r\n";
+  batch += "msiexec /passive /norestart /i \"%~1\" /l* \"%~2\"\r\n";
+  batch += "if errorlevel 1 goto fail\r\n";
+  batch += "start \"\" \"%~3\"\r\n";
+  batch += "exit /b 0\r\n";
+  batch += ":fail\r\n";
+  batch += "> \"%~4\" echo msiexec failed (%errorlevel%)\r\n";
+  batch += "start \"\" \"%~3\"\r\n";
+  batch += "exit /b 1\r\n";
+  return batch;
+}
+
 void MainWindow::InstallDownloadedUpdate(std::wstring const& zip_path) {
   auto const work = update_work_dir();
   if (work.empty()) {
@@ -480,7 +503,8 @@ void MainWindow::InstallDownloadedUpdate(std::wstring const& zip_path) {
     return;
   }
   std::error_code ec;
-  auto const script = work / L"update-install.cmd";
+  auto const msi = IsMsiInstall();
+  auto const script = work / (msi ? L"msi-install.cmd" : L"update-install.cmd");
   // Stale markers from earlier attempts must not survive this one.
   std::filesystem::remove(update_failure_marker(), ec);
   std::filesystem::remove(update_success_marker(), ec);
@@ -492,7 +516,9 @@ void MainWindow::InstallDownloadedUpdate(std::wstring const& zip_path) {
                        t("dialogConfirm"), nullptr);
       return;
     }
-    auto const batch = update_handoff_batch(::GetCurrentProcessId());
+    auto const batch =
+        msi ? msi_install_batch(::GetCurrentProcessId())
+            : update_handoff_batch(::GetCurrentProcessId());
     file.write(batch.data(), static_cast<std::streamsize>(batch.size()));
     file.close();
     if (!file) {
@@ -502,14 +528,21 @@ void MainWindow::InstallDownloadedUpdate(std::wstring const& zip_path) {
     }
   }
 
-  std::wstring const install_dir =
-      executable_path().parent_path().wstring();
   std::wstring const exe = executable_path().wstring();
-  std::wstring const parameters =
-      L"/c call \"" + script.wstring() + L"\" \"" + zip_path + L"\" \"" +
-      install_dir + L"\" \"" + exe + L"\" \"" +
-      update_failure_marker().wstring() + L"\" \"" +
-      update_success_marker().wstring() + L"\"";
+  std::wstring parameters;
+  if (msi) {
+    auto const msi_log = work / L"msiexec.log";
+    parameters = L"/c call \"" + script.wstring() + L"\" \"" + zip_path +
+                 L"\" \"" + msi_log.wstring() + L"\" \"" + exe + L"\" \"" +
+                 update_failure_marker().wstring() + L"\"";
+  } else {
+    std::wstring const install_dir =
+        executable_path().parent_path().wstring();
+    parameters = L"/c call \"" + script.wstring() + L"\" \"" + zip_path +
+                 L"\" \"" + install_dir + L"\" \"" + exe + L"\" \"" +
+                 update_failure_marker().wstring() + L"\" \"" +
+                 update_success_marker().wstring() + L"\"";
+  }
   SHELLEXECUTEINFOW info{};
   info.cbSize = sizeof(info);
   info.fMask = SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI;
@@ -523,8 +556,9 @@ void MainWindow::InstallDownloadedUpdate(std::wstring const& zip_path) {
     return;
   }
   // The handoff script takes it from here: it waits for this process to
-  // exit, swaps the zip in, relaunches, and leaves markers behind either way
-  // (a failure marker is ReportFailedInstall's input on the next launch).
+  // exit, swaps the zip in (or runs the passive msiexec upgrade), relaunches,
+  // and leaves markers behind either way (a failure marker is
+  // ReportFailedInstall's input on the next launch).
   winrt::Microsoft::UI::Xaml::Application::Current().Exit();
 }
 
