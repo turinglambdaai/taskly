@@ -120,12 +120,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { arch: x64, runner: ubuntu-latest }
-          - { arch: arm64, runner: ubuntu-24.04-arm }
+          - { arch: x64, runner: ubuntu-latest, racket-arch: x64 }
+          - { arch: arm64, runner: ubuntu-24.04-arm, racket-arch: arm64 }
     steps:
       - uses: actions/checkout@v4
       - name: Set up embeddable Racket CS
         uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@e8e4079e42bbd2561d530b655f57cc6287c6ef3a
+      # Full distribution on PATH for raco (backend db package); the
+      # RIVET_RACKET_* env still points the embed at the minimal runtime.
+      - name: Setup Racket CS 9.3 (full, for raco)
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: ${{ matrix.racket-arch }}
+          distribution: full
+          variant: CS
+          version: '9.3'
       - name: Install pinned Rivet
         run: |
           set -euo pipefail

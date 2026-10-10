@@ -83,6 +83,17 @@ jobs:
       # hand-rolled build+cache steps).
       - name: Set up embeddable Racket CS
         uses: ./rivet/.github/actions/setup-embed-racket
+      # A full distribution on PATH for raco/compilation (the backend needs
+      # the db package, which the minimal embeddable runtime lacks); the
+      # RIVET_RACKET_* env from the action still points the embed at the
+      # minimal runtime.
+      - name: Setup Racket CS 9.3 (full, for raco)
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          distribution: full
+          variant: CS
+          version: '9.3'
       - name: Toolchain doctor
         run: raco rivet doctor --json
       - name: Build host
