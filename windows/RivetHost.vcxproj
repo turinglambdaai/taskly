@@ -95,6 +95,14 @@
   </ItemGroup>
   <ItemGroup><Midl Include="Project.idl"><SubType>Code</SubType></Midl></ItemGroup>
   <ItemGroup><Manifest Include="app.manifest" /></ItemGroup>
+  <!-- rivet writes .rivet/build/windows/app-icon.rc (VERSIONINFO plus the
+       declared windows-icon) and points RIVET_WINDOWS_ICON_RC at it; this
+       conditional group from the rivet host template compiles it into the
+       exe. Without it the shipped exe carries no icon and no version
+       resource. -->
+  <ItemGroup Condition="'$(RIVET_WINDOWS_ICON_RC)'!=''">
+    <ResourceCompile Include="$(RIVET_WINDOWS_ICON_RC)" />
+  </ItemGroup>
 
   <Target Name="ValidateRivetEnvironment" BeforeTargets="PrepareForBuild">
     <Error Condition="'$(RIVET_ROOT)'==''" Text="RIVET_ROOT is not set. Run this project through `raco rivet build`." />
