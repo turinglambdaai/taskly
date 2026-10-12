@@ -231,6 +231,7 @@ reference are intact.
 - **M5 — Linux host decision and implementation:** after Windows/macOS evidence
 - **M6 — move CLI implementation to Racket and run one golden suite everywhere**
 - **M7 — release engineering, signing, updater, crash diagnostics and commercial checklist**
+- **M8+ — mobile hosts (iOS/iPadOS/watchOS/Android):** after the desktop line; gated on Rivet Phase 8 (first-class mobile application delivery). watchOS is a typed companion to the iOS host — watch UI + WatchConnectivity + phone-hosted backend per Rivet's watch architecture; Android additionally waits for Rivet's Compose/JNI/packaging work to mature
 
 No milestone is allowed to delete the stable native reference before its own
 parity gate is green.

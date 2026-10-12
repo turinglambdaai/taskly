@@ -14,6 +14,8 @@ Taskly 构建在 [Rivet](https://github.com/turinglambdaai/rivet) 之上：全�
 | Windows 10+（x64） | WinUI 3 |
 | Linux（x64） | GTK 4 |
 
+移动端已列入规划：iOS/iPadOS、watchOS 和 Android 宿主计划在桌面线之后落地，前置条件是 Rivet 的一等移动应用交付（Phase 8）。watchOS 将作为 iOS 宿主的类型化 companion 交付——手表 UI 走 WatchConnectivity，后端留在手机侧，遵循 Rivet 的 watch 架构。
+
 ## 功能
 
 - **Reminders 风格界面**——智能视图（今天 / 计划 / 全部 / 已完成），emoji 图标 + 12 色板的自定义清单，明暗主题跟随系统，中英双语实时切换。

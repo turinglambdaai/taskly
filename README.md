@@ -20,6 +20,12 @@ interact; all logic lives in the backend.
 | Windows 10+ (x64) | WinUI 3 |
 | Linux (x64) | GTK 4 |
 
+Mobile is on the roadmap: iOS/iPadOS, watchOS and Android hosts are planned
+after the desktop line, gated on Rivet's first-class mobile application
+delivery (Phase 8). watchOS ships as a typed companion to the iOS host —
+watch UI over WatchConnectivity with the backend on the phone — per Rivet's
+watch architecture.
+
 ## Features
 
 - **Reminders-style UI** — smart views (今天 / 计划 / 全部 / 已完成),
