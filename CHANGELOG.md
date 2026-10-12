@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **SIGTERM now shuts the Linux app down instead of killing the backend
+  under a living window.** OS signals bypass the GTK main loop, so the
+  orderly teardown never ran — `systemd --user stop`, session logout and
+  `killall` all left a zombie window over a dead backend (the same
+  exposure syncpilot#3 documented for this scaffold generation). The
+  rivet shutdown hook installs once the embedded runtime finishes
+  booting: installing in `main()` loses the race to the Racket runtime's
+  own SIGTERM handler, which kept the hook inert. Teardown is
+  exactly-once across the GTK and signal paths, with step traces in the
+  host log.
+
 ## [0.1.2] - 2026-10-10
 
 ### Added
