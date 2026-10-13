@@ -203,8 +203,12 @@ jobs:
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p dist
-          mv artifacts/macos-arm64/* artifacts/macos-x64/* artifacts/windows/* \
-             artifacts/linux-x64/* artifacts/linux-arm64/* dist/
+          # cp -R merges: rivet 0.8 releases leave a dist/taskly-linux-<arch>/
+          # staging bundle in the artifacts, and a plain mv dies on the
+          # directory collision ("Directory not empty").
+          for a in macos-arm64 macos-x64 windows linux-x64 linux-arm64; do
+            cp -R "artifacts/$a/." dist/
+          done
           # The portable zips are the update feed (macOS/Windows hosts swap
           # them in place; Linux updates through the tar.gz). Missing
           # secret → warn and publish without a manifest.
