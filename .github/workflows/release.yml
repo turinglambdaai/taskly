@@ -31,7 +31,7 @@ jobs:
           variant: CS
           version: '9.3'
       - name: Install Rivet (catalog)
-        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.8.1'
+        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.10.0'
       - name: Version preflight (VERSION == rivet.rktd == updater == tag)
         run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
       # DMG (human installer) + portable zip + SBOM + notices, launch
@@ -79,7 +79,7 @@ jobs:
           version: '9.3'
       - name: Install Rivet (catalog)
         shell: pwsh
-        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.8.1'
+        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.10.0'
       - name: Install WiX (v5; rivet's MSI toolchain)
         run: dotnet tool install --global wix --version 5.0.2
         shell: bash
@@ -135,7 +135,7 @@ jobs:
       # crypto backs the updater's signing.
       - name: Install Rivet (catalog) and backend packages
         run: |
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.8.1'
+          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.10.0'
           raco pkg install --auto --no-docs db crypto
       - name: Install GTK4, rpm and packaging tooling
         run: |
@@ -191,7 +191,7 @@ jobs:
           variant: CS
           version: '9.3'
       - name: Install Rivet (catalog)
-        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.8.1'
+        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.10.0'
       - uses: actions/download-artifact@v4
         with:
           path: artifacts

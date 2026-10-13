@@ -33,7 +33,7 @@ jobs:
           variant: CS
           version: '9.3'
       - name: Install Rivet (catalog)
-        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.8.1'
+        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.10.0'
       - name: Core contract tests
         run: raco test racket/
       # Golden CLI suite (61 cases): byte-identical stdout/stderr/exit codes
@@ -69,7 +69,7 @@ jobs:
       # crypto backs the updater's signing.
       - name: Install Rivet (catalog) and backend packages
         run: |
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.8.1'
+          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.10.0'
           raco pkg install --auto --no-docs db crypto
       - name: Toolchain doctor
         run: raco rivet doctor --json
@@ -109,7 +109,7 @@ jobs:
           variant: CS
           version: '9.3'
       - name: Install Rivet (catalog)
-        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.8.1'
+        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.10.0'
       - name: Build host
         run: raco rivet build
       - name: Boot smoke
@@ -136,7 +136,7 @@ jobs:
           version: '9.3'
       - name: Install Rivet (catalog)
         shell: bash
-        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.8.1'
+        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#v0.10.0'
       - name: Build host
         shell: pwsh
         run: raco rivet build
