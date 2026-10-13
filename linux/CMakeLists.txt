@@ -24,6 +24,10 @@ set(RIVET_ROOT "$ENV{RIVET_ROOT}")
 add_subdirectory("${RIVET_ROOT}/platform/linux"
                  "${CMAKE_BINARY_DIR}/rivet-platform-build")
 
+# shared/i18n single-source strings load through json-glib at runtime.
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(JSON_GLIB REQUIRED IMPORTED_TARGET json-glib-1.0)
+
 add_executable(RivetHost
   src/main.cpp
 )
@@ -34,6 +38,7 @@ target_include_directories(RivetHost PRIVATE
 
 target_link_libraries(RivetHost PRIVATE
   rivet::platform
+  PkgConfig::JSON_GLIB
 )
 
 target_compile_options(RivetHost PRIVATE -Wall -Wextra -Wpedantic)
