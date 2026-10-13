@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-13
+
 ### Fixed
 - **The macOS in-app update no longer hangs forever at 100%** (issue #13).
   The download leg consumed `URLSession.AsyncBytes` byte-by-byte; when the

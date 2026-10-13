@@ -7,7 +7,7 @@ public enum RivetGeneratedConfig {
     public static let moduleName = "backend"
     public static let entryName = "start"
     public static let displayName = "taskly"
-    public static let version = "0.1.2"
+    public static let version = "0.1.3"
     public static let build: Int64 = 1
     public static let identifier = "app.taskly.Taskly"
     public static let releaseChannel = "stable"
@@ -192,87 +192,87 @@ public struct RivetAPI: Sendable {
     public init(client: RivetClient) { self.client = client }
 
     public func add_task(text: String, list_id: Int64?, due_date: String?, due_time: String?, notes: String?) async throws -> RivetTypes.Task {
-        let result = try await client.call("add_task", arguments: [encode_String(text), encode__Optional_Int64_(list_id), encode__Optional_String_(due_date), encode__Optional_String_(due_time), encode__Optional_String_(notes)])
-        return try decode_Task(result)
+        let rivetResult = try await client.call("add_task", arguments: [encode_String(text), encode__Optional_Int64_(list_id), encode__Optional_String_(due_date), encode__Optional_String_(due_time), encode__Optional_String_(notes)])
+        return try decode_Task(rivetResult)
     }
     public func check_updates() async throws -> RivetTypes.UpdateCheck {
-        let result = try await client.call("check_updates", arguments: [])
-        return try decode_UpdateCheck(result)
+        let rivetResult = try await client.call("check_updates", arguments: [])
+        return try decode_UpdateCheck(rivetResult)
     }
     public func close_database() async throws -> Void {
-        let result = try await client.call("close_database", arguments: [])
-        return try decode_Void(result)
+        let rivetResult = try await client.call("close_database", arguments: [])
+        return try decode_Void(rivetResult)
     }
     public func create_list(name: String, icon: String?, color: Int64?) async throws -> RivetTypes.TodoList {
-        let result = try await client.call("create_list", arguments: [encode_String(name), encode__Optional_String_(icon), encode__Optional_Int64_(color)])
-        return try decode_TodoList(result)
+        let rivetResult = try await client.call("create_list", arguments: [encode_String(name), encode__Optional_String_(icon), encode__Optional_Int64_(color)])
+        return try decode_TodoList(rivetResult)
     }
     public func default_database() async throws -> String {
-        let result = try await client.call("default_database", arguments: [])
-        return try decode_String(result)
+        let rivetResult = try await client.call("default_database", arguments: [])
+        return try decode_String(rivetResult)
     }
     public func delete_list(id: Int64) async throws -> Bool {
-        let result = try await client.call("delete_list", arguments: [encode_Int64(id)])
-        return try decode_Bool(result)
+        let rivetResult = try await client.call("delete_list", arguments: [encode_Int64(id)])
+        return try decode_Bool(rivetResult)
     }
     public func delete_task(id: Int64) async throws -> Bool {
-        let result = try await client.call("delete_task", arguments: [encode_Int64(id)])
-        return try decode_Bool(result)
+        let rivetResult = try await client.call("delete_task", arguments: [encode_Int64(id)])
+        return try decode_Bool(rivetResult)
     }
     public func get_setting(key: String) async throws -> String {
-        let result = try await client.call("get_setting", arguments: [encode_String(key)])
-        return try decode_String(result)
+        let rivetResult = try await client.call("get_setting", arguments: [encode_String(key)])
+        return try decode_String(rivetResult)
     }
     public func get_settings() async throws -> RivetTypes.Settings {
-        let result = try await client.call("get_settings", arguments: [])
-        return try decode_Settings(result)
+        let rivetResult = try await client.call("get_settings", arguments: [])
+        return try decode_Settings(rivetResult)
     }
     public func load_snapshot(view: String, list_id: Int64?, show_completed: Bool) async throws -> RivetTypes.Snapshot {
-        let result = try await client.call("load_snapshot", arguments: [encode_String(view), encode__Optional_Int64_(list_id), encode_Bool(show_completed)])
-        return try decode_Snapshot(result)
+        let rivetResult = try await client.call("load_snapshot", arguments: [encode_String(view), encode__Optional_Int64_(list_id), encode_Bool(show_completed)])
+        return try decode_Snapshot(rivetResult)
     }
     public func open_database(path: String) async throws -> RivetTypes.Snapshot {
-        let result = try await client.call("open_database", arguments: [encode_String(path)])
-        return try decode_Snapshot(result)
+        let rivetResult = try await client.call("open_database", arguments: [encode_String(path)])
+        return try decode_Snapshot(rivetResult)
     }
     public func parse_due(expression: String) async throws -> String {
-        let result = try await client.call("parse_due", arguments: [encode_String(expression)])
-        return try decode_String(result)
+        let rivetResult = try await client.call("parse_due", arguments: [encode_String(expression)])
+        return try decode_String(rivetResult)
     }
     public func parse_quick_add(text: String) async throws -> RivetTypes.QuickAddParse {
-        let result = try await client.call("parse_quick_add", arguments: [encode_String(text)])
-        return try decode_QuickAddParse(result)
+        let rivetResult = try await client.call("parse_quick_add", arguments: [encode_String(text)])
+        return try decode_QuickAddParse(rivetResult)
     }
     public func search_tasks(keyword: String) async throws -> [RivetTypes.Task] {
-        let result = try await client.call("search_tasks", arguments: [encode_String(keyword)])
-        return try decode__List_Task_(result)
+        let rivetResult = try await client.call("search_tasks", arguments: [encode_String(keyword)])
+        return try decode__List_Task_(rivetResult)
     }
     public func set_completed(id: Int64, completed: Bool) async throws -> RivetTypes.Task {
-        let result = try await client.call("set_completed", arguments: [encode_Int64(id), encode_Bool(completed)])
-        return try decode_Task(result)
+        let rivetResult = try await client.call("set_completed", arguments: [encode_Int64(id), encode_Bool(completed)])
+        return try decode_Task(rivetResult)
     }
     public func set_setting(key: String, value: String) async throws -> RivetTypes.Settings {
-        let result = try await client.call("set_setting", arguments: [encode_String(key), encode_String(value)])
-        return try decode_Settings(result)
+        let rivetResult = try await client.call("set_setting", arguments: [encode_String(key), encode_String(value)])
+        return try decode_Settings(rivetResult)
     }
     public func start_download() async throws -> Void {
-        let result = try await client.call("start_download", arguments: [])
-        return try decode_Void(result)
+        let rivetResult = try await client.call("start_download", arguments: [])
+        return try decode_Void(rivetResult)
     }
     public func update_list(item: RivetTypes.TodoList) async throws -> RivetTypes.TodoList {
-        let result = try await client.call("update_list", arguments: [encode_TodoList(item)])
-        return try decode_TodoList(result)
+        let rivetResult = try await client.call("update_list", arguments: [encode_TodoList(item)])
+        return try decode_TodoList(rivetResult)
     }
     public func update_state() async throws -> RivetTypes.UpdateState {
-        let result = try await client.call("update_state", arguments: [])
-        return try decode_UpdateState(result)
+        let rivetResult = try await client.call("update_state", arguments: [])
+        return try decode_UpdateState(rivetResult)
     }
     public func update_task(task: RivetTypes.Task) async throws -> RivetTypes.Task {
-        let result = try await client.call("update_task", arguments: [encode_Task(task)])
-        return try decode_Task(result)
+        let rivetResult = try await client.call("update_task", arguments: [encode_Task(task)])
+        return try decode_Task(rivetResult)
     }
     public func update_task_text(id: Int64, text: String) async throws -> RivetTypes.Task {
-        let result = try await client.call("update_task_text", arguments: [encode_Int64(id), encode_String(text)])
-        return try decode_Task(result)
+        let rivetResult = try await client.call("update_task_text", arguments: [encode_Int64(id), encode_String(text)])
+        return try decode_Task(rivetResult)
     }
 }
