@@ -101,6 +101,23 @@ public final class UpdateService {
     /// Test-only embedded-key override (release env signs with the real key).
     nonisolated private let injectedKeyBase64: String?
 
+    /// Removes swap work dirs older than 30 minutes — the swap script
+    /// cannot reliably delete its own directory while bash is still
+    /// reading it, so a later launch sweeps the leftovers.
+    nonisolated public static func sweepStaleWorkDirs() {
+        let fm = FileManager.default
+        let cutoff = Date().addingTimeInterval(-30 * 60)
+        let base = fm.temporaryDirectory
+        guard let names = try? fm.contentsOfDirectory(
+                at: base, includingPropertiesForKeys: [.contentModificationDateKey]) else { return }
+        for url in names where url.lastPathComponent.hasPrefix("taskly-update-") {
+            if let date = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+                .contentModificationDate, date < cutoff {
+                try? fm.removeItem(at: url)
+            }
+        }
+    }
+
     init(i18n: I18nService = .shared, feedURL: URL? = nil,
                 bundleURL: URL? = nil, currentVersion: String? = nil,
                 sessionConfiguration: URLSessionConfiguration? = nil,
@@ -227,75 +244,57 @@ public final class UpdateService {
     }
 
     /// The whole download → verify → swap sequence, deliberately off the
-    /// main actor: consuming AsyncBytes on the main actor starves the
-    /// transfer (every element hops through the main executor, the
-    /// connection stalls and URLSession times out — observed live against
-    /// the GitHub CDN: the identical loop completes in seconds off the
-    /// main actor and dies partway through on it).
+    /// main actor so the transfer never competes with UI work.
     nonisolated private static func downloadAndSwap(
         artifact: Manifest.Artifact,
         bundleURL: URL,
         expectedVersion: String,
-        onProgress: @Sendable (Int) -> Void
+        onProgress: @escaping @Sendable (Int) -> Void
     ) async throws {
         // Download to a temp directory.
         let workDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("taskly-update-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: workDir, withIntermediateDirectories: true)
         let zipURL = workDir.appendingPathComponent("taskly-update.zip")
-        defer { try? FileManager.default.removeItem(at: workDir) }
+        var swapLaunched = false
+        defer {
+            // Once the swap script is spawned it owns the work dir (it
+            // unpacks from there after we are gone); deleting it here
+            // would race the script's sleep and destroy the payload.
+            if !swapLaunched { try? FileManager.default.removeItem(at: workDir) }
+        }
 
-        let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 60
-        config.timeoutIntervalForResource = 600
-        let session = URLSession(configuration: config)
-
+        // Download via a delegate-driven download task. Byte-iterating
+        // AsyncBytes can park its continuation forever when the stream's
+        // end-of-stream flag never surfaces (observed live against the
+        // GitHub CDN — all bytes delivered, the loop never wakes, the
+        // sheet sticks at 100%, issue #13); the delegate's
+        // didFinishDownloadingTo / didCompleteWithError are definitive,
+        // and the request/resource timeout intervals bound a silent
+        // stall. Task cancellation invalidates the session, so a
+        // cancelled install always resumes promptly.
+        let downloader = ArtifactDownloader(destination: zipURL,
+                                            expectedSize: artifact.size,
+                                            onProgress: onProgress)
         do {
-            let (bytes, response) = try await session.bytes(from: artifact.url)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                throw UpdateError.network("artifact download failed")
-            }
-            var hasher = SHA256()
-            var data = Data()
-            data.reserveCapacity(artifact.size)
-            let total = max(artifact.size, 1)
-            var lastPercent = -1
-            // Consume AsyncBytes through a 64 KiB buffer: hashing/appending
-            // per byte (31M CryptoKit calls) is far slower than the wire.
-            var buffer = [UInt8]()
-            buffer.reserveCapacity(65_536)
-            func absorb(_ chunk: [UInt8]) {
-                hasher.update(data: chunk)
-                data.append(contentsOf: chunk)
-                let percent = min(100, data.count * 100 / total)
-                if percent != lastPercent {
-                    lastPercent = percent
-                    onProgress(percent)
-                }
-            }
-            for try await byte in bytes {
-                buffer.append(byte)
-                if buffer.count == buffer.capacity
-                    || data.count + buffer.count >= total {
-                    absorb(buffer)
-                    buffer.removeAll(keepingCapacity: true)
-                }
-                // The signed manifest pins the exact size — stop as soon as
-                // we have it. Waiting for the stream's own EOF can hang
-                // forever on responses whose end-of-stream flag never
-                // surfaces to AsyncBytes.
-                if data.count >= total { break }
-            }
-            if !buffer.isEmpty { absorb(buffer) }
-            let digest = hasher.finalize().map { String(format: "%02x", $0) }.joined()
-            guard digest == artifact.sha256.lowercased() else {
-                throw UpdateError.checksumMismatch
-            }
-            try data.write(to: zipURL)
+            try await downloader.run(from: artifact.url)
         } catch let error as UpdateError {
             throw error
+        } catch let error as URLError where error.code == .cancelled {
+            throw CancellationError()
         } catch {
             throw UpdateError.network(error.localizedDescription)
+        }
+
+        // Size and sha256 against the signed manifest — from the file on
+        // disk, so the artifact never sits whole in memory.
+        let attributes = try FileManager.default.attributesOfItem(atPath: zipURL.path)
+        guard let fileSize = attributes[.size] as? Int, fileSize == artifact.size else {
+            throw UpdateError.checksumMismatch
+        }
+        let digest = try Self.sha256Hex(ofFileAt: zipURL)
+        guard digest == artifact.sha256.lowercased() else {
+            throw UpdateError.checksumMismatch
         }
 
         // Unzip and verify the payload really is the promised version.
@@ -349,12 +348,143 @@ public final class UpdateService {
         let bash = Process()
         bash.executableURL = URL(fileURLWithPath: "/bin/bash")
         bash.arguments = [swapPath.path]
-        try bash.run()
-        await MainActor.run { NSApplication.shared.terminate(nil) }
+        do {
+            try bash.run()
+            swapLaunched = true
+        } catch {
+            throw error
+        }
+        await MainActor.run {
+            // A presented SwiftUI sheet vetoes NSApplication.terminate
+            // silently; end every sheet first so the quit sequence runs.
+            for window in NSApplication.shared.windows {
+                for sheet in window.sheets {
+                    window.endSheet(sheet)
+                }
+            }
+            NSApplication.shared.terminate(nil)
+        }
+        // If terminate was still vetoed (or deferred), stop the run loop
+        // so the app leaves inside the swap script's sleep window — the
+        // script waits out the single-instance lease before relaunching.
+        try? await Task.sleep(nanoseconds: 1_500_000_000)
+        await MainActor.run { NSApplication.shared.stop(nil) }
     }
 
     nonisolated private static func q(_ path: String) -> String {
         "'" + path.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
+    /// Chunked sha256 over a file on disk (the artifact is ~30 MB; hashing
+    /// by 1 MiB chunks keeps peak memory flat).
+    nonisolated private static func sha256Hex(ofFileAt url: URL) throws -> String {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        let chunkSize = 1 << 20
+        while let chunk = try handle.read(upToCount: chunkSize), !chunk.isEmpty {
+            hasher.update(data: chunk)
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
+
+    /// One-artifact file download driven by URLSessionDownloadDelegate.
+    /// Delegate callbacks arrive on the session's serial delegate queue;
+    /// the checked continuation is taken exactly once under the lock.
+    /// `finishTasksAndInvalidate` on completion also breaks the delegate
+    /// retain cycle (the session retains its delegate).
+    private nonisolated final class ArtifactDownloader: NSObject,
+            URLSessionDownloadDelegate, @unchecked Sendable {
+        private let lock = NSLock()
+        private var continuation: CheckedContinuation<Void, Error>?
+        private var lastPercent = -1
+        private let destination: URL
+        private let expectedSize: Int
+        private let onProgress: @Sendable (Int) -> Void
+        // Set once in init after super.init (the session needs self as its
+        // delegate); never reassigned afterwards.
+        private var session: URLSession!
+        init(destination: URL, expectedSize: Int,
+             onProgress: @escaping @Sendable (Int) -> Void) {
+            self.destination = destination
+            self.expectedSize = expectedSize
+            self.onProgress = onProgress
+            super.init()
+            let config = URLSessionConfiguration.ephemeral
+            config.timeoutIntervalForRequest = 60
+            config.timeoutIntervalForResource = 600
+            self.session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        }
+
+        func run(from url: URL) async throws {
+            let operation: @Sendable () async throws -> Void = { [self] in
+                try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+                    begin(cont, url: url)
+                }
+            }
+            let onCancel: @Sendable () -> Void = { [self] in
+                session.invalidateAndCancel()
+            }
+            try await withTaskCancellationHandler(operation: operation,
+                                                  onCancel: onCancel)
+        }
+
+        private func begin(_ cont: CheckedContinuation<Void, Error>, url: URL) {
+            lock.lock()
+            if continuation != nil {
+                lock.unlock()
+                cont.resume(throwing: UpdateError.network("download already running"))
+                return
+            }
+            continuation = cont
+            lock.unlock()
+            session.downloadTask(with: url).resume()
+        }
+
+        func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                        didWriteData bytesWritten: Int64, totalBytesWritten: Int64,
+                        totalBytesExpectedToWrite: Int64) {
+            // Content-Length from the CDN; the signed manifest size is the
+            // fallback when the response carries none.
+            let total = totalBytesExpectedToWrite > 0
+                ? Int(totalBytesExpectedToWrite) : max(expectedSize, 1)
+            let percent = min(100, Int(totalBytesWritten) * 100 / total)
+            if percent != lastPercent {
+                lastPercent = percent
+                onProgress(percent)
+            }
+        }
+
+        func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                        didFinishDownloadingTo location: URL) {
+            // `location` is valid only inside this callback — move now.
+            do {
+                try? FileManager.default.removeItem(at: destination)
+                try FileManager.default.moveItem(at: location, to: destination)
+                resume(with: .success(()))
+            } catch {
+                resume(with: .failure(error))
+            }
+        }
+
+        func urlSession(_ session: URLSession, task: URLSessionTask,
+                        didCompleteWithError error: Error?) {
+            // Success is reported by didFinishDownloadingTo; this callback
+            // carries the failure half (including cancellation and the
+            // request/resource timeouts that bound a silent stall).
+            guard let error else { return }
+            resume(with: .failure(error))
+        }
+
+        private func resume(with result: Result<Void, Error>) {
+            lock.lock()
+            let cont = continuation
+            continuation = nil
+            lock.unlock()
+            session.finishTasksAndInvalidate()
+            cont?.resume(with: result)
+        }
     }
 
     // MARK: - Version compare (numeric per segment; 1.2 > 1.1.9)

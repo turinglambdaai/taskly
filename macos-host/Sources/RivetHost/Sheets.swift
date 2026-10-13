@@ -323,6 +323,9 @@ struct UpdateSheet: View {
                 Text("\(model.updateProgressPercent)%")
                     .font(.system(size: 12))
                     .foregroundStyle(model.theme.secondaryText)
+                // The download can stall silently (issue #13) — the way out
+                // must be a button, not "kill the app".
+                Button(model.t("dialogCancel")) { model.cancelUpdateDownload() }
 
             case .upToDate:
                 Text(model.t("updateUpToDate"))

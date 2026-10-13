@@ -124,6 +124,7 @@ final class AppModel {
     /// Update offer accepted but not yet installed (lost on relaunch — the
     /// user re-offers on the next check).
     @ObservationIgnored private var pendingUpdateManifest: UpdateService.Manifest?
+    @ObservationIgnored private var updateInstallTask: _Concurrency.Task<Void, Never>?
     @ObservationIgnored private lazy var updateService = UpdateService(i18n: i18n)
 
     init() {
@@ -196,6 +197,7 @@ final class AppModel {
             flashStatus(i18n.t("statusDatabaseConnected"))
             reminder?.start()
             autoCheckForUpdates()
+            UpdateService.sweepStaleWorkDirs()
         } catch {
             statusMessage = "\(error)"
         }
@@ -315,12 +317,15 @@ final class AppModel {
     /// Offer accepted: download (progress in the sheet) → sha256 + Ed25519
     /// already verified → in-place swap → relaunch. UpdateService terminates
     /// the app on success; any earlier throw leaves this version running.
+    /// The install task is held so the sheet's Cancel can stop a download
+    /// that lost interest in finishing (issue #13: a download may park
+    /// indefinitely, and the user needs a way out that is not "kill the app").
     func installUpdate() {
         guard updatePhase == .available, let manifest = pendingUpdateManifest else { return }
         updatePhase = .downloading
         updateProgressPercent = 0
         updateErrorMessage = ""
-        _Concurrency.Task { [weak self] in
+        updateInstallTask = _Concurrency.Task { [weak self] in
             guard let self else { return }
             do {
                 try await updateService.downloadAndInstall(manifest) { [weak self] percent in
@@ -332,11 +337,23 @@ final class AppModel {
                         self?.updateProgressPercent = percent
                     }
                 }
+            } catch is CancellationError {
+                updatePhase = .idle
+                updateSheetVisible = false
+                pendingUpdateManifest = nil
             } catch {
                 updateErrorMessage = t("updateInstallFailed", Self.cleanError(error))
                 updatePhase = .failed
             }
         }
+    }
+
+    /// Cancels an in-flight update download. The downloader invalidates
+    /// its URLSession, so the install task always resumes and settles
+    /// the phase machine back to idle.
+    func cancelUpdateDownload() {
+        guard updatePhase == .downloading else { return }
+        updateInstallTask?.cancel()
     }
 
     func dismissUpdateSheet() {

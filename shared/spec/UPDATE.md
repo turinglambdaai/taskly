@@ -25,6 +25,10 @@
   the backend; hosts never implement crypto). Hosts poll `update_state`
   (phase: idle | checking | downloading | downloaded | error) and show
   progress.
+- **Download must be bounded and cancellable**: a stalled transfer
+  surfaces a retryable error after a finite timeout, and the progress UI
+  offers Cancel — cancelling stops the transfer and returns to the
+  offer without restarting the app (issue #13).
 - **Install failure** → non-crashing error with the platform message;
   the running version keeps working (same rule as notifications).
 - **CLI parity**: `--json` output and exit codes are version-stable; an

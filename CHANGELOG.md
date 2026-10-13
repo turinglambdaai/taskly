@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The macOS in-app update no longer hangs forever at 100%** (issue #13).
+  The download leg consumed `URLSession.AsyncBytes` byte-by-byte; when the
+  stream's end-of-stream signal never surfaced, the loop parked its
+  continuation permanently — all bytes delivered, the sheet stuck at
+  100%, undismissable, reproducible on both 0.1.0 and 0.1.1 against the
+  live feed. The download now runs as a delegate-driven
+  `URLSessionDownloadTask` (`didFinishDownloadingTo` /
+  `didCompleteWithError` are definitive), sha256 is computed from the
+  file on disk in 1 MiB chunks (the ~30 MB artifact never sits whole in
+  memory), and the request/resource timeout intervals bound a silent
+  stall: a stalled download now surfaces a retryable error after ~60 s
+  instead of hanging. The update sheet gained a Cancel button during the
+  download; cancelling invalidates the session, the install task always
+  resumes, and the phase machine settles back to idle.
+- **The macOS swap handoff no longer depends on `NSApplication.terminate`
+  going through.** A presented SwiftUI sheet vetoes the terminate
+  sequence silently; the app then kept running, the swap script's
+  payload directory was deleted by the still-running function's cleanup
+  (`defer`) while the script slept, and the relaunch died on the
+  single-instance lease held by the old process. The quit sequence now
+  ends every sheet first, falls back to stopping the run loop after
+  1.5 s, the swap script waits out the lease before relaunching, and
+  stale swap work dirs are swept by a later launch (the script cannot
+  reliably delete the directory bash is still reading from).
 - **SIGTERM now shuts the Linux app down instead of killing the backend
   under a living window.** OS signals bypass the GTK main loop, so the
   orderly teardown never ran — `systemd --user stop`, session logout and
