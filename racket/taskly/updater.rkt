@@ -50,6 +50,8 @@
          update-state-snapshot
          reset-update-state!
          set-update-error!
+         set-update-candidate!
+         update-worker-thread
          perform-check!
          start-download!
          rollout-bucket)
@@ -57,7 +59,7 @@
 ;; Release identity duplicated from rivet.rktd. The packaged app cannot
 ;; read the project file at runtime, so the updater embeds these constants.
 ;; scripts/check-release-version.sh re-checks app-version against VERSION.
-(define app-version "0.1.3")
+(define app-version "0.1.4")
 (define app-build 1)
 (define app-identifier "app.taskly.Taskly")
 (define app-channel 'stable)
@@ -128,6 +130,15 @@
 
 (define candidate-box (box #f))
 (define worker-thread-box (box #f))
+
+;; Test seams: install a checked candidate without a live network check,
+;; and reach the running worker so a test can break it the way the
+;; watchdog does and observe the cleanup arm deterministically.
+(define (set-update-candidate! candidate)
+  (set-box! candidate-box candidate))
+
+(define (update-worker-thread)
+  (unbox worker-thread-box))
 
 ;; Download watchdog bounds. The copy loop waits on read-bytes-avail! with
 ;; no timeout, so a connection that stalls without RST/FIN parks the worker
@@ -503,11 +514,18 @@
     (thread
      (lambda ()
        ;; The watchdog breaks a stalled worker; exn:break is not an
-       ;; exn:fail, so it needs its own arm — either way the .partial file
-       ;; is removed and the phase lands on error (never mid-flight).
+       ;; exn:fail, so it needs its own arm — either way the .partial
+       ;; file is removed and the phase lands on error (never
+       ;; mid-flight). The download handlers only catch exn:fail, so the
+       ;; break arm cleans the .partial here (same shape as the
+       ;; pre-clean in download-with-progress!) or a stalled download
+       ;; would orphan a half-written file.
        (with-handlers
            ([(lambda (e) (or (exn:fail? e) (exn:break? e)))
              (lambda (e)
+               (define temporary
+                 (path-add-extension destination #".partial"))
+               (when (file-exists? temporary) (delete-file temporary))
                (state-set! 'phase "error")
                (state-set! 'message
                            (if (exn:break? e)

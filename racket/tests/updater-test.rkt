@@ -13,12 +13,23 @@
          rackunit
          rivet/distribution
          racket/file
+         racket/list
          racket/path
+         racket/tcp
          "../taskly/config.rkt"
          "../taskly/paths.rkt"
          "../taskly/updater.rkt")
 
 (use-all-factories!)
+
+;; Poll until the predicate holds or the timeout lapses (rackunit fails).
+(define (wait-until ready? who [timeout-ms 10000])
+  (let loop ([deadline (+ (current-inexact-milliseconds) timeout-ms)])
+    (cond
+      [(ready?) (void)]
+      [(> (current-inexact-milliseconds) deadline)
+       (fail (string-append "timed out waiting for " who))]
+      [else (sleep 0.05) (loop deadline)])))
 
 (test-case "platform symbols match rivet release manifests"
   (case (system-type 'os)
@@ -135,3 +146,61 @@
              (lambda () (appimage-asset-name "taskly-0.1.2-linux-x64.zip" 'x64)))
   (check-exn exn:fail?
              (lambda () (appimage-asset-name "taskly-0.1.2-linux.tar.gz" 'x64))))
+
+(test-case "watchdog break arm removes the .partial file"
+  ;; A loopback listener that accepts and then never answers parks the
+  ;; worker in the copy loop with an (empty) .partial already on disk —
+  ;; the exact shape the watchdog's break-thread hits on a stalled
+  ;; download. Break the worker the way the watchdog does: the phase must
+  ;; land on error and no .partial may survive.
+  (define data-dir (make-temporary-file "taskly-updater-data-~a" 'directory))
+  (define listener (tcp-listen 0 16 #f))
+  (define-values (_listen-host stall-port _peer-host _peer-port)
+    (tcp-addresses listener #t))
+  (define stall-server
+    (thread
+     (lambda ()
+       (define-values (cin cout) (tcp-accept listener))
+       ;; Drain the request head...
+       (let drain ()
+         (define line (read-line cin 'return-linefeed))
+         (unless (or (eof-object? line) (equal? line "")) (drain)))
+       ;; ...then answer with a body shorter than its declared
+       ;; Content-Length and hold the connection open: the client parks
+       ;; mid-copy with the .partial on disk, the exact stall shape the
+       ;; watchdog's break-thread hits.
+       (display "HTTP/1.1 200 OK\r\nContent-Length: 1000\r\nConnection: close\r\n\r\n" cout)
+       (write-bytes (make-bytes 10 5) cout)
+       (flush-output cout)
+       (sync (thread-receive-evt)))))
+  (define manifest
+    (update-manifest
+     app-identifier "9.9.9" 7 'stable
+     "2026-10-09T00:00:00Z" "0.0.0" #f #t 100
+     (list (update-artifact (platform-symbol) (architecture-symbol)
+                            (format "http://127.0.0.1:~a/taskly-9.9.9~a"
+                                    stall-port (installer-extension))
+                            (make-string 64 #\0)
+                            1000
+                            'zip '()))))
+  (define candidate
+    (update-candidate manifest (first (update-manifest-artifacts manifest))))
+  (define temporary
+    (path-add-extension (destination-path data-dir candidate) #".partial"))
+  (parameterize ([current-taskly-home
+                  (make-temporary-file "taskly-updater-home-~a" 'directory)])
+    (reset-update-state!)
+    (set-update-candidate! candidate)
+    (start-download! data-dir)
+    (wait-until (lambda () (file-exists? temporary)) "the .partial to appear")
+    (break-thread (update-worker-thread))
+    (wait-until (lambda ()
+                  (equal? (hash-ref (update-state-snapshot) 'phase) "error"))
+                "the error phase")
+    (check-false (file-exists? temporary)
+                 "the break arm must remove the .partial file")
+    (check-equal? (hash-ref (update-state-snapshot) 'message)
+                  "update download stalled or timed out")
+    (reset-update-state!))
+  (kill-thread stall-server)
+  (tcp-close listener))

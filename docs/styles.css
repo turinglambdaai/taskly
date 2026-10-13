@@ -1,31 +1,47 @@
 /*
- * Taskly — macOS Reminders–style neutral design system
- * Palette echoes the app: white content, light-gray sidebar, system-blue accent.
+ * Taskly — warm family design system (payback/keepsake alignment)
+ * Values are the family spec: warm off-white page, white surfaces,
+ * terracotta accent, light AND dark via [data-theme].
  */
 
 :root {
-    /* Neutral palette (matches app RemindersColors.cs) */
-    --bg: #F5F5F7;            /* Apple-style off-white page background */
-    --bg-card: #FFFFFF;       /* white card */
-    --bg-elevated: #FFFFFF;   /* elevated surface / mockup window */
-    --bg-sidebar: #F2F2F2;    /* light-gray sidebar (Reminders-style) */
-    --text: #1D1D1F;          /* near-black */
-    --text-2: #6E6E73;        /* secondary gray */
-    --text-3: #8E8E93;        /* tertiary gray (systemGray) */
-    --accent: #007AFF;        /* system blue */
-    --accent-hover: #0066D6;  /* darker blue */
-    --accent-soft: rgba(0, 122, 255, 0.14);  /* soft blue tint */
-    --accent-tint: rgba(0, 122, 255, 0.08);  /* faint blue wash */
-    --border: rgba(0, 0, 0, 0.10);
-    --border-strong: rgba(0, 0, 0, 0.16);
+    /* Family palette — pinned spec values */
+    --bg: #faf7f2;
+    --surface: #ffffff;
+    --ink: #1f1d1a;
+    --muted: #6b6660;
+    --line: #e8e2d9;
+    --accent: #c15f3c;
+    --accent-soft: #f7e5dd;
+    --radius: 14px;
+
+    /* Derived tokens — aliases auto-track the family values above in
+       both themes; only genuinely different dark values are re-pointed
+       in the dark block below. */
+    --bg-card: var(--surface);
+    --bg-elevated: var(--surface);
+    --bg-sidebar: #f2efe8;
+    --text: var(--ink);
+    --text-2: var(--muted);
+    --text-3: #918a80;
+    --accent-hover: #a84e2f;
+    --accent-tint: #f7e5dd;
+    --accent-contrast: #ffffff;
+    --border: var(--line);
+    --border-strong: #ddd5c8;
+    --chip-border: rgba(193, 95, 60, 0.14);
+    --nav-bg: rgba(250, 247, 242, 0.82);
+    --hover-wash: rgba(31, 29, 26, 0.05);
+    --hover-wash-strong: rgba(31, 29, 26, 0.08);
+    --cli-card-bg: var(--ink);
 
     /* Typography */
-    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
 
     /* Layout */
     --wrapper-width: 1080px;
     --radius-l: 20px;
-    --radius-m: 14px;
+    --radius-m: var(--radius);
     --radius-s: 10px;
 
     /* Shadows (soft, neutral) */
@@ -35,6 +51,53 @@
 
     --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+
+/* Theme: data-theme is set by the inline head script — from localStorage
+   when the user picked manually, otherwise from the system preference.
+   Explicit light values exist so a manual choice always wins over the OS. */
+:root[data-theme="light"] {
+    --bg: #faf7f2;
+    --surface: #ffffff;
+    --ink: #1f1d1a;
+    --muted: #6b6660;
+    --line: #e8e2d9;
+    --accent: #c15f3c;
+    --accent-soft: #f7e5dd;
+    --radius: 14px;
+}
+
+/* Dark values follow the keepsake site block (family-aligned). */
+:root[data-theme="dark"] {
+    --bg: #1b1a18;
+    --surface: #24221f;
+    --ink: #ece9e2;
+    --muted: #a6a099;
+    --line: #35322d;
+    --accent: #d08a6e;
+    --accent-soft: #3a2d27;
+    --radius: 14px;
+
+    --bg-sidebar: #201e1b;
+    --text-3: #8f8a82;
+    --accent-hover: #e0a186;
+    --accent-tint: #2e2723;
+    --accent-contrast: #1b1a18;
+    --border-strong: #44403a;
+    --chip-border: rgba(208, 138, 110, 0.28);
+    --nav-bg: rgba(27, 26, 24, 0.82);
+    --hover-wash: rgba(236, 233, 226, 0.06);
+    --hover-wash-strong: rgba(236, 233, 226, 0.1);
+    --cli-card-bg: #161513;
+}
+
+:root[data-theme="dark"] .code-block-light {
+    background: #161513;
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .code-block-light .flag { color: #e8a04a; }
+:root[data-theme="dark"] .code-block-light .str,
+:root[data-theme="dark"] .code-block-light .ok { color: #8fc9a0; }
 
 /* Reset & Base */
 * {
@@ -78,7 +141,7 @@ ul {
     top: 0;
     width: 100%;
     height: 56px;
-    background: rgba(245, 245, 247, 0.78);
+    background: var(--nav-bg);
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
     border-bottom: 1px solid var(--border);
@@ -233,7 +296,7 @@ section {
 
 .btn-primary {
     background-color: var(--accent);
-    color: #fff;
+    color: var(--accent-contrast);
     box-shadow: 0 1px 2px rgba(193, 95, 60, 0.25), 0 6px 16px rgba(193, 95, 60, 0.18);
 }
 
@@ -423,7 +486,7 @@ section {
 }
 
 .sidebar-item:hover {
-    background: rgba(0, 0, 0, 0.04);
+    background: var(--hover-wash);
 }
 
 .sidebar-item.active {
@@ -594,7 +657,7 @@ section {
 }
 
 .task-detail-btn:hover {
-    background: rgba(0, 0, 0, 0.06);
+    background: var(--hover-wash-strong);
     color: var(--accent);
 }
 
@@ -691,15 +754,15 @@ section {
     color: var(--accent);
 }
 
-/* CLI feature card — slightly emphasized */
+/* CLI feature card — emphasized ink block in both themes */
 .bento-card.cli-card {
-    background: var(--text);
-    border-color: var(--text);
+    background: var(--cli-card-bg);
+    border-color: var(--cli-card-bg);
 }
 
 .bento-card.cli-card h3,
 .bento-card.cli-card .card-tag {
-    color: #F5F5F7;
+    color: #f0ede8;
 }
 
 .bento-card.cli-card p {
@@ -798,14 +861,29 @@ section {
     flex-wrap: wrap;
 }
 
-.version-badge {
-    font-size: 13px;
-    color: var(--text-3);
+/* Theme toggle */
+.theme-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--text-2);
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
 }
 
-.version-badge .ver {
+.theme-btn:hover {
     color: var(--accent);
-    font-weight: 550;
+    border-color: var(--accent);
+    background: var(--hover-wash);
 }
 
 /* Footer */
@@ -870,7 +948,7 @@ footer {
 }
 
 .lang-btn:hover {
-    background: rgba(0, 0, 0, 0.05);
+    background: var(--hover-wash);
 }
 
 .globe-icon {
@@ -1314,7 +1392,7 @@ code,
     color: var(--accent-hover);
     padding: 2px 7px;
     border-radius: 5px;
-    border: 1px solid rgba(193, 95, 60, 0.14);
+    border: 1px solid var(--chip-border);
 }
 
 /* Terminal-style code block (light variant, for manual examples) */

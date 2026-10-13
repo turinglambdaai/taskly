@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-14
+
+### Changed
+- **Rivet pin bumped to v0.11.0.** CI and Release install the catalog
+  package from `#v0.11.0` (the root SwiftPM package, `rivet-host.vcxproj`
+  and the `rivet::platform` CMake target are all consumed as a package on
+  every host), and `setup-embed-racket` is pinned to `@v0.11.0` instead of
+  floating `@main`. The workflow-level pin now lives in a single top-level
+  `env: RIVET_PIN` per workflow — a bump is one edit instead of a
+  grep-replace across jobs.
+
+### Fixed
+- **The updater's watchdog break path no longer orphans a `.partial`
+  file.** The worker's outer handler caught `exn:break` (a stalled
+  download broken by the watchdog) and set phase=error, but — unlike the
+  `exn:fail` arms inside the download handlers — it never deleted the
+  half-written `.partial`. A stalled download left the orphan behind
+  until the next attempt's pre-clean. The break arm now removes the
+  `.partial` the same way, and a rackunit test drives the real worker
+  against a stalling loopback server, breaks it the way the watchdog
+  does, and asserts the file is gone.
+
+### Site
+- **The product site (taskly.jrtx.site) moved to the family palette and
+  gained a dark theme.** The Apple-blue/gray scheme (#007AFF/#F5F5F7) is
+  replaced by the family spec values (#faf7f2/#ffffff/#1f1d1a/#6b6660/
+  #e8e2d9/#c15f3c/#f7e5dd, radius 14), the nav logo follows the accent,
+  and a manual dark theme (keepsake dark values) sits behind a nav toggle
+  with an anti-flash head script and localStorage memory — explicit
+  choice wins over the OS preference.
+- **The index page defaults to Chinese and switched to data-i18n +
+  dictionary mode** (title and meta description switch with the
+  language). manual.html keeps its per-element attributes and continues
+  to work; the site stays zero-dependency.
+
 ## [0.1.3] - 2026-10-13
 
 ### Fixed

@@ -1,12 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taskly — Organize your life</title>
-    <meta name="description" content="Taskly is a clean, focused task manager with keyboard-friendly scheduling shortcuts and an AI-friendly CLI. One shared Racket core (Rivet) drives native SwiftUI, WinUI 3, and GTK4 hosts on macOS, Windows, and Linux — your data stays in one local SQLite file.">
-    <link rel="stylesheet" href="styles.css?v=11">
+    <title>Taskly — 简洁专注的任务管理器</title>
+    <meta name="description" content="Taskly 是一款清爽、专注的任务管理器：键盘友好的排程速记、面向 AI 的 JSON CLI。一个共享的 Racket 核心（Rivet）驱动 macOS、Windows 与 Linux 原生应用——数据就是单个本地 SQLite 文件。">
+    <script>
+        // Theme anti-flash: set data-theme before the stylesheet loads —
+        // from localStorage when the user picked manually, otherwise the
+        // OS preference.
+        (function () {
+            var t;
+            try { t = localStorage.getItem('taskly-theme'); } catch (e) {}
+            if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.dataset.theme = t;
+        })();
+    </script>
+    <link rel="stylesheet" href="styles.css?v=12">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link rel="icon" href="taskly.svg" type="image/svg+xml" sizes="any">
 </head>
@@ -18,16 +29,16 @@
         <div class="nav-wrapper">
             <div class="nav-brand">
                 <svg class="nav-logo" width="28" height="28" viewBox="0 0 512 512" fill="none">
-                    <rect width="512" height="512" rx="115" fill="#007AFF"/>
+                    <rect width="512" height="512" rx="115" fill="#c15f3c"/>
                     <polyline points="156,276 232,352 372,192" fill="none" stroke="#FFFFFF" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 Taskly
             </div>
             <ul class="nav-menu">
-                <li><a href="#features" data-en="Features" data-zh="功能">Features</a></li>
-                <li><a href="manual.html" data-en="Manual" data-zh="手册">Manual</a></li>
-                <li><a href="#cli" data-en="CLI" data-zh="命令行">CLI</a></li>
-                <li><a href="#release" data-en="Release" data-zh="发布">Release</a></li>
+                <li><a href="#features" data-i18n="nav.features">功能</a></li>
+                <li><a href="manual.html" data-i18n="nav.manual">手册</a></li>
+                <li><a href="#cli" data-i18n="nav.cli">命令行</a></li>
+                <li><a href="#release" data-i18n="nav.release">发布</a></li>
 
                 <!-- Language Dropdown -->
                 <li class="lang-dropdown-wrapper">
@@ -40,13 +51,14 @@
                                 d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
                             </path>
                         </svg>
-                        <span id="current-lang-label" data-en="English" data-zh="简体中文">English</span>
+                        <span id="current-lang-label">简体中文</span>
                     </button>
                     <ul class="lang-menu">
                         <li onclick="setLanguage('en')">English</li>
                         <li onclick="setLanguage('zh')">简体中文</li>
                     </ul>
                 </li>
+                <li><button class="theme-btn" id="theme-btn" type="button" aria-label="切换主题">◐</button></li>
             </ul>
         </div>
     </nav>
@@ -54,20 +66,18 @@
     <!-- Hero -->
     <section class="hero" id="overview">
         <div class="container">
-            <span class="eyebrow animate-on-scroll" data-en="Open source · Local-first · Native on every desktop" data-zh="开源 · 本地优先 · 每个桌面都原生">Open source · Local-first · Native on every desktop</span>
+            <span class="eyebrow animate-on-scroll" data-i18n="hero.eyebrow">开源 · 本地优先 · 每个桌面都原生</span>
             <h1 class="animate-on-scroll">
-                <span data-en="Organize your life," data-zh="规划你的生活，">Organize your life,</span>
-                <span class="accent" data-en="one task at a time." data-zh="一次一件。">one task at a time.</span>
+                <span data-i18n="hero.h1a">规划你的生活，</span>
+                <span class="accent" data-i18n="hero.h1b">一次一件。</span>
             </h1>
-            <p class="lead animate-on-scroll"
-                data-en="Taskly is a clean, focused task manager with keyboard-friendly scheduling shortcuts, a built-in CLI for automation, and native apps for every desktop. Your data stays yours."
-                data-zh="Taskly 是一款清爽、专注的任务管理器：支持便捷的排程速记、内置命令行工具便于自动化，并为每个桌面平台提供原生应用。数据始终归你所有。">
-                Taskly is a clean, focused task manager with keyboard-friendly scheduling shortcuts, a built-in CLI for automation, and native apps for every desktop. Your data stays yours.
+            <p class="lead animate-on-scroll" data-i18n="hero.lead">
+                Taskly 是一款清爽、专注的任务管理器：支持便捷的排程速记、内置命令行工具便于自动化，并为每个桌面平台提供原生应用。数据始终归你所有。
             </p>
 
             <div class="hero-buttons animate-on-scroll">
-                <a href="https://github.com/turinglambdaai/taskly/releases/latest" class="btn btn-primary" data-en="Download Taskly" data-zh="下载 Taskly">Download Taskly</a>
-                <a href="https://github.com/turinglambdaai/taskly" class="btn btn-secondary" data-en="View on GitHub" data-zh="在 GitHub 查看">View on GitHub</a>
+                <a href="https://github.com/turinglambdaai/taskly/releases/latest" class="btn btn-primary" data-i18n="hero.download">下载 Taskly</a>
+                <a href="https://github.com/turinglambdaai/taskly" class="btn btn-secondary" data-i18n="hero.github">在 GitHub 查看</a>
             </div>
 
             <!-- App window mockup -->
@@ -91,7 +101,7 @@
                                                 d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5h5v5h-5v-5z" />
                                         </svg></div>
                                     <div class="smart-count">2</div>
-                                    <div class="smart-label" data-en="Today" data-zh="今天">Today</div>
+                                    <div class="smart-label" data-i18n="mock.today">今天</div>
                                 </div>
                             </div>
                             <div class="smart-list-card scheduled">
@@ -102,7 +112,7 @@
                                                 d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z" />
                                         </svg></div>
                                     <div class="smart-count">5</div>
-                                    <div class="smart-label" data-en="Scheduled" data-zh="计划">Scheduled</div>
+                                    <div class="smart-label" data-i18n="mock.scheduled">计划</div>
                                 </div>
                             </div>
                             <div class="smart-list-card all">
@@ -113,7 +123,7 @@
                                                 d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" />
                                         </svg></div>
                                     <div class="smart-count">12</div>
-                                    <div class="smart-label" data-en="All" data-zh="全部">All</div>
+                                    <div class="smart-label" data-i18n="mock.all">全部</div>
                                 </div>
                             </div>
                             <div class="smart-list-card completed">
@@ -123,13 +133,13 @@
                                             <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                                         </svg></div>
                                     <div class="smart-count">3</div>
-                                    <div class="smart-label" data-en="Completed" data-zh="已完成">Completed</div>
+                                    <div class="smart-label" data-i18n="mock.completed">已完成</div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="sidebar-section-header">
-                            <div class="sidebar-section-title" data-en="My Lists" data-zh="我的列表">My Lists</div>
+                            <div class="sidebar-section-title" data-i18n="mock.mylists">我的列表</div>
                             <div class="sidebar-add-btn">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
                                     <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
@@ -143,7 +153,7 @@
                                         d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z" />
                                 </svg>
                             </div>
-                            <span data-en="Work" data-zh="工作">Work</span>
+                            <span data-i18n="mock.work">工作</span>
                             <span class="list-count">3</span>
                         </div>
                         <div class="sidebar-item">
@@ -153,7 +163,7 @@
                                         d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3zm5 15h-2v-6H9v6H7v-7.81l5-4.5 5 4.5V18z" />
                                 </svg>
                             </div>
-                            <span data-en="Personal" data-zh="个人">Personal</span>
+                            <span data-i18n="mock.personal">个人</span>
                             <span class="list-count">8</span>
                         </div>
                         <div class="sidebar-item">
@@ -163,7 +173,7 @@
                                         d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm6 9.09c0 4-2.55 7.7-6 8.83-3.45-1.13-6-4.82-6-8.83v-4.7l6-2.25 6 2.25v4.7z" />
                                 </svg>
                             </div>
-                            <span data-en="Ideas" data-zh="创意">Ideas</span>
+                            <span data-i18n="mock.ideas">创意</span>
                             <span class="list-count"></span>
                         </div>
                     </div>
@@ -177,13 +187,13 @@
                                         <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
                                     </svg>
                                 </div>
-                                <h2 class="list-title" data-en="Work" data-zh="工作">Work</h2>
+                                <h2 class="list-title" data-i18n="mock.work">工作</h2>
                             </div>
                         </div>
 
                         <!-- Quick Add Input -->
                         <div class="quick-add-input">
-                            <div class="input-placeholder" data-en="Add Task" data-zh="添加任务">Add Task</div>
+                            <div class="input-placeholder" data-i18n="mock.addtask">添加任务</div>
                         </div>
 
                         <!-- Mock Tasks (structure mirrors TaskItemRow.axaml) -->
@@ -192,13 +202,12 @@
                             <div class="mock-task">
                                 <div class="mock-row">
                                     <div class="mock-checkbox"></div>
-                                    <span class="task-title" data-en="Meeting with design team"
-                                        data-zh="与设计团队开会">Meeting with design team</span>
+                                    <span class="task-title" data-i18n="mock.task1.title">与设计团队开会</span>
                                     <span class="task-detail-btn">ⓘ</span>
                                 </div>
                                 <div class="mock-meta">
-                                    <span class="task-date" data-en="明天 10:00" data-zh="明天 10:00">Tomorrow 10:00</span>
-                                    <span class="task-notes" data-en="Discuss Q3 roadmap" data-zh="讨论 Q3 路线图">Discuss Q3 roadmap</span>
+                                    <span class="task-date" data-i18n="mock.task1.date">明天 10:00</span>
+                                    <span class="task-notes" data-i18n="mock.task1.notes">讨论 Q3 路线图</span>
                                 </div>
                             </div>
 
@@ -206,11 +215,11 @@
                             <div class="mock-task">
                                 <div class="mock-row">
                                     <div class="mock-checkbox"></div>
-                                    <span class="task-title" data-en="Submit project report" data-zh="提交项目报告">Submit project report</span>
+                                    <span class="task-title" data-i18n="mock.task2.title">提交项目报告</span>
                                     <span class="task-detail-btn">ⓘ</span>
                                 </div>
                                 <div class="mock-meta">
-                                    <span class="task-date" data-en="周五 17:00" data-zh="周五 17:00">Fri 5:00 PM</span>
+                                    <span class="task-date" data-i18n="mock.task2.date">周五 17:00</span>
                                 </div>
                             </div>
 
@@ -223,7 +232,7 @@
                                             <polyline points="20 6 9 17 4 12"></polyline>
                                         </svg>
                                     </div>
-                                    <span class="task-title" data-en="Update dependencies" data-zh="更新依赖">Update dependencies</span>
+                                    <span class="task-title" data-i18n="mock.task3.title">更新依赖</span>
                                     <span class="task-detail-btn">ⓘ</span>
                                 </div>
                             </div>
@@ -232,7 +241,7 @@
                             <div class="mock-task">
                                 <div class="mock-row">
                                     <div class="mock-checkbox"></div>
-                                    <span class="task-title" data-en="Review pull requests" data-zh="审阅 Pull Request">Review pull requests</span>
+                                    <span class="task-title" data-i18n="mock.task4.title">审阅 Pull Request</span>
                                     <span class="task-detail-btn">ⓘ</span>
                                 </div>
                             </div>
@@ -246,54 +255,48 @@
     <!-- Features (Bento Grid) -->
     <section id="features">
         <div class="container">
-            <h2 class="section-title text-center animate-on-scroll" data-en="Designed to fade into the background." data-zh="设计，是为了退到幕后。">
-                Designed to fade into the background.</h2>
-            <p class="section-subtitle text-center animate-on-scroll" data-en="Calm colors, thoughtful typography, and nothing you don't need. So you can focus on doing, not managing."
-                data-zh="宁静的色彩、考究的排版，没有多余的东西。让你专注于执行，而非管理。">
-                Calm colors, thoughtful typography, and nothing you don't need. So you can focus on doing, not managing.
+            <h2 class="section-title text-center animate-on-scroll" data-i18n="features.title">设计，是为了退到幕后。</h2>
+            <p class="section-subtitle text-center animate-on-scroll" data-i18n="features.subtitle">
+                宁静的色彩、考究的排版，没有多余的东西。让你专注于执行，而非管理。
             </p>
 
             <div class="bento-grid">
                 <!-- Card 1: Smart Parsing (Large) -->
                 <div class="bento-card span-2 animate-on-scroll">
                     <div class="card-icon">⚡️</div>
-                    <h3 data-en="Scheduling shortcuts" data-zh="排程速记">Scheduling shortcuts</h3>
-                    <p data-en="Add a modifier to any task: “Standup @9am”, “Buy milk +1d”, “Ship @5pm fri”. Taskly extracts the time and leaves the rest as the task. No dials, no calendars."
-                        data-zh="给任务加个修饰符：「Standup @9am」「买牛奶 +1d」「发布 @5pm fri」。Taskly 提取时间，剩下就是任务。无需拨盘，无需翻日历。">
-                        Add a modifier to any task: "Standup @9am", "Buy milk +1d", "Ship @5pm fri". Taskly extracts the time and leaves the rest as the task. No dials, no calendars.
+                    <h3 data-i18n="f1.title">排程速记</h3>
+                    <p data-i18n="f1.body">
+                        给任务加个修饰符：「Standup @9am」「买牛奶 +1d」「发布 @5pm fri」。Taskly 提取时间，剩下就是任务。无需拨盘，无需翻日历。
                     </p>
-                    <a href="manual.html#shortcuts" class="card-tag" data-en="See the syntax →" data-zh="查看完整语法 →">See the syntax →</a>
+                    <a href="manual.html#shortcuts" class="card-tag" data-i18n="f1.tag">查看完整语法 →</a>
                 </div>
 
                 <!-- Card 2: Privacy -->
                 <div class="bento-card animate-on-scroll">
                     <div class="card-icon">🔒</div>
-                    <h3 data-en="Private by design" data-zh="隐私优先">Private by design</h3>
-                    <p data-en="Your tasks live in a local SQLite database. No account, no cloud, no tracking."
-                        data-zh="任务存储在本地 SQLite 数据库。无需账号，无云端，无追踪。">
-                        Your tasks live in a local SQLite database. No account, no cloud, no tracking.
+                    <h3 data-i18n="f2.title">隐私优先</h3>
+                    <p data-i18n="f2.body">
+                        任务存储在本地 SQLite 数据库。无需账号，无云端，无追踪。
                     </p>
                 </div>
 
                 <!-- Card 3: Cross Platform -->
                 <div class="bento-card animate-on-scroll">
                     <div class="card-icon">💻</div>
-                    <h3 data-en="Truly cross-platform" data-zh="真正的跨平台">Truly cross-platform</h3>
-                    <p data-en="Native apps for macOS, Windows, and Linux — same clean interface everywhere."
-                        data-zh="macOS、Windows、Linux 原生应用，到处都是同样清爽的界面。">
-                        Native apps for macOS, Windows, and Linux — same clean interface everywhere.
+                    <h3 data-i18n="f3.title">真正的跨平台</h3>
+                    <p data-i18n="f3.body">
+                        macOS、Windows、Linux 原生应用，到处都是同样清爽的界面。
                     </p>
                 </div>
 
                 <!-- Card 4: Sync -->
                 <div class="bento-card span-2 animate-on-scroll">
                     <div class="card-icon">🔄</div>
-                    <h3 data-en="Sync on your terms" data-zh="按你的方式同步">Sync on your terms</h3>
-                    <p data-en="Point Taskly at any cloud-synced folder (iCloud, Dropbox, Syncthing…) and your database follows you across devices. WAL mode keeps concurrent access safe."
-                        data-zh="将 Taskly 指向任意云同步文件夹（iCloud、Dropbox、Syncthing…），数据库便会跟随你穿梭设备。WAL 模式确保并发访问安全。">
-                        Point Taskly at any cloud-synced folder (iCloud, Dropbox, Syncthing…) and your database follows you across devices. WAL mode keeps concurrent access safe.
+                    <h3 data-i18n="f4.title">按你的方式同步</h3>
+                    <p data-i18n="f4.body">
+                        将 Taskly 指向任意云同步文件夹（iCloud、Dropbox、Syncthing…），数据库便会跟随你穿梭设备。WAL 模式确保并发访问安全。
                     </p>
-                    <span class="card-tag" data-en="Bring your own cloud." data-zh="自带你的云。">Bring your own cloud.</span>
+                    <span class="card-tag" data-i18n="f4.tag">自带你的云。</span>
                 </div>
             </div>
         </div>
@@ -306,24 +309,22 @@
                 <!-- CLI feature card (dark, emphasized) -->
                 <div class="bento-card span-2 cli-card animate-on-scroll">
                     <div class="card-icon">⌘</div>
-                    <h3 data-en="A CLI that speaks JSON" data-zh="会输出 JSON 的命令行">A CLI that speaks JSON</h3>
-                    <p data-en="Taskly ships as a single binary — GUI and CLI in one. Script it, pipe it, hand it to an AI agent. Stable exit codes, structured output, no surprises."
-                        data-zh="Taskly 以单一二进制发布——GUI 与 CLI 合为一体。脚本化、管道传递、交给 AI 代理。稳定的退出码、结构化输出，毫无意外。">
-                        Taskly ships as a single binary — GUI and CLI in one. Script it, pipe it, hand it to an AI agent. Stable exit codes, structured output, no surprises.
+                    <h3 data-i18n="cli.title">会输出 JSON 的命令行</h3>
+                    <p data-i18n="cli.body">
+                        Taskly 以单一二进制发布——GUI 与 CLI 合为一体。脚本化、管道传递、交给 AI 代理。稳定的退出码、结构化输出，毫无意外。
                     </p>
                     <div class="code-block"><span class="comment"># add a task, get JSON back</span>
 <span class="prompt">$</span> taskly add <span class="str">"Ship v0.4 @friday 5pm"</span> <span class="flag">--list</span> <span class="str">"Work"</span> <span class="flag">--json</span>
 <span class="prompt">$</span> taskly list <span class="flag">--status</span> <span class="str">incomplete</span> <span class="flag">--json</span> <span class="flag">|</span> jq <span class="str">'.[] | .text'</span></div>
-                    <span class="card-tag" data-en="Single binary. Zero config." data-zh="单文件，零配置。">Single binary. Zero config.</span>
+                    <span class="card-tag" data-i18n="cli.tag">单文件，零配置。</span>
                 </div>
 
                 <!-- Card: Organized lists -->
                 <div class="bento-card animate-on-scroll">
                     <div class="card-icon">📂</div>
-                    <h3 data-en="Organized lists" data-zh="井井有条的列表">Organized lists</h3>
-                    <p data-en="Separate Work, Life, and Ideas into color-coded lists that stay out of each other's way."
-                        data-zh="将工作、生活与创意分入各自着色的列表，互不干扰。">
-                        Separate Work, Life, and Ideas into color-coded lists that stay out of each other's way.
+                    <h3 data-i18n="lists.title">井井有条的列表</h3>
+                    <p data-i18n="lists.body">
+                        将工作、生活与创意分入各自着色的列表，互不干扰。
                     </p>
                 </div>
             </div>
@@ -333,60 +334,53 @@
     <!-- Release Section -->
     <section id="release">
         <div class="container text-center">
-            <span class="eyebrow animate-on-scroll" data-en="Release" data-zh="发布">Release</span>
-            <h2 class="section-title animate-on-scroll" data-en="Three desktops. One core." data-zh="三大桌面，一个核心。">Three desktops. One core.</h2>
-            <p class="section-subtitle animate-on-scroll" data-en="Taskly ships on macOS (SwiftUI), Windows (WinUI 3), and Linux (GTK4) — one shared Racket core behind thin first-party hosts, a JSON CLI pinned by a 61-case golden suite, and a single local SQLite file. Download, install, done."
-                data-zh="Taskly 覆盖 macOS（SwiftUI）、Windows（WinUI 3）与 Linux（GTK4）——共享 Racket 核心驱动轻薄的第一方宿主，JSON CLI 由 61 例 golden 套件钉死，数据就是单个本地 SQLite 文件。下载安装即用。">
-                Taskly ships on macOS, Windows, and Linux — one shared Racket core behind thin first-party hosts.
+            <span class="eyebrow animate-on-scroll" data-i18n="release.eyebrow">发布</span>
+            <h2 class="section-title animate-on-scroll" data-i18n="release.title">三大桌面，一个核心。</h2>
+            <p class="section-subtitle animate-on-scroll" data-i18n="release.subtitle">
+                Taskly 覆盖 macOS（SwiftUI）、Windows（WinUI 3）与 Linux（GTK4）——共享 Racket 核心驱动轻薄的第一方宿主，JSON CLI 由 61 例 golden 套件钉死，数据就是单个本地 SQLite 文件。下载安装即用。
             </p>
 
             <div class="bento-grid">
                 <div class="bento-card animate-on-scroll">
                     <div class="card-icon">✅</div>
-                    <h3 data-en="Three native hosts · One core" data-zh="三端原生 · 一个核心">Three native hosts · One core</h3>
-                    <p data-en="SwiftUI on macOS, WinUI 3 on Windows, GTK4 on Linux — first-party feel on every desktop, with all logic in one Racket CS core driving them over typed RPC."
-                        data-zh="macOS 用 SwiftUI，Windows 用 WinUI 3，Linux 用 GTK4——每个平台都是第一方手感，全部逻辑在一个 Racket CS 核心里经类型化 RPC 驱动它们。">
-                        First-party feel on every desktop, one shared core behind them.
+                    <h3 data-i18n="r1.title">三端原生 · 一个核心</h3>
+                    <p data-i18n="r1.body">
+                        macOS 用 SwiftUI，Windows 用 WinUI 3，Linux 用 GTK4——每个平台都是第一方手感，全部逻辑在一个 Racket CS 核心里经类型化 RPC 驱动它们。
                     </p>
                 </div>
                 <div class="bento-card animate-on-scroll">
                     <div class="card-icon">🔄</div>
-                    <h3 data-en="In-app updates · all platforms" data-zh="应用内更新 · 三平台">In-app updates · all platforms</h3>
-                    <p data-en="Silent checks at launch plus a manual check in Settings. The backend verifies an Ed25519-signed update manifest and downloads the artifact; the host installs it — your data is never touched."
-                        data-zh="启动时静默检查 + 设置里手动检查。后端验证 Ed25519 签名的更新清单并下载产物，宿主负责安装——绝不碰你的数据。">
-                        Signature-verified updates on macOS, Windows and Linux.
+                    <h3 data-i18n="r2.title">应用内更新 · 三平台</h3>
+                    <p data-i18n="r2.body">
+                        启动时静默检查 + 设置里手动检查。后端验证 Ed25519 签名的更新清单并下载产物，宿主负责安装——绝不碰你的数据。
                     </p>
                 </div>
                 <div class="bento-card animate-on-scroll">
                     <div class="card-icon">🤖</div>
-                    <h3 data-en="Agent CLI · Golden-pinned" data-zh="Agent CLI · Golden 钉死">Agent CLI · Golden-pinned</h3>
-                    <p data-en="A headless CLI with stable JSON output and exit codes: `taskly add "Buy milk" --due tomorrow --json`. Byte-level cross-platform parity is pinned by a 61-case golden suite in CI."
-                        data-zh="无头 CLI，稳定的 JSON 输出与退出码：`taskly add "买牛奶" --due tomorrow --json`。跨平台字节级一致由 CI 中的 61 例 golden 套件钉死。">
-                        Headless CLI with stable JSON, pinned by golden tests.
+                    <h3 data-i18n="r3.title">Agent CLI · Golden 钉死</h3>
+                    <p data-i18n="r3.body">
+                        无头 CLI，稳定的 JSON 输出与退出码：`taskly add "买牛奶" --due tomorrow --json`。跨平台字节级一致由 CI 中的 61 例 golden 套件钉死。
                     </p>
                 </div>
                 <div class="bento-card animate-on-scroll">
                     <div class="card-icon">📄</div>
-                    <h3 data-en="Open core · AGPL-3.0" data-zh="开放核心 · AGPL-3.0">Open core · AGPL-3.0</h3>
-                    <p data-en="The desktop core is open source — free to use, fork, and study. The data format and CLI are documented contracts, not accidents."
-                        data-zh="桌面核心开源——自由使用、分叉与研究。数据格式与 CLI 都是成文的契约，而非偶然。">
-                        The desktop core is open source; the contracts are documented.
+                    <h3 data-i18n="r4.title">开放核心 · AGPL-3.0</h3>
+                    <p data-i18n="r4.body">
+                        桌面核心开源——自由使用、分叉与研究。数据格式与 CLI 都是成文的契约，而非偶然。
                     </p>
                 </div>
             </div>
 
             <div class="download-cta">
                 <a href="https://github.com/turinglambdaai/taskly/releases/latest" class="btn btn-primary">
-                    <span data-en="Download from Releases" data-zh="从 Releases 下载">Download from Releases</span>
+                    <span data-i18n="cta.download">从 Releases 下载</span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
-                <a href="manual.html" class="btn btn-secondary" data-en="Read the manual" data-zh="阅读手册">Read the manual</a>
+                <a href="manual.html" class="btn btn-secondary" data-i18n="cta.manual">阅读手册</a>
             </div>
 
-            <p class="section-subtitle animate-on-scroll" style="margin-top:24px; font-size:14px;"
-                data-en="Every release carries SHA256SUMS plus a signed update manifest; macOS builds are ad-hoc signed — clear the Gatekeeper quarantine with `xattr -cr /Applications/Taskly.app` on first launch."
-                data-zh="每个版本都带 SHA256SUMS 与签名更新清单；macOS 包为 ad-hoc 签名——首次启动如被 Gatekeeper 拦截，执行 `xattr -cr /Applications/Taskly.app` 即可。">
-                Every release carries SHA256SUMS plus a signed update manifest.
+            <p class="section-subtitle animate-on-scroll" style="margin-top:24px; font-size:14px;" data-i18n="release.note">
+                每个版本都带 SHA256SUMS 与签名更新清单；macOS 包为 ad-hoc 签名——首次启动如被 Gatekeeper 拦截，执行 `xattr -cr /Applications/Taskly.app` 即可。
             </p>
         </div>
     </section>
@@ -398,15 +392,15 @@
                 <div class="footer-brand">Taskly</div>
                 <div class="footer-links">
                     <a href="https://github.com/turinglambdaai/taskly">GitHub</a>
-                    <a href="https://rivet.jrtx.site" data-en="Rivet" data-zh="Rivet">Rivet</a>
-                    <a href="https://github.com/turinglambdaai/taskly/blob/main/CHANGELOG.md" data-en="Changelog" data-zh="更新日志">Changelog</a>
+                    <a href="https://rivet.jrtx.site">Rivet</a>
+                    <a href="https://github.com/turinglambdaai/taskly/blob/main/CHANGELOG.md" data-i18n="footer.changelog">更新日志</a>
                 </div>
-                <div>&copy; 2026 Taskly. <span data-en="MIT License." data-zh="MIT 协议。">MIT License.</span></div>
+                <div>&copy; 2026 Taskly. <span data-i18n="footer.license">AGPL-3.0 协议。</span></div>
             </div>
         </div>
     </footer>
 
-    <script src="script.js?v=10"></script>
+    <script src="script.js?v=11"></script>
 </body>
 
 </html>
