@@ -158,10 +158,14 @@ private:
   void HandleInstallMarkers();
   bool IsDevCopy();
   bool IsMsiInstall();
+  // copy_button: when non-empty, a secondary button copies the dialog body
+  // (the failure message) to the clipboard — update errors must leave the
+  // screen with the user (family rule: error text is always copyable).
   winrt::fire_and_forget ShowUpdateDialog(
       std::wstring const& title, std::wstring const& body,
       std::wstring const& primary_button, std::wstring const& close_button,
-      std::function<void()> on_primary);
+      std::function<void()> on_primary,
+      std::wstring const& copy_button = L"");
 
   std::shared_ptr<rivet::windows::Backend> backend_;
   rivet_app::Settings settings_{};

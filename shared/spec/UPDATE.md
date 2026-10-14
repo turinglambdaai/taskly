@@ -142,3 +142,7 @@ Inner manifest (decoded `payload`) — rivet's manifest schema:
   `.old` copy until the next successful launch; Windows restores the
   renamed directory and writes a failure marker the next launch
   reports).
+- Update failure text must leave the screen with the user: the error is
+  selectable in the macOS sheet and the Linux dialog, and the Windows
+  dialogs carry a "copy error" button (`updateCopyError`) that puts the
+  failure message on the clipboard. A bug report starts from this string.

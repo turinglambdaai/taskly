@@ -235,6 +235,11 @@ constexpr I18nEntry kI18nFallback[] = {
      "This portable copy can't auto-update — please re-download from the "
      "releases page."},
     {"updateOpenReleases", "打开发布页", "Open releases page"},
+    {"aboutLicense", "以 GNU AGPL-3.0 授权发布",
+     "Released under the GNU AGPL-3.0"},
+    {"aboutWebsite", "访问官网", "Website"},
+    {"aboutReportIssue", "问题反馈", "Report an Issue"},
+    {"updateCopyError", "复制错误信息", "Copy error"},
 };
 
 using I18nTable = std::map<std::string, std::wstring>;
@@ -1830,9 +1835,37 @@ void MainWindow::OnThemeDark(winrt::Windows::Foundation::IInspectable const&,
 winrt::fire_and_forget MainWindow::OnAbout(
     winrt::Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) {
+  auto panel = mxc::StackPanel{};
+  panel.Spacing(4);
+  auto tagline = mxc::TextBlock{};
+  tagline.Text(t("aboutContent"));
+  tagline.TextAlignment(mx::TextAlignment::Center);
+  tagline.Margin({0, 0, 0, 8});
+  auto license = mxc::TextBlock{};
+  license.Text(t("aboutLicense"));
+  license.TextAlignment(mx::TextAlignment::Center);
+  license.FontSize(12);
+  license.Opacity(0.75);
+  auto website = mxc::HyperlinkButton{};
+  website.Content(winrt::box_value(t("aboutWebsite")));
+  website.NavigateUri(winrt::Windows::Foundation::Uri{
+      L"https://taskly.jrtx.site"});
+  website.HorizontalAlignment(mx::HorizontalAlignment::Center);
+  website.Padding({0, 0, 0, 0});
+  auto issue = mxc::HyperlinkButton{};
+  issue.Content(winrt::box_value(t("aboutReportIssue")));
+  issue.NavigateUri(winrt::Windows::Foundation::Uri{
+      L"https://github.com/turinglambdaai/taskly/issues"});
+  issue.HorizontalAlignment(mx::HorizontalAlignment::Center);
+  issue.Padding({0, 0, 0, 0});
+  panel.Children().Append(tagline);
+  panel.Children().Append(license);
+  panel.Children().Append(website);
+  panel.Children().Append(issue);
+
   auto dialog = mxc::ContentDialog{};
-  dialog.Title(winrt::box_value(L"Taskly"));
-  dialog.Content(winrt::box_value(t("aboutContent")));
+  dialog.Title(winrt::box_value(L"Taskly v" + std::wstring(kVersion)));
+  dialog.Content(winrt::box_value(panel));
   dialog.CloseButtonText(t("dialogConfirm"));
   dialog.XamlRoot(Content().XamlRoot());
   co_await dialog.ShowAsync();

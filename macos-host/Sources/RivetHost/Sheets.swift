@@ -269,6 +269,17 @@ struct AboutSheet: View {
                 .font(.system(size: 12))
                 .foregroundStyle(model.theme.secondaryText)
                 .multilineTextAlignment(.center)
+            Text(model.t("aboutLicense"))
+                .font(.system(size: 11))
+                .foregroundStyle(model.theme.secondaryText)
+            HStack(spacing: 20) {
+                Link(model.t("aboutWebsite"),
+                     destination: URL(string: "https://taskly.jrtx.site")!)
+                Link(model.t("aboutReportIssue"),
+                     destination: URL(string: "https://github.com/turinglambdaai/taskly/issues")!)
+            }
+            .font(.system(size: 12))
+            .tint(model.theme.accent)
             Button(model.t("dialogConfirm")) { dismiss() }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.borderedProminent)
@@ -282,7 +293,8 @@ struct AboutSheet: View {
 
 /// Update sheet (shared/spec/UPDATE.md): one phase machine driving check →
 /// offer → download → install. A failed install leaves the running version
-/// untouched; the download phase cannot be dismissed (no cancel support).
+/// untouched; the download phase offers a Cancel button (issue #13) and a
+/// stalled download surfaces a retryable error.
 struct UpdateSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -341,6 +353,7 @@ struct UpdateSheet: View {
                     .font(.system(size: 13))
                     .foregroundStyle(model.theme.secondaryText)
                     .multilineTextAlignment(.center)
+                    .textSelection(.enabled)
                     .frame(maxWidth: 320)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 12) {

@@ -152,5 +152,9 @@
   "updateMsiInstalled": "当前副本通过 MSI 安装器安装，暂不支持应用内更新，请到发布页下载新的安装包。",
   "updateUsePackageManager": "此副本由系统包管理器安装，请用系统包管理器升级 Taskly。",
   "updateAppImageHint": "更新已就位，重启 Taskly 即可切换到新版本。",
-  "updateRestartNow": "重启并更新"
+  "updateRestartNow": "重启并更新",
+  "aboutLicense": "以 GNU AGPL-3.0 授权发布",
+  "aboutWebsite": "访问官网",
+  "aboutReportIssue": "问题反馈",
+  "updateCopyError": "复制错误信息"
 }

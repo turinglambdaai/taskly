@@ -127,7 +127,12 @@ pickers. Save (blank text silently ignored), Delete (confirm first), Cancel
   and live; its Settings toggle is a per-session override. Plus 检查更新… /
   Check for Updates… (manual online-update check; auto-check runs at
   launch and every 4 h — contract: `UPDATE.md`).
-- Help: About — `Taskly v<version>` + `© 2026 Taskly Team` + `aboutContent`.
+- Help: About — `Taskly v<version>` + `© 2026 Taskly Team` +
+  `aboutContent` + license line (`aboutLicense`) + two link buttons on
+  every host: Website (`aboutWebsite` → taskly.jrtx.site) and Report an
+  Issue (`aboutReportIssue` → the GitHub issue tracker). Linux uses the
+  GTK about dialog's native version/license/website rows; macOS and
+  Windows render the same fields inside their sheet/dialog.
 - All accelerators work window-wide without opening the menu.
 
 ## 9. Reminders (all platforms)

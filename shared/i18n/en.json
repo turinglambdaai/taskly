@@ -152,5 +152,9 @@
   "updateMsiInstalled": "This copy was installed via the MSI installer — in-app update isn't available for it. Grab the new installer from the releases page.",
   "updateUsePackageManager": "This copy came from the system package manager — use it to upgrade Taskly.",
   "updateAppImageHint": "The update is in place — restart Taskly to switch to the new version.",
-  "updateRestartNow": "Restart and update"
+  "updateRestartNow": "Restart and update",
+  "aboutLicense": "Released under the GNU AGPL-3.0",
+  "aboutWebsite": "Website",
+  "aboutReportIssue": "Report an Issue",
+  "updateCopyError": "Copy error"
 }

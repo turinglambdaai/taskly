@@ -251,7 +251,8 @@ void MainWindow::RunUpdateCheck(bool silent) {
     if (!silent) {
       SetStatus(L"");
       ShowUpdateDialog(L"Taskly", tf("updateCheckFailed", wide(e.what())),
-                       L"", t("dialogConfirm"), nullptr);
+                       L"", t("dialogConfirm"), nullptr,
+                       t("updateCopyError"));
     }
   }
 }
@@ -265,7 +266,8 @@ void MainWindow::HandleUpdateCheckResult(
   if (!ok) {
     if (!silent) {
       ShowUpdateDialog(L"Taskly", tf("updateCheckFailed", wide(failure)),
-                       L"", t("dialogConfirm"), nullptr);
+                       L"", t("dialogConfirm"), nullptr,
+                       t("updateCopyError"));
     }
     return;
   }
@@ -292,7 +294,7 @@ void MainWindow::HandleUpdateCheckResult(
   }
   auto const detail = check.error.value_or(check.status);
   ShowUpdateDialog(L"Taskly", tf("updateCheckFailed", wide(detail)), L"",
-                   t("dialogConfirm"), nullptr);
+                   t("dialogConfirm"), nullptr, t("updateCopyError"));
 }
 
 void MainWindow::RecordUpdateCheck() {
@@ -442,7 +444,7 @@ void MainWindow::FailDownload(std::string const& message) {
   }
   SetStatus(L"");
   ShowUpdateDialog(L"Taskly", tf("updateInstallFailed", wide(message)), L"",
-                   t("dialogConfirm"), nullptr);
+                   t("dialogConfirm"), nullptr, t("updateCopyError"));
 }
 
 // ---------- install handoff ------------------------------------------------------
@@ -648,13 +650,16 @@ bool MainWindow::IsMsiInstall() {
 winrt::fire_and_forget MainWindow::ShowUpdateDialog(
     std::wstring const& title, std::wstring const& body,
     std::wstring const& primary_button, std::wstring const& close_button,
-    std::function<void()> on_primary) {
+    std::function<void()> on_primary, std::wstring const& copy_button) {
   auto dialog = mxc::ContentDialog{};
   dialog.Title(winrt::box_value(title));
   dialog.Content(winrt::box_value(body));
   if (!primary_button.empty()) {
     dialog.PrimaryButtonText(primary_button);
     dialog.DefaultButton(mxc::ContentDialogButton::Primary);
+  }
+  if (!copy_button.empty()) {
+    dialog.SecondaryButtonText(copy_button);
   }
   dialog.CloseButtonText(close_button);
   dialog.XamlRoot(Content().XamlRoot());
@@ -669,6 +674,17 @@ winrt::fire_and_forget MainWindow::ShowUpdateDialog(
   if (result == mxc::ContentDialogResult::Primary && on_primary &&
       weak.get()) {
     on_primary();
+  }
+  if (result == mxc::ContentDialogResult::Secondary) {
+    try {
+      winrt::Windows::ApplicationModel::DataTransfer::DataPackage package;
+      package.SetText(body);
+      winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(
+          package);
+    } catch (...) {
+      // The clipboard can be briefly held by another process; the failure
+      // text also lands in update-failed.txt, so nothing is lost.
+    }
   }
 }
 

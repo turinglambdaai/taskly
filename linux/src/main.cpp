@@ -136,6 +136,10 @@ char const* kFallbackZhKeys[] = {
     "updateUsePackageManager", "此副本由系统包管理器安装，请用系统包管理器升级 Taskly。",
     "updateAppImageHint",     "更新已就位，重启 Taskly 即可切换到新版本。",
     "updateRestartNow",       "重启并更新",
+    "aboutLicense",           "以 GNU AGPL-3.0 授权发布",
+    "aboutWebsite",           "访问官网",
+    "aboutReportIssue",       "问题反馈",
+    "updateCopyError",        "复制错误信息",
     "aboutContent",
     "一款专注高效的个人任务管理工具\n帮助您轻松规划、组织和完成各项任务",
     nullptr,
@@ -229,6 +233,10 @@ char const* kFallbackEnKeys[] = {
     "updateUsePackageManager", "This copy came from the system package manager — use it to upgrade Taskly.",
     "updateAppImageHint",     "The update is in place — restart Taskly to switch to the new version.",
     "updateRestartNow",       "Restart and update",
+    "aboutLicense",           "Released under the GNU AGPL-3.0",
+    "aboutWebsite",           "Website",
+    "aboutReportIssue",       "Report an Issue",
+    "updateCopyError",        "Copy error",
     "aboutContent",
     "A focused and efficient personal task management tool\nHelping you "
     "plan, organize and complete tasks easily",
@@ -1114,6 +1122,8 @@ void show_update_message(std::string const& title, std::string const& body) {
   auto* area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
   auto* text = gtk_label_new(body.c_str());
   gtk_label_set_wrap(GTK_LABEL(text), TRUE);
+  // Error text must be copyable — a bug report starts from this string.
+  gtk_label_set_selectable(GTK_LABEL(text), TRUE);
   gtk_label_set_max_width_chars(GTK_LABEL(text), 60);
   gtk_widget_set_margin_top(text, 12);
   gtk_widget_set_margin_bottom(text, 6);
@@ -1616,8 +1626,15 @@ void confirm_dialog(char const* title, char const* body,
 void show_about_dialog() {
   auto* dialog = gtk_about_dialog_new();
   gtk_about_dialog_set_program_name(GTK_ABOUT_DIALOG(dialog), "Taskly");
+  gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(dialog), kVersion);
   gtk_about_dialog_set_comments(GTK_ABOUT_DIALOG(dialog),
                                 tr("aboutContent").c_str());
+  gtk_about_dialog_set_license(GTK_ABOUT_DIALOG(dialog),
+                               tr("aboutLicense").c_str());
+  gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(dialog),
+                               "https://taskly.jrtx.site");
+  gtk_about_dialog_set_website_label(GTK_ABOUT_DIALOG(dialog),
+                                     tr("aboutWebsite").c_str());
   gtk_window_set_transient_for(GTK_WINDOW(dialog), g_state.window);
   gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
   gtk_window_present(GTK_WINDOW(dialog));
