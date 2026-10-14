@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The About box now carries the full support surface on every host.**
+  All three platforms show the license line (`aboutLicense`), a Website
+  link (taskly.jrtx.site) and a Report-an-Issue link (the GitHub issue
+  tracker); Windows and Linux also gained the version line macOS already
+  had. Linux uses the GTK about dialog's native rows, Windows renders a
+  stacked dialog with hyperlink buttons (PRODUCT-SPEC §8). A bug report
+  now starts one click away from the failure it describes.
+- **`taskly version` and `taskly check-update` (CLI).** `version` prints
+  `Taskly <version>` (`--json`: version/channel/platform/architecture)
+  from a new leaf `version.rkt`, so identity reporting never loads the
+  update machinery. `check-update` runs the same signed-manifest chain as
+  the GUI (fetch → Ed25519 verify → semver/channel selection) and prints
+  up-to-date / available-plus-URL (`--json` mirrored); failures exit 1
+  with the standard stderr JSON. Agents can finally ask a headless
+  Taskly whether an update exists. Release identity stays single-source:
+  `check-release-version.sh` now checks `version.rkt`.
+- **GitHub issue templates** (bug report + feature request) so feedback
+  from the About link lands structured.
+
+### Changed
+- **Update failure text now leaves the screen with the user** (contract
+  added to `UPDATE.md`). The macOS sheet's error is selectable, the Linux
+  error dialog's label is selectable, and the Windows update dialogs
+  carry a "copy error" button that puts the failure message on the
+  clipboard.
+- Golden suite: `{{version}}` / `{{platform}}` / `{{architecture}}`
+  normalization keeps the `version` case stable across releases and
+  portable across CI platforms.
+
 ## [0.1.4] - 2026-10-14
 
 ### Changed
