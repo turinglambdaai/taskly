@@ -1864,8 +1864,7 @@ winrt::fire_and_forget MainWindow::OnAbout(
   panel.Children().Append(issue);
 
   auto dialog = mxc::ContentDialog{};
-  dialog.Title(winrt::box_value(L"Taskly v" +
-                                std::wstring(rivet_app::kVersion)));
+  dialog.Title(winrt::box_value(L"Taskly v" + wide(rivet_app::kVersion)));
   dialog.Content(winrt::box_value(panel));
   dialog.CloseButtonText(t("dialogConfirm"));
   dialog.XamlRoot(Content().XamlRoot());
