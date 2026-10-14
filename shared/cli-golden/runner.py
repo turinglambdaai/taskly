@@ -26,6 +26,7 @@ so CI never silently passes a newly added case.
 import argparse
 import datetime
 import json
+import platform
 import re
 import sqlite3
 import subprocess
@@ -37,11 +38,25 @@ SHARED_DIR = Path(__file__).resolve().parent
 ISO_TS = re.compile(
     r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})")
 
+# The repo's release version — `version` output carries it, and the golden
+# bytes must not churn on every release bump (CLI-SPEC: {{version}}).
+VERSION = (SHARED_DIR.parent.parent / "VERSION").read_text(
+    encoding="utf-8").strip()
+
+# Same mapping the backend ships into update manifests (version.rkt): the
+# golden files stay portable across the three CI platforms.
+PLATFORM = {"darwin": "macos", "win32": "windows"}.get(sys.platform, "linux")
+ARCHITECTURE = "arm64" if platform.machine() in ("arm64", "aarch64") else "x64"
+
 
 def normalize(text: str, dynamic_dates: bool) -> str:
     tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
     today = datetime.date.today().isoformat()
     text = ISO_TS.sub("{{now}}", text)
+    if VERSION:
+        text = text.replace(VERSION, "{{version}}")
+    text = text.replace(f'"{PLATFORM}"', '"{{platform}}"')
+    text = text.replace(f'"{ARCHITECTURE}"', '"{{architecture}}"')
     # {{today}}/{{tomorrow}} only for cases that use relative --due
     # expressions — a static yyyy-MM-dd fixture date must never be
     # rewritten just because the calendar caught up with it.

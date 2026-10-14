@@ -8,6 +8,7 @@
 (require racket/string
          racket/format
          racket/file
+         racket/runtime-path
          "clock.rkt"
          "config.rkt"
          "db.rkt"
@@ -15,7 +16,8 @@
          "errors.rkt"
          "model.rkt"
          "paths.rkt"
-         "validation.rkt")
+         "validation.rkt"
+         "version.rkt")
 
 (provide run-cli)
 
@@ -271,7 +273,7 @@
 (define help-text
   (string-append
    "Taskly — task manager command-line interface (for AI agents & scripting)\n"
-   "Commands: list, lists, add, update, done, undone, rm, search, mklist, rmlist, install-cli, uninstall-cli\n"
+   "Commands: list, lists, add, update, done, undone, rm, search, mklist, rmlist, version, check-update, install-cli, uninstall-cli\n"
    "Global options: --json, --db <path>, --quiet (-q)\n"))
 
 (define (cmd-list db a)
@@ -532,6 +534,69 @@
                    (current-error-port))
         1)))
 
+;; ---- version / check-update (CLI-SPEC §version / §check-update) ----
+
+;; Identity reporting must not pay the update machinery's load: version.rkt
+;; is a leaf module, `check-update` is the only command that pulls the
+;; updater (dynamic-require, so list/add/... never load crypto/rivet).
+(define (cmd-version a)
+  (cond
+    [(flag (cli-args-flags a) 'json)
+     (emit-json
+      (json-object
+       (list (cons "version" (jstr app-version))
+             (cons "channel" (jstr (symbol->string app-channel)))
+             (cons "platform" (jstr (symbol->string (platform-symbol))))
+             (cons "architecture"
+                   (jstr (symbol->string (architecture-symbol)))))
+       ""))]
+    [else (displayln (string-append app-display-name " " app-version))])
+  0)
+
+;; Network-bound (fetches the signed "latest" manifest): never
+;; golden-tested; the error path is covered against a closed local port in
+;; racket/tests/cli-update-test.rkt. Resolved relative to this file — the
+;; collection path is not registered in every dev checkout.
+(define-runtime-path updater-module "updater.rkt")
+(define (cmd-check-update a)
+  (define result ((dynamic-require updater-module 'perform-check!)))
+  (define status (hash-ref result 'status "error"))
+  (cond
+    [(equal? status "error")
+     (fail 1 (hash-ref result 'message "update check failed"))]
+    [(equal? status "available")
+     (define current (hash-ref result 'currentVersion app-version))
+     (define available (hash-ref result 'availableVersion "?"))
+     (define url (hash-ref result 'url #f))
+     (cond
+       [(flag (cli-args-flags a) 'json)
+        (emit-json
+         (json-object
+          (filter values
+                  (list (cons "updateAvailable" "true")
+                        (cons "currentVersion" (jstr current))
+                        (cons "availableVersion" (jstr available))
+                        (and url (cons "url" (jstr url)))))
+          ""))]
+       [else
+        (displayln (format "发现新版本：~a（当前 ~a）" available current))
+        (when url (displayln url))])
+     0]
+    [else
+     (cond
+       [(flag (cli-args-flags a) 'json)
+        (emit-json
+         (json-object
+          (list (cons "updateAvailable" "false")
+                (cons "currentVersion"
+                      (jstr (hash-ref result 'currentVersion app-version))))
+          ""))]
+       [else
+        (displayln
+         (format "当前已是最新版本（~a）"
+                 (hash-ref result 'currentVersion app-version)))])
+     0]))
+
 ;; ---- entry ----
 
 ;; Raises (so the run-catching wrapper formats it as the exit-4 JSON):
@@ -586,6 +651,8 @@
      (cmd-mklist (open-cli-database flags) a)]
     [(equal? sub "rmlist")
      (cmd-rmlist (open-cli-database flags) a)]
+    [(equal? sub "version") (cmd-version a)]
+    [(equal? sub "check-update") (cmd-check-update a)]
     [(equal? sub "install-cli") (cmd-install-cli)]
     [(equal? sub "uninstall-cli") (cmd-uninstall-cli)]
     [else (fail 1 (format "Unknown command: \"~a\"" sub))]))

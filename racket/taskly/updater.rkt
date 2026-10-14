@@ -29,19 +29,14 @@
          racket/port
          racket/string
          "config.rkt"
-         "paths.rkt")
+         "paths.rkt"
+         "version.rkt")
 
-(provide app-version
-         app-build
-         app-identifier
-         app-channel
-         app-display-name
+(provide (all-from-out "version.rkt")
          update-key-id
          update-public-key-b64
          default-update-base-url
          current-update-base-url
-         platform-symbol
-         architecture-symbol
          installer-extension
          manifest-url
          destination-path
@@ -55,15 +50,6 @@
          perform-check!
          start-download!
          rollout-bucket)
-
-;; Release identity duplicated from rivet.rktd. The packaged app cannot
-;; read the project file at runtime, so the updater embeds these constants.
-;; scripts/check-release-version.sh re-checks app-version against VERSION.
-(define app-version "0.1.4")
-(define app-build 1)
-(define app-identifier "app.taskly.Taskly")
-(define app-channel 'stable)
-(define app-display-name "Taskly")
 
 (define update-key-id "taskly-2026-10")
 
@@ -94,17 +80,9 @@
 
 ;; ---------- platform identity ----------
 
-;; rivet release tooling emits these exact symbols into update manifests
-(define (platform-symbol)
-  (case (system-type 'os)
-    [(macosx) 'macos]
-    [(windows) 'windows]
-    [else 'linux]))
-
-(define (architecture-symbol)
-  (case (system-type 'arch)
-    [(aarch64 arm64) 'arm64]
-    [else 'x64]))
+;; platform-symbol / architecture-symbol live in version.rkt (the CLI's
+;; `version` command reports identity without loading this module's
+;; crypto/rivet dependencies; they are re-provided above).
 
 (define (installer-extension)
   (case (system-type 'os)
@@ -240,7 +218,10 @@
                (update-manifest-published-at
                 (update-candidate-manifest candidate))
                'installer (symbol->string (update-artifact-installer artifact))
-               'sizeBytes (update-artifact-size artifact))]
+               'sizeBytes (update-artifact-size artifact)
+               ;; Not part of the RPC record — `check-update` (CLI) reads it
+               ;; so an agent gets the pinned download URL directly.
+               'url (update-artifact-url artifact))]
       [else
        (state-set! 'phase "idle")
        (state-set! 'availableVersion #f)

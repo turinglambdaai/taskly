@@ -598,6 +598,19 @@
         "--db",
         "/nonexistent-dir-for-golden/x.db"
       ]
+    },
+    {
+      "name": "version",
+      "args": [
+        "version"
+      ]
+    },
+    {
+      "name": "version-json",
+      "args": [
+        "version",
+        "--json"
+      ]
     }
   ]
 }

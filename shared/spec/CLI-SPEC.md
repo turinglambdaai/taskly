@@ -105,6 +105,28 @@ Output: list JSON / list row / quiet → id.
 Cascade-delete tasks then the list; output like `rm` (`Deleted list N (and
 its tasks)`); exit 0 either way.
 
+### version
+Release identity, no database access (works without `~/.taskly/`).
+- Default: `Taskly <version>` on stdout, exit 0.
+- `--json`: `{"version": "...", "channel": "stable", "platform":
+  "macos|windows|linux", "architecture": "arm64|x64"}` — the same
+  identity the update feed carries (`version.rkt`).
+
+### check-update
+Online update check over the signed feed (identical chain to the GUI:
+manifest fetch → Ed25519 verify → semver/channel selection). **Network
+access; no database access.**
+- Default: up-to-date → `当前已是最新版本（<version>）`; available →
+  `发现新版本：<available>（当前 <current>）` plus the pinned artifact URL
+  on the next line; exit 0 both ways.
+- `--json`: `{"updateAvailable": false, "currentVersion": "..."}` or
+  `{"updateAvailable": true, "currentVersion": "...", "availableVersion":
+  "...", "url": "..."}` (`url` omitted when absent).
+- Manifest/verification/network failure → generic error, exit 1, the
+  English internal message on stderr JSON (structural-error rule).
+- Not golden-tested (network-bound); the error path is covered by
+  `racket/tests/cli-update-test.rkt` against a closed local port.
+
 ### install-cli / uninstall-cli
 - macOS/Linux: shell wrapper `#!/bin/sh\nexec "<exe>" "$@"` at
   `~/.local/bin/taskly` (chmod +x); if `~/.local/bin` is not on PATH, append
@@ -156,12 +178,20 @@ Comparison normalizes dynamic values in actual output first:
   **only** for cases flagged `"dynamicDates": true` (those using relative
   `--due` expressions) — a static fixture date must never be rewritten
   when the calendar catches up with it
+- the release version (repo `VERSION` file) → `{{version}}`, so the
+  `version` case does not churn on every release bump; likewise the
+  running host's platform/architecture → `{{platform}}` /
+  `{{architecture}}` (same mapping the update manifests use), keeping the
+  goldens portable across the three CI platforms
 
 Each platform wraps the shared `runner.py` with its own binary path;
-macOS: `apps/macos/scripts/golden-cli.sh` (wired into `native.yml`).
-Cases with `pre` commands build dynamic state (e.g. a task due today)
-before the asserted command; pre output is discarded but must exit 0.
-`install-cli` / `uninstall-cli` are excluded (they mutate PATH/shell
-files). After an intentional behavior change: fix the spec first, run
-`scripts/golden-cli.sh --record`, review the diff against this spec, and
-commit the new goldens in the same change.
+development runs it directly:
+`python3 shared/cli-golden/runner.py --binary <binary>` (CI drives the
+packaged app's CLI). Cases with `pre` commands build dynamic state
+(e.g. a task due today) before the asserted command; pre output is
+discarded but must exit 0. `install-cli` / `uninstall-cli` /
+`check-update` are excluded (PATH/shell mutation and network access
+respectively). After an intentional behavior change: fix the spec
+first, run `python3 shared/cli-golden/runner.py --binary <binary>
+--record`, review the diff against this spec, and commit the new
+goldens in the same change.
