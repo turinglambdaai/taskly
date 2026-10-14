@@ -380,12 +380,12 @@
                              "expected" expected
                              "actual" actual))
     ;; The replaced image must stay executable: rename carries the temp
-    ;; file's modes, so set them explicitly before the swap.
-    (file-or-directory-permissions
-     temporary
-     #(user-read user-write user-execute
-                 group-read group-execute
-                 other-read other-execute))
+    ;; file's modes, so set them explicitly before the swap. The setter
+    ;; takes integer bits (the vector form is a contract violation on
+    ;; Windows, where POSIX modes do not exist) — and the swap itself is
+    ;; only ever reached under APPIMAGE, i.e. never on Windows.
+    (unless (eq? (system-type 'os) 'windows)
+      (file-or-directory-permissions temporary #o755))
     (rename-file-or-directory temporary self #t)
     self))
 
