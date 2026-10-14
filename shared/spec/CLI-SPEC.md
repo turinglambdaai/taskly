@@ -4,7 +4,8 @@
 > **any** argument at launch routes to the CLI (the GUI toolkit is never
 > initialized); no arguments opens the GUI. Command output and exit codes
 > are identical across platforms — enforced by golden-output tests in CI
-> (`shared/cli-golden/`, 61 cases; canonical implementation
+> (`shared/cli-golden/`; the case count lives in `cases.json` and only
+> grows — canonical implementation
 > `racket/taskly/cli.rkt`, the M6 Racket CLI).
 
 ```

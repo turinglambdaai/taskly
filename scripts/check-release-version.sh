@@ -30,4 +30,24 @@ RIVET_RKTD_VERSION="$(grep -o '"[0-9]*\.[0-9]*\.[0-9]*"' "$ROOT/rivet.rktd" | he
 grep -qF "(define app-version \"$VERSION\")" "$ROOT/racket/taskly/version.rkt" || \
   fail "racket/taskly/version.rkt app-version does not match VERSION '$VERSION'"
 
-echo "release preflight: version $VERSION is aligned (VERSION == rivet.rktd == version.rkt)"
+# The generated native clients embed the same release identity. These files
+# are marked do-not-edit: a mismatch means the tree forgot to regenerate
+# them after the version bump (the 0.1.1 release shipped a stale macOS
+# constant and was only patched by hand in commit 8c34ed5).
+check_generated_version() {
+  local file="$1" pattern="$2" found
+  found="$(grep -oE "$pattern" "$ROOT/$file" | head -n1 | grep -oE '"[^"]*"' | tr -d '"')"
+  [[ "$found" == "$VERSION" ]] || \
+    fail "generated file '$file' version '${found:-missing}' does not match VERSION '$VERSION' (regenerate, do not hand-edit)"
+}
+check_generated_version \
+  "macos-host/Sources/RivetHost/GeneratedBackend.swift" \
+  'public static let version = "[^"]+"'
+check_generated_version \
+  "windows/GeneratedBackend.hpp" \
+  'kVersion\[\] = "[^"]+"'
+check_generated_version \
+  "linux/GeneratedBackend.hpp" \
+  'kVersion\[\] = "[^"]+"'
+
+echo "release preflight: version $VERSION is aligned (VERSION == rivet.rktd == version.rkt == generated clients)"

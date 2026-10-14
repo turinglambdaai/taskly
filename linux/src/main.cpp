@@ -129,9 +129,9 @@ char const* kFallbackZhKeys[] = {
     "updateDownloadPercent",  "正在下载新版本… {0}%",
     "updateDownloaded",       "更新已下载",
     "updateInstallHint",      "安装方法：解压下载的压缩包并覆盖当前 Taskly 目录。",
-    // Host-side stopgap: the Linux open-folder hand-off has no shared i18n
-    // key yet — copied here so the fallback stays byte-usable; promote it
-    // to shared/i18n when another platform needs it.
+    // updateOpenFolder also lives in shared/i18n now; this compiled-in copy
+    // stays so the fallback table keeps working when the staged JSON is
+    // missing or unreadable (tr() must always yield byte-usable text).
     "updateOpenFolder",       "打开文件夹",
     "updateUsePackageManager", "此副本由系统包管理器安装，请用系统包管理器升级 Taskly。",
     "updateAppImageHint",     "更新已就位，重启 Taskly 即可切换到新版本。",
@@ -228,7 +228,7 @@ char const* kFallbackEnKeys[] = {
     "updateDownloaded",       "Update downloaded",
     "updateInstallHint",      "To install, extract the downloaded archive over "
                               "your current Taskly folder.",
-    // Host-side stopgap: see the zh table note above.
+    // updateOpenFolder: compiled-in fallback, see the zh table note above.
     "updateOpenFolder",       "Open Folder",
     "updateUsePackageManager", "This copy came from the system package manager — use it to upgrade Taskly.",
     "updateAppImageHint",     "The update is in place — restart Taskly to switch to the new version.",

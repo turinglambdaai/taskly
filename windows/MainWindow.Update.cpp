@@ -194,6 +194,9 @@ void MainWindow::RunSilentUpdateCheck() {
           });
         });
   } catch (...) {
+    // Deliberately silent: launch path. Any failure here (backend not yet
+    // up, dispatcher gone) must never block startup or pop UI; the 4-hour
+    // throttle window simply retries on a later launch.
   }
 }
 
