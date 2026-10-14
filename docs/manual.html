@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Taskly — Manual</title>
     <meta name="description" content="Taskly user manual — scheduling shortcuts, smart lists, custom lists, editing, CLI, and sync.">
-    <link rel="stylesheet" href="styles.css?v=10">
+    <link rel="stylesheet" href="styles.css?v=11">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link rel="icon" href="taskly.svg" type="image/svg+xml" sizes="any">
 </head>
@@ -71,6 +71,9 @@
 
         <!-- Sticky side TOC -->
         <aside class="manual-toc" id="toc">
+            <div class="manual-toc-group" data-en="Get started" data-zh="上手">Get started</div>
+            <a href="#quickstart" data-en="Five-minute start" data-zh="五分钟上手">Five-minute start</a>
+
             <div class="manual-toc-group" data-en="Scheduling" data-zh="排程">Scheduling</div>
             <a href="#shortcuts" data-en="Quick syntax" data-zh="速记语法">Quick syntax</a>
             <a href="#relative" data-en="Relative time (+)" data-zh="相对时间 (+)">Relative time (+)</a>
@@ -92,6 +95,44 @@
 
         <!-- Content -->
         <main>
+
+            <!-- =================== Quick start =================== -->
+            <section class="manual-section" id="quickstart">
+                <h2 class="manual-h2"><span class="h2-emoji">🚀</span>
+                    <span data-en="Five-minute start" data-zh="五分钟上手">Five-minute start</span>
+                </h2>
+                <p data-en="Download, open, add one task. That's the whole tutorial — everything else on this page is optional."
+                   data-zh="下载、打开、加一条任务。教程到这里就结束了——本页其余内容都是可选的。">
+                    Download, open, add one task. That's the whole tutorial — everything else on this page is optional.
+                </p>
+                <ol>
+                    <li data-en="<strong>Install.</strong> Grab the latest build from the <a href='https://github.com/turinglambdaai/taskly/releases/latest'>Releases</a> page: drag the app from the .dmg into Applications, run the .msi installer on Windows, or install the .deb / .rpm / .AppImage on Linux."
+                        data-zh="<strong>安装。</strong>到 <a href='https://github.com/turinglambdaai/taskly/releases/latest'>Releases</a> 页下载最新版：macOS 把 .dmg 里的应用拖进「应用程序」，Windows 双击 .msi 安装，Linux 用 .deb / .rpm / .AppImage。">
+                        <strong>Install.</strong> Grab the latest build from the Releases page.
+                    </li>
+                    <li data-en="<strong>Open it.</strong> The left side holds the smart lists (Today, Scheduled, All, Completed) and your own lists; tasks live on the right. There is no account and nothing to configure."
+                        data-zh="<strong>打开。</strong>左边是智能列表（今天、计划、全部、完成）和你自己的清单，任务在右边。没有账号，也不需要任何配置。">
+                        <strong>Open it.</strong> Smart lists on the left, tasks on the right — no account, nothing to configure.
+                    </li>
+                    <li data-en="<strong>Add a task.</strong> Click the add field (or press <code>⌘N</code> / <code>Ctrl+N</code>), type what to do, and add a due date in plain language if you want: <code>交周报 @15:00 +1d</code> is due tomorrow at 3pm. Press Enter."
+                        data-zh="<strong>加一条任务。</strong>点输入框（或按 <code>⌘N</code> / <code>Ctrl+N</code>），写上要做的事，需要的话用大白话带上时间：<code>交周报 @15:00 +1d</code> 表示明天下午 3 点到期。回车即可。">
+                        <strong>Add a task.</strong> Type it with a plain-language due date and press Enter.
+                    </li>
+                    <li data-en="<strong>Finish it.</strong> Click the circle next to the task. A banner offers one-click undo — no confirmation dialogs anywhere."
+                        data-zh="<strong>完成它。</strong>点任务前的圆圈即可。误点会有横幅一键撤销——全程没有确认弹窗。">
+                        <strong>Finish it.</strong> Click the circle; the banner undoes mistakes in one click.
+                    </li>
+                </ol>
+                <img src="img/taskly-main-light.png"
+                     alt="Taskly main window on macOS: smart lists, my lists and task rows"
+                     data-alt-en="Taskly main window on macOS: smart lists, my lists and task rows"
+                     data-alt-zh="Taskly 主窗口（macOS）：智能清单、我的列表与任务行"
+                     class="manual-shot" loading="lazy">
+                <p class="manual-hint" data-en="The screenshot is the real macOS build. Windows and Linux follow the same layout with platform-styled window chrome."
+                   data-zh="截图为真实的 macOS 版本。Windows 与 Linux 布局相同，窗口边框随平台风格。">
+                    The screenshot is the real macOS build.
+                </p>
+            </section>
 
             <!-- =================== Scheduling shortcuts =================== -->
             <section class="manual-section" id="shortcuts">

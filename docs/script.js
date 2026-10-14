@@ -102,22 +102,7 @@ const i18n = {
         'hero.lead': 'Taskly is a clean, focused task manager with keyboard-friendly scheduling shortcuts, a built-in CLI for automation, and native apps for every desktop. Your data stays yours.',
         'hero.download': 'Download Taskly',
         'hero.github': 'View on GitHub',
-        'mock.today': 'Today',
-        'mock.scheduled': 'Scheduled',
-        'mock.all': 'All',
-        'mock.completed': 'Completed',
-        'mock.mylists': 'My Lists',
-        'mock.work': 'Work',
-        'mock.personal': 'Personal',
-        'mock.ideas': 'Ideas',
-        'mock.addtask': 'Add Task',
-        'mock.task1.title': 'Meeting with design team',
-        'mock.task1.date': 'Tomorrow 10:00',
-        'mock.task1.notes': 'Discuss Q3 roadmap',
-        'mock.task2.title': 'Submit project report',
-        'mock.task2.date': 'Fri 5:00 PM',
-        'mock.task3.title': 'Update dependencies',
-        'mock.task4.title': 'Review pull requests',
+        'hero.shotAlt': 'Taskly main window on macOS — smart lists, my lists and task rows',
         'features.title': 'Designed to fade into the background.',
         'features.subtitle': 'Calm colors, thoughtful typography, and nothing you don\u2019t need. So you can focus on doing, not managing.',
         'f1.title': 'Scheduling shortcuts',
@@ -164,22 +149,7 @@ const i18n = {
         'hero.lead': 'Taskly 是一款清爽、专注的任务管理器：支持便捷的排程速记、内置命令行工具便于自动化，并为每个桌面平台提供原生应用。数据始终归你所有。',
         'hero.download': '下载 Taskly',
         'hero.github': '在 GitHub 查看',
-        'mock.today': '今天',
-        'mock.scheduled': '计划',
-        'mock.all': '全部',
-        'mock.completed': '已完成',
-        'mock.mylists': '我的列表',
-        'mock.work': '工作',
-        'mock.personal': '个人',
-        'mock.ideas': '创意',
-        'mock.addtask': '添加任务',
-        'mock.task1.title': '与设计团队开会',
-        'mock.task1.date': '明天 10:00',
-        'mock.task1.notes': '讨论 Q3 路线图',
-        'mock.task2.title': '提交项目报告',
-        'mock.task2.date': '周五 17:00',
-        'mock.task3.title': '更新依赖',
-        'mock.task4.title': '审阅 Pull Request',
+        'hero.shotAlt': 'Taskly 主窗口（macOS）：智能清单、我的列表与任务行',
         'features.title': '设计，是为了退到幕后。',
         'features.subtitle': '宁静的色彩、考究的排版，没有多余的东西。让你专注于执行，而非管理。',
         'f1.title': '排程速记',
@@ -277,6 +247,10 @@ function applyLanguage(lang, persist) {
         const key = el.getAttribute('data-i18n');
         const text = i18n[lang] && i18n[lang][key];
         if (text) el.textContent = text;
+    });
+    document.querySelectorAll('[data-i18n-alt]').forEach(el => {
+        const text = i18n[lang] && i18n[lang][el.getAttribute('data-i18n-alt')];
+        if (text) el.setAttribute('alt', text);
     });
     const themeBtn = document.getElementById('theme-btn');
     if (themeBtn && i18n[lang] && i18n[lang]['nav.theme']) {
