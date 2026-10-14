@@ -1626,7 +1626,7 @@ void confirm_dialog(char const* title, char const* body,
 void show_about_dialog() {
   auto* dialog = gtk_about_dialog_new();
   gtk_about_dialog_set_program_name(GTK_ABOUT_DIALOG(dialog), "Taskly");
-  gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(dialog), kVersion);
+  gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(dialog), rivet_app::kVersion);
   gtk_about_dialog_set_comments(GTK_ABOUT_DIALOG(dialog),
                                 tr("aboutContent").c_str());
   gtk_about_dialog_set_license(GTK_ABOUT_DIALOG(dialog),
