@@ -74,3 +74,6 @@ compiled/
 
 ## C++/WinRT generated projection (msbuild cppwinrt)
 windows/Generated Files/
+
+# raco rivet schema dump (generated inspection artifact)
+/rivet-schema.json
