@@ -6,10 +6,10 @@
 #
 # Default private key location: ~/.taskly/update-signing-key.pem — OUTSIDE
 # the repository. The public key is printed base64 (raw 32 bytes) for
-# embedding in apps/macos/.../UpdateService.swift.
+# embedding in macos-host/Sources/RivetHost/UpdateService.swift.
 #
 # One-time: also put the PEM into the GitHub secret
-# UPDATE_ED25519_PRIVATE_KEY so release-native.yml can sign manifests.
+# UPDATE_ED25519_PRIVATE_KEY so release.yml can sign manifests.
 set -euo pipefail
 
 KEY_PATH="${1:-$HOME/.taskly/update-signing-key.pem}"

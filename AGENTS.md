@@ -85,4 +85,4 @@ taskly/
 - **加 RPC**：`racket/taskly/backend.rkt` 定义 → `raco rivet build` 重新生成客户端 → 宿主调用生成代码
 - **macOS 宿主 UI**：`macos-host/Sources/RivetHost/`（AppModel @Observable + SwiftUI 视图），交互基准见 PRODUCT-SPEC §5b
 - **改文案**：改 `shared/i18n/`，跑 `scripts/sync-i18n.sh`；改清单图标：改 `shared/emoji.json` 同样同步
-- **发版**：见「快速命令」发布链；rivet pin（ci.yml `RIVET_PIN` == release.yml `RIVET_COMMIT`）只能有意 bump 并重新跑全套 CI
+- **发版**：见「快速命令」发布链；rivet pin（ci.yml 与 release.yml 的 `RIVET_PIN` 保持一致）只能有意 bump 并重新跑全套 CI

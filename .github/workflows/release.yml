@@ -51,8 +51,8 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           ARCH="${{ matrix.arch }}"
           cd dist
-          # rivet 0.6.1 names the portable zip in family form already; only
-          # the DMG lacks the architecture.
+          # rivet (pinned RIVET_PIN) names the portable zip in family form
+          # already; only the DMG lacks the architecture.
           mv "taskly-${VERSION}-macos.dmg" "taskly-${VERSION}-macos-${ARCH}.dmg"
           mv sbom.cdx.json "taskly-${VERSION}-macos-${ARCH}.sbom.cdx.json"
           mv THIRD_PARTY_NOTICES.txt "taskly-${VERSION}-macos-${ARCH}-THIRD_PARTY_NOTICES.txt"
@@ -104,7 +104,8 @@ jobs:
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           cd dist
-          # rivet 0.6.1 names msi and portable zip in family form already.
+          # rivet (pinned RIVET_PIN) names msi and portable zip in family
+          # form already.
           mv sbom.cdx.json "taskly-${VERSION}-windows-x64.sbom.cdx.json"
           mv THIRD_PARTY_NOTICES.txt "taskly-${VERSION}-windows-x64-THIRD_PARTY_NOTICES.txt"
           for f in taskly-*; do
@@ -209,7 +210,7 @@ jobs:
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p dist
-          # cp -R merges: rivet 0.8 releases leave a dist/taskly-linux-<arch>/
+          # cp -R merges: rivet releases leave a dist/taskly-linux-<arch>/
           # staging bundle in the artifacts, and a plain mv dies on the
           # directory collision ("Directory not empty").
           for a in macos-arm64 macos-x64 windows linux-x64 linux-arm64; do
@@ -232,7 +233,10 @@ jobs:
           ' CHANGELOG.md > /tmp/notes.md
           cd dist
           for f in *.sha256; do [ -s "$f" ] || rm -f "$f"; done
-          cat *.sha256 > SHA256SUMS
+          # Normalize: the Windows runner's sha256sum emits binary-mode
+          # "HASH *name" lines; keep SHA256SUMS uniform in the two-space
+          # text form (the msi row was the lone starred line in 0.2.0).
+          cat *.sha256 | sed 's/ \*/  /' > SHA256SUMS
           # The manifest only exists when the signing key was present.
           # Assemble the upload list per-glob so a missing file can never
           # kill the create midway with a half-published release.
