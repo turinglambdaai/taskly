@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   overdue red miss at month boundaries.
 
 ### Fixed
+- **Windows: deleting a list now asks for confirmation** — the delete
+  cascades to every task in the list with no undo; macOS and Linux
+  already confirmed, Windows silently deleted on a single mis-click.
 - **Update feed: the linux/arm64 tarball entry was missing**, so arm64
   Linux users never received update notifications even though arm64
   artifacts shipped. `make-update-manifest.sh` now lists and asserts

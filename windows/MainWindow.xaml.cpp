@@ -206,6 +206,8 @@ constexpr I18nEntry kI18nFallback[] = {
     {"contextMenuDetails", "详细信息", "Details"},
     {"taskDelete", "删除", "Delete"},
     {"listDelete", "删除列表", "Delete List"},
+    {"listDeleteConfirm", "确认删除列表", "Confirm Delete List"},
+    {"listDeleteConfirmContent", "确定要删除这个列表吗？列表下的所有任务也会被删除，此操作无法撤销。", "Are you sure you want to delete this list? All tasks in it will be deleted. This action cannot be undone."},
     {"statusDatabaseNotConnected", "未连接数据库", "Database Not Connected"},
     {"statusDatabaseConnected", "数据库已连接", "Database Connected"},
     {"subtitleOpenTasks", "{0} 个未完成", "{0} open"},
@@ -1978,6 +1980,25 @@ void MainWindow::OnDeleteList(
     Microsoft::UI::Xaml::RoutedEventArgs const&) {
   auto const id = winrt::unbox_value<std::int64_t>(
       sender.as<mxc::MenuFlyoutItem>().Tag());
+  ConfirmDeleteListAsync(id);
+}
+
+// Deleting a list cascades to every task in it with no undo — macOS and
+// Linux both confirm first; Windows must too (the audit's only P0).
+winrt::fire_and_forget MainWindow::ConfirmDeleteListAsync(std::int64_t id) {
+  auto dialog = mxc::ContentDialog{};
+  dialog.Title(winrt::box_value(t("listDeleteConfirm")));
+  dialog.Content(winrt::box_value(t("listDeleteConfirmContent")));
+  dialog.PrimaryButtonText(t("dialogConfirm"));
+  dialog.CloseButtonText(t("dialogCancel"));
+  // Safe default: closing the dialog must never mean "delete".
+  dialog.DefaultButton(mxc::ContentDialogButton::Close);
+  dialog.XamlRoot(Content().XamlRoot());
+
+  auto const result = co_await dialog.ShowAsync();
+  if (result != mxc::ContentDialogResult::Primary) {
+    co_return;
+  }
   if (view_ == ViewKind::List && view_list_id_ == id) {
     view_ = ViewKind::All;
     view_list_id_ = 0;

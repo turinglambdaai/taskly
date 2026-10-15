@@ -119,6 +119,7 @@ private:
   winrt::fire_and_forget CreateListAsync(std::wstring const& name);
   winrt::fire_and_forget RenameListAsync(std::int64_t id, std::wstring const& name);
   winrt::fire_and_forget DeleteListAsync(std::int64_t id);
+  winrt::fire_and_forget ConfirmDeleteListAsync(std::int64_t id);
   winrt::fire_and_forget SaveSettingAsync(std::string const& key, std::string const& value);
   winrt::fire_and_forget RunSearchAsync(std::wstring const& keyword);
   winrt::fire_and_forget RunQuickAddPreview(std::wstring const& text);
