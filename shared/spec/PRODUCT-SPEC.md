@@ -75,13 +75,21 @@ in the same binary.
   Esc=cancel, click-outside=save; date/time buttons open pickers and write
   through immediately; notes field saved on exit. Text changes re-run
   ExtractTimeCommand (a new trailing date command updates the due date).
-- Context menu: Toggle Completed, Delete, and Move to List ▸ (other lists,
+- Context menu: Toggle Completed, quick reschedule (今天 / 明天 /
+  自定日期 / 清除 — the explicit entry points for changing a due
+  date), Details, Delete, and Move to List ▸ (other lists,
   `{icon} {name}`) when they exist.
 
 ## 5b. Task interactions (Reminders parity)
 
-- Hover: quiet row fill (hover token), quick-schedule chips (今天 / 明天)
-  and the info button surface on hover only.
+Contract status: authored against the macOS host, which implements this
+section in full; Windows and Linux track it per their status in
+[UX-BENCHMARKS](../../docs/UX-BENCHMARKS.md) until they catch up.
+
+- Hover: quiet row fill (hover token) only, plus the info button
+  emphasizing (opacity step). Hover never moves row content or reveals
+  new controls — Reminders keeps quick-date buttons in the details
+  popover and the context menu, not on the row.
 - Selection: click selects; ⌘-click toggles; ⇧-click and ⇧↑/⇧↓ extend a
   range; Esc clears; any click on another row collapses an expanded row.
 - Keyboard: ↑/↓ move the selection, Return expands the selected row in
@@ -89,7 +97,10 @@ in the same binary.
   focus, all keys pass through untouched.
 - Inline expansion (ⓘ / Return / double-click): the row expands in place —
   title (15px semibold borderless), date/time chips (5-minute time steps),
-  borderless notes — edits commit on collapse; no modal sheet.
+  borderless notes — edits commit on collapse; no modal sheet. The date
+  chip's popover leads with quick dates (今天 / 明天 / 本周末, where
+  本周末 is the coming weekend day) above the calendar, matching the
+  Reminders details popover.
 - Delete: no confirmation from the row; instead a transient banner shows
   the deleted task with a one-step 撤销 (undo re-adds the task; the
   restored task receives a new id). Banner auto-dismisses after ~6 s.

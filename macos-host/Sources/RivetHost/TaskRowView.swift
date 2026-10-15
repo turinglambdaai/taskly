@@ -1,7 +1,10 @@
 import SwiftUI
 
 /// One task row. Interactions mirror macOS Reminders:
-/// - hover: quiet row fill + quick-schedule chips (今天/明天) + info reveal
+/// - hover: quiet row fill + info emphasis only — hover never moves row
+///   content; quick scheduling lives in the context menu and the date
+///   popover (Reminders keeps its quick-date buttons in the details
+///   popover too, not on the row)
 /// - click selects (⌘ toggles, ⇧ extends — see AppModel.clickSelectTask)
 /// - ⓘ (or Return / double-click) expands the row in place for editing —
 ///   no modal sheet; edits commit when the row collapses
@@ -91,11 +94,6 @@ struct TaskRowView: View {
 
             Spacer(minLength: 8)
 
-            // Quick-schedule chips surface on hover (Reminders signature).
-            if isHovering && !task.completed {
-                scheduleChips
-            }
-
             Button {
                 expand()
             } label: {
@@ -108,32 +106,6 @@ struct TaskRowView: View {
             .buttonStyle(.plain)
             .help(model.t("contextMenuDetails"))
         }
-    }
-
-    /// 今天 / 明天 one-click rescheduling, revealed on hover.
-    private var scheduleChips: some View {
-        HStack(spacing: 4) {
-            quickChip(model.t("navToday")) {
-                setDue(Date())
-            }
-            quickChip(model.t("dateTomorrow")) {
-                setDue(Calendar.current.date(byAdding: .day, value: 1, to: Date()))
-            }
-        }
-        .transition(.opacity)
-    }
-
-    private func quickChip(_ label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(.system(size: 11))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .foregroundStyle(model.theme.secondaryText)
-                .background(model.theme.hover, in: Capsule())
-                .overlay(Capsule().strokeBorder(model.theme.divider, lineWidth: 1))
-        }
-        .buttonStyle(.plain)
     }
 
     private var hasMeta: Bool {
@@ -400,6 +372,24 @@ struct TaskRowView: View {
             showTimePopover = false
         } content: {
             VStack(spacing: 10) {
+                // Quick dates inside the picker, where the "set a date"
+                // intent lives (Reminders details-popover parity).
+                HStack(spacing: 6) {
+                    quickDateChip(model.t("navToday")) {
+                        expandedDueDate = DateParser.string(from: Date(), format: "yyyy-MM-dd")
+                    }
+                    quickDateChip(model.t("dateTomorrow")) {
+                        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())
+                        expandedDueDate = tomorrow.map {
+                            DateParser.string(from: $0, format: "yyyy-MM-dd")
+                        }
+                    }
+                    quickDateChip(model.t("dateThisWeekend")) {
+                        expandedDueDate = DateParser.string(
+                            from: Self.nextWeekendDay(), format: "yyyy-MM-dd")
+                    }
+                    Spacer()
+                }
                 DatePicker(
                     "", selection: dateBinding,
                     in: Self.dateRange,
@@ -420,6 +410,32 @@ struct TaskRowView: View {
                 }
             }
             .padding(12)
+        }
+    }
+
+    /// Capsule shortcut inside the date popover (今天/明天/本周末). Sets the
+    /// date in place; an existing time is kept, like every other reschedule.
+    private func quickDateChip(_ label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 12))
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .foregroundStyle(model.theme.accent)
+                .background(model.theme.accent.opacity(0.08), in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// The coming weekend day: today when today is Sat/Sun, otherwise the
+    /// coming Saturday — Reminders' 本周末 semantics.
+    static func nextWeekendDay(from date: Date = Date()) -> Date {
+        let calendar = Calendar.current
+        switch calendar.component(.weekday, from: date) {
+        case 1, 7: return date
+        default:
+            let daysToSaturday = 7 - calendar.component(.weekday, from: date)
+            return calendar.date(byAdding: .day, value: daysToSaturday, to: date)!
         }
     }
 

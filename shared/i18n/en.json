@@ -103,6 +103,7 @@
   "listDelete": "Delete List",
   "dateTomorrow": "Tomorrow",
   "dateYesterday": "Yesterday",
+  "dateThisWeekend": "This Weekend",
   "subtitleToday": "{3}, {1} {2}, {0}",
   "subtitleOpenTasks": "{0} open",
   "subtitleCompleted": "{0} completed",

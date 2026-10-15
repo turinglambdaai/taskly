@@ -103,6 +103,7 @@
   "listDelete": "删除列表",
   "dateTomorrow": "明天",
   "dateYesterday": "昨天",
+  "dateThisWeekend": "本周末",
   "subtitleToday": "{0}年{1}{2}日 {3}",
   "subtitleOpenTasks": "{0} 个未完成",
   "subtitleCompleted": "{0} 个已完成",

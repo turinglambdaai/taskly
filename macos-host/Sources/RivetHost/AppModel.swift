@@ -121,6 +121,10 @@ final class AppModel {
     @ObservationIgnored private var undoBannerTask: _Concurrency.Task<Void, Never>?
     @ObservationIgnored private var transientDeadline: _Concurrency.Task<Void, Never>?
     @ObservationIgnored private var appearanceObserver: NSKeyValueObservation?
+    /// Reloads just past each local midnight — a window left open
+    /// overnight would otherwise keep stale 今天/明天 labels, Today
+    /// membership, and overdue colors until the next data event.
+    @ObservationIgnored private var midnightRefreshTimer: Timer?
     /// Update offer accepted but not yet installed (lost on relaunch — the
     /// user re-offers on the next check).
     @ObservationIgnored private var pendingUpdateManifest: UpdateService.Manifest?
@@ -152,6 +156,26 @@ final class AppModel {
                 self?.theme.isDark = Self.systemAppearanceIsDark
             }
         }
+
+        scheduleMidnightRefresh()
+    }
+
+    /// Fires just past each local midnight, then re-arms. startOfDay of
+    /// (now + 36 h) is always tomorrow, so daylight-saving shifts can't
+    /// skip or double-fire.
+    private func scheduleMidnightRefresh() {
+        midnightRefreshTimer?.invalidate()
+        let next = Calendar.current.startOfDay(
+            for: Date().addingTimeInterval(36 * 60 * 60))
+        let timer = Timer(fire: next, interval: 0, repeats: false) { [weak self] _ in
+            _Concurrency.Task { @MainActor [weak self] in
+                self?.reload()
+                self?.scheduleMidnightRefresh()
+            }
+        }
+        timer.tolerance = 30
+        RunLoop.main.add(timer, forMode: .common)
+        midnightRefreshTimer = timer
     }
 
     // MARK: - Startup
