@@ -26,10 +26,29 @@
          ;; (platform-symbol, architecture-symbol, installer-extension);
          ;; taskly keeps its own leaf copies — version.rkt must load without
          ;; the update machinery, and the local installer-extension maps the
-         ;; portable update payload, not the installer taxonomy. Revisit the
-         ;; overlap when the rivet pin advances past that centralization.
-         (except-in rivet/distribution
-                    platform-symbol architecture-symbol installer-extension)
+         ;; portable update payload, not the installer taxonomy. An explicit
+         ;; whitelist compiles against both the current pin and rivet main;
+         ;; revisit the overlap when the pin advances past that change.
+         (only-in rivet/distribution
+                  fetch-update-manifest
+                  select-update
+                  download-update
+                  verify-update-artifact!
+                  update-artifact
+                  update-artifact-installer
+                  update-artifact-size
+                  update-artifact-url
+                  update-candidate
+                  update-candidate-artifact
+                  update-candidate-manifest
+                  update-manifest
+                  update-manifest-version
+                  update-manifest-build
+                  update-manifest-published-at
+                  updater-config
+                  updater-config-maximum-download-bytes
+                  base64-string->bytes
+                  sha256-file/hex)
          racket/file
          racket/list
          racket/path

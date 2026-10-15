@@ -11,7 +11,21 @@
 (require crypto
          crypto/all
          rackunit
-         rivet/distribution
+         ;; Whitelist instead of the full module: updater.rkt re-exports the
+         ;; taskly release-target vocabulary, which rivet main now also
+         ;; centralizes; the explicit list compiles against the pin and main.
+         (only-in rivet/distribution
+                  write-signed-manifest
+                  verify-signed-manifest
+                  update-manifest
+                  update-artifact
+                  update-candidate
+                  fetch-update-manifest
+                  update-manifest-version
+                  update-manifest-artifacts
+                  sha256-file/hex
+                  base64-string->bytes
+                  bytes->base64-string)
          racket/file
          racket/list
          racket/path
