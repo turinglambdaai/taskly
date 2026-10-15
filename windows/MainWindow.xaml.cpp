@@ -112,18 +112,19 @@ std::wstring date_string(int offset_days) {
 }
 
 // Lexicographic YYYY-MM-DD compare; malformed dates sort after any date.
+// Quick-add stores "yyyy-MM-dd HH:mm:ss" — only the day part compares.
 int date_compare(std::string const& due, std::wstring const& today) {
-  if (due.size() != 10) {
+  if (due.size() < 10) {
     return 1;
   }
-  return wide(due).compare(today);
+  return wide(due.substr(0, 10)).compare(today);
 }
 
 std::wstring due_tail(std::string const& due) {
-  if (due.size() != 10) {
+  if (due.size() < 10) {
     return wide(due);
   }
-  return wide(due.substr(5));
+  return wide(due.substr(5, 5));
 }
 
 template <typename T>
@@ -194,6 +195,7 @@ constexpr I18nEntry kI18nFallback[] = {
     {"taskListInputHint", "+ 添加任务", "+ Add Task"},
     {"showCompletedToggle", "显示已完成", "Show Completed"},
     {"dateTomorrow", "明天", "Tomorrow"},
+    {"dateYesterday", "昨天", "Yesterday"},
     {"dialogConfirm", "确定", "OK"},
     {"dialogCancel", "取消", "Cancel"},
     {"dialogClear", "清除", "Clear"},
@@ -966,13 +968,16 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
     chip_text.VerticalAlignment(mx::VerticalAlignment::Center);
     auto const today = date_string(0);
     auto const compare = date_compare(*task.due_date, today);
+    // Completed dates go quiet on every host; overdue red and the today
+    // accent apply to open tasks only, and they are the only two tints —
+    // no tomorrow-specific color (mac/Linux don't have one either).
     wchar_t const* brush_key = L"TasklySecondaryTextBrush";
-    if (compare < 0) {
-      brush_key = L"TasklyOverdueBrush";
-    } else if (compare == 0) {
-      brush_key = L"TasklyDueTodayBrush";
-    } else if (date_compare(*task.due_date, date_string(1)) == 0) {
-      brush_key = L"TasklyDueTomorrowBrush";
+    if (!task.completed) {
+      if (compare < 0) {
+        brush_key = L"TasklyOverdueBrush";
+      } else if (compare == 0) {
+        brush_key = L"TasklyDueTodayBrush";
+      }
     }
     chip_text.Foreground(ThemeBrush(brush_key));
     meta.Children().Append(chip_text);
@@ -1032,6 +1037,11 @@ winrt::hstring MainWindow::DueLabel(std::string const& due_date) const {
     return winrt::hstring(t("navToday"));
   }
   if (compare < 0) {
+    // Only the adjacent day gets the relative word; older dates fall
+    // through to the short date (mac parity).
+    if (date_compare(due_date, date_string(-1)) == 0) {
+      return winrt::hstring(t("dateYesterday"));
+    }
     return winrt::hstring(due_tail(due_date));
   }
   if (date_compare(due_date, date_string(1)) == 0) {

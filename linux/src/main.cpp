@@ -543,10 +543,16 @@ std::string date_string(int offset_days) {
   return buffer;
 }
 
-// Lexicographic YYYY-MM-DD compare; malformed dates sort after any date.
+// Lexicographic YYYY-MM-DD compare, normalized to -1/0/1. Raw
+// string::compare returns digit differences ("09-30" vs "10-01" gives
+// +8), so matching on == -1 silently missed yesterday at month
+// boundaries and `compare < 0` missed overdue red. Quick-add stores
+// "yyyy-MM-dd HH:mm:ss" — only the day part compares. Malformed dates
+// sort after any date.
 int date_compare(std::string const& due, std::string const& today) {
-  if (due.size() != 10) return 1;
-  return due.compare(today);
+  if (due.size() < 10) return 1;
+  int const order = due.compare(0, 10, today);
+  return (order < 0) ? -1 : (order > 0 ? 1 : 0);
 }
 
 // Due chip: overdue red, today accent, otherwise secondary; a clock glyph
@@ -562,9 +568,11 @@ char const* due_color_class(std::string const& due_date, bool completed) {
 // Localized absolute day label: 今天/明天/昨天 by name, otherwise
 // `8月31日` (zh) or `Aug 31` (en) — locale-independent on purpose.
 std::string format_day_label(std::string const& due) {
-  if (due.size() == 10 && due[4] == '-' && due[7] == '-') {
-    auto const month = std::atoi(due.substr(5, 2).c_str());
-    auto const day = std::atoi(due.substr(8, 2).c_str());
+  std::string const date_part =
+      due.size() >= 10 ? due.substr(0, 10) : due;
+  if (date_part.size() == 10 && date_part[4] == '-' && date_part[7] == '-') {
+    auto const month = std::atoi(date_part.substr(5, 2).c_str());
+    auto const day = std::atoi(date_part.substr(8, 2).c_str());
     if (g_state.language == "en") {
       static char const* months[] = {"Jan",  "Feb",       "Mar", "Apr",
                                      "May",  "Jun",       "Jul", "Aug",
@@ -576,21 +584,24 @@ std::string format_day_label(std::string const& due) {
       return std::to_string(month) + "月" + std::to_string(day) + "日";
     }
   }
-  return due;
+  return date_part;
 }
 
 std::string due_chip_text(rivet_app::Task const& task) {
   if (!task.due_date.has_value()) return "";
-  std::string text = *task.due_date;
-  auto const compare = date_compare(*task.due_date, date_string(0));
+  std::string const date_part =
+      task.due_date->size() >= 10 ? task.due_date->substr(0, 10)
+                                  : *task.due_date;
+  std::string text = date_part;
+  auto const compare = date_compare(date_part, date_string(0));
   if (compare == 0) {
     text = tr("navToday");
-  } else if (compare == -1) {
+  } else if (compare < 0 && date_compare(date_part, date_string(-1)) == 0) {
     text = tr("dateYesterday");
-  } else if (date_compare(*task.due_date, date_string(1)) == 0) {
+  } else if (date_compare(date_part, date_string(1)) == 0) {
     text = tr("dateTomorrow");
   } else {
-    text = format_day_label(*task.due_date);
+    text = format_day_label(date_part);
   }
   if (task.due_time.has_value()) {
     text = "⏰ " + text + " " + *task.due_time;
