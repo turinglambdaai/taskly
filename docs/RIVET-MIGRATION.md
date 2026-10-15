@@ -1,5 +1,10 @@
 ﻿# Taskly × Rivet Migration Architecture
 
+> **Status: historical — migration complete.** The Rivet rebuild is the
+> mainline and all three desktop hosts ship from it (see ARCHITECTURE.md
+> and the v0.2.0 release matrix). The milestones and stop rules below are
+> kept as background; current contracts live in `shared/spec/`.
+
 > Branch: `main`
 >
 > Goal: make Taskly the first commercial acceptance test for Rivet without

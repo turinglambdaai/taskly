@@ -16,12 +16,11 @@ stdout/stderr/exit code on every platform binary (contract:
 ## Running
 
 ```bash
-# macOS (after `swift build` in apps/macos)
-cd apps/macos && scripts/golden-cli.sh            # verify
-scripts/golden-cli.sh --record                    # re-record after an intentional spec change
+# CI path: the source-level CLI shim (same command ci.yml runs)
+python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh [--record]
 
-# any platform, directly
-python3 shared/cli-golden/runner.py --binary /path/to/Taskly [--record]
+# any platform, directly against a CLI binary
+python3 shared/cli-golden/runner.py --binary /path/to/taskly-cli [--record]
 ```
 
 Dynamic values are normalized before comparison (see CLI-SPEC § Golden

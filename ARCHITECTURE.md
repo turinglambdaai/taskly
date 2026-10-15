@@ -62,37 +62,19 @@ Native presentation model / UI
 Native UI code must not contain a second implementation of Taskly business
 rules after its platform migration milestone is complete.
 
-## Windows reference architecture
+## Windows host
 
-Windows is the first migration platform and now has an explicit reversible
-boundary:
+Historical note: an earlier version of this section diagrammed the
+pre-rewrite C#/WinUI host with a reversible backend boundary
+(`ITasklyBackend`, `NativeTasklyBackend`, `RivetTasklyBackend`,
+`UseRivetBackend=true`) — that implementation no longer exists in the
+repository. Windows ships the C++/WinRT host in `windows/` with no native
+fallback backend to select.
 
-```text
-MainViewModel + ReminderService
-            │
-      ITasklyBackend
-       ┌────┴─────┐
-       │          │
-NativeTasklyBackend     RivetTasklyBackend
-(reference/fallback)          │
-       │                generated RivetAPI
- C# SQLite stack               │
-                         EmbeddedRivetClient
-                               │
-                         rivet_native.dll
-                               │
-                         embedded Racket CS
-                               │
-                        Taskly Racket core
-```
-
-`UseRivetBackend=true` selects the Rivet path at compile time. A normal build
-continues to compile the native fallback. CI builds both until the Windows
-acceptance gates are complete.
-
-The release target is **not** a hidden Racket child process. `ProcessRivetClient`
-is a useful development transport; the production Windows path embeds Racket
-CS in the Taskly process through Rivet's stable C ABI.
+What the old section got right and still holds: the release target is
+**not** a hidden Racket child process. The development process transport is
+useful for debugging; the production path on every host — Windows included —
+embeds Racket CS in the Taskly process through Rivet's stable C ABI.
 
 ## Repository layout
 
@@ -110,18 +92,27 @@ taskly/
 │   │   ├── db.rkt
 │   │   ├── service.rkt
 │   │   ├── rivet-schema.rkt
-│   │   └── backend.rkt
+│   │   ├── backend.rkt      # Rivet backend entry (typed RPC surface)
+│   │   ├── cli.rkt          # agent CLI (taskly list|add|…)
+│   │   ├── updater.rkt      # update feed client (shared/spec/UPDATE.md)
+│   │   └── version.rkt
 │   └── tests/
 │       ├── core-test.rkt
+│       ├── backend-test.rkt
+│       ├── backend-wire-test.rkt
 │       ├── rivet-schema-test.rkt
+│       ├── updater-test.rkt
+│       ├── cli-update-test.rkt
 │       └── dotnet-rivet-smoke/
+├── macos-host/        # SwiftUI host (arm64 + x64)
+├── windows/           # C++/WinRT host (x64)
+├── linux/             # GTK4 host (x64 + arm64; deb/rpm/AppImage/tar.gz)
+├── shared/            # spec contracts, i18n, emoji, cli-golden
+├── scripts/           # release tooling (preflight, manifest signing, keys)
+├── assets/            # icons and branding
+├── docs/              # product site + handoff/benchmark/migration notes
 ├── rivet.rktd
-├── apps/
-│   ├── windows/       # first migration platform + native reference
-│   ├── macos/         # native reference; next migration platform
-│   └── linux/         # native reference; host strategy still pending
-├── shared/spec/       # product contracts remain canonical
-└── docs/RIVET-MIGRATION.md
+└── rivet-schema.json
 ```
 
 ## Compatibility invariants
@@ -153,7 +144,6 @@ Capabilities Taskly has already driven into Rivet:
 
 Remaining framework/product gaps include:
 
-- Linux GTK host strategy
 - richer typed remote errors/diagnostics
 - production crash/lifecycle instrumentation
 - any declarative native UI abstraction that real Taskly repetition later justifies

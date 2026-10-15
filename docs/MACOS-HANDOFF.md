@@ -1,5 +1,9 @@
 # Taskly on MacBook Pro — 开发交接 / Handoff
 
+> **状态：历史快照（2026-10-16）。** 本文写于 mac 宿主搭建期，交接步骤仍可
+> 参考，但状态描述已随开发演进过时；当前实况以 README 与 ARCHITECTURE.md
+> 为准。
+
 > 写给要在 MacBook 上继续 Taskly×Rivet 开发的人（或 AI 会话）。
 > 一切都已推送；这里是可以直接照做的步骤和当前状态的完整地图。
 
@@ -7,7 +11,7 @@
 
 | 仓库 | 分支 | 用途 |
 |---|---|---|
-| `turinglambdaai/taskly` | `main`（开发主线） | Rivet 项目布局：`rivet.rktd` + `racket/taskly/`（Racket 领域核心，M0 ✅）+ `app/backend.rkt`（Rivet 后端入口）+ `windows/`（C++/WinRT 宿主）+ `macos-host/`（SwiftUI 宿主脚手架） |
+| `turinglambdaai/taskly` | `main`（开发主线） | Rivet 项目布局：`rivet.rktd` + `racket/taskly/`（Racket 领域核心）+ `racket/taskly/backend.rkt`（Rivet 后端入口）+ `windows/`（C++/WinRT 宿主）+ `macos-host/`（SwiftUI 宿主）+ `linux/`（GTK4 宿主） |
 | `turinglambdaai/rivet` | `main` | named-record API 已进 rivet main（PR #72 + #78；issue #92 已验证关闭）——**不再需要切任何 rivet 分支**，linked main 即可 |
 
 `main` 即 Rivet 重建主线。

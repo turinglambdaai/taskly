@@ -443,7 +443,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Save. Fixed: clearing the date no longer leaves a stale dueTime on
   save. List edit sheet aligned to the same design language.
 
-## [1.0.0] - 2026-09-30
+## [1.0.0] - 2026-09-30 (pre-reset native line)
+> Version-line note: this and every 1.x entry in this file — including the
+> second [1.0.0] above (2026-10-08) — belong to the pre-reset native line,
+> kept here for history. When the Rivet rebuild became the mainline on
+> 2026-10-10, releases were cleared and versioning restarted at 0.x, so the
+> two [1.0.0] headings are not a typo.
+
 ### Added
 - **Online updates on all three platforms** (contract: `shared/spec/UPDATE.md`)
   — silent check at launch (≥4 h throttle, config `last-update-check`) plus

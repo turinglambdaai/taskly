@@ -5,6 +5,17 @@
 > prioritized library improvement. Items move to the Rivet repo when picked
 > up; the Taskly commit that discovered each item is referenced.
 
+## Status 2026-10-16
+
+Backlog items resolved since the last status block:
+
+- P0 #1 (Taskly Windows host on C++/WinRT) **delivered** — `windows/`
+  builds the C++/WinRT host with the generated backend and ships in the
+  release matrix (MSI in v0.2.0).
+- P1 #2 (named records / Optional / nested records) **landed in rivet
+  main** (PR #72 + #78; issue #92 verified closed) — linked rivet main
+  carries the API; no branch switching needed.
+
 ## Status 2026-10-08
 
 Filed upstream (taskly-driven, see the issues for evidence):
@@ -29,27 +40,23 @@ Filed upstream (taskly-driven, see the issues for evidence):
 
 ## P0 — blocks the Windows product slice
 
-### 1. Taskly Windows host = C++/WinRT (in progress)
+### 1. Taskly Windows host = C++/WinRT — DELIVERED
 - The old C# WinUI app cannot attach a Rivet backend (no .NET client
-  surface, by design). Taskly's Windows app is being rebuilt on the rivet
+  surface, by design). Taskly's Windows app was rebuilt on the rivet
   scaffold: windows/RivetHost.vcxproj (C++/WinRT) + the Racket backend via
-  GeneratedBackend.hpp.
-- Ask: none to rivet yet — the scaffold + `raco rivet build` work as-is.
-- First Taskly need that forces a rivet change becomes a PR.
+  GeneratedBackend.hpp. Shipped in the v0.2.0 release matrix.
 
 ## P1 — needed by the Taskly Racket backend
 
-### 2. Named records / Optional / nested record types in rivet/backend
-- Discovered: 09-28 rebuild — current rivet main's type system has only
+### 2. Named records / Optional / nested record types in rivet/backend — LANDED in rivet main
+- Discovered: 09-28 rebuild — rivet's type system at the time had only
   primitives (Void/Bool/Int64/String/Bytes/List). The Taskly Racket core
   (racket/taskly/, ported from the Sep 21 pilot) is written against the
   named-record API: define-record, Optional, nested (List Record), record
   values in RPC results and State.
-- Ask: port the named-record/Optional schema layer into rivet/backend
-  (RVT1 wire format unchanged: records encode as field-ordered lists;
-  Optional delegates to inner). A reference implementation exists in the
-  Taskly pilot's history (racket/taskly/rivet-schema.rkt era, taskly
-  the pre-merge Rivet branch (~Sep 21, since consolidated into main)).
+- Resolved: the named-record/Optional schema layer is in rivet main
+  (PR #72 + #78; issue #92 verified closed). RVT1 wire format unchanged:
+  records encode as field-ordered lists; Optional delegates to inner.
 
 ### 3. Single-entity lookup RPC (`get-task-by-id`)
 - Discovered: 09-28 merge (RivetTasklyBackend.GetTaskByIdAsync).

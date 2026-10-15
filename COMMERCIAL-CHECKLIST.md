@@ -38,14 +38,15 @@ going commercial; pricing/licensing decisions are the business half.
 
 ## 4. Quality gates (blocking for 1.0)
 
-- [ ] CI green on all three platforms: `native.yml` (builds + Swift tests +
-      Rust tests + CLI golden smoke + i18n parity).
+- [ ] CI green on all three platforms: `ci.yml` (i18n/release-metadata
+      preflight + Racket core contract tests + golden CLI suite + GTK4,
+      SwiftUI, and WinRT host builds with boot smoke).
 - [ ] Cross-platform DB conformance: open a DB written by each platform in
       each other platform (fixture in `shared/`), including a v0.6.x DB.
-- [ ] Golden CLI suite: shared fixture lives in `shared/cli-golden/` (61
-      cases, exact stdout/stderr/exit per platform binary; macOS runner
-      wired into `native.yml`) — Windows and Linux runners still to adopt
-      the same fixture.
+- [ ] Golden CLI suite: shared fixture lives in `shared/cli-golden/` (63
+      cases, exact stdout/stderr/exit). Wired into `ci.yml` against the
+      source-level CLI shim on the Linux runner — running the same fixture
+      against the packaged per-platform binaries is still pending.
 - [ ] Crash reporting: opt-in Sentry/crashpad per platform; P1 crash < 0.1%
       sessions for two consecutive betas.
 - [ ] Reminder reliability soak test: notifications fire while app runs
@@ -55,8 +56,9 @@ going commercial; pricing/licensing decisions are the business half.
 ## 5. Release engineering
 
 - [ ] Single version source per app + one CHANGELOG entry per release.
-- [ ] `release-native.yml`: tag → build all platforms → sign → upload
-      artifacts → GitHub Release + store submissions.
+- [ ] `release.yml`: tag → build all platforms → sign the update manifest
+      (Ed25519) → upload artifacts → GitHub Release (store submissions when
+      a store model lands).
 - [ ] Auto-update smoke: 0.6.x → 1.0 upgrade path keeps `~/.taskly` intact
       (test on all three OSes with a real user DB copy).
 - [ ] Rollback plan: keep previous version downloadable; DB migrations are

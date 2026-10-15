@@ -11,7 +11,9 @@ Taskly — a focused personal task manager in the spirit of macOS Reminders,
 macOS Reminders neutral palette (DESIGN-TOKENS), bilingual zh/en (runtime
 switchable), light/dark. Desktop today; iOS/iPadOS/Android later. Single
 SQLite file the user can place in a cloud-synced folder; agent-facing CLI
-in the same binary.
+with the semantics in CLI-SPEC (the CLI runs from source today — the
+release packages don't include a standalone CLI binary yet; see the
+README's honest gaps).
 
 ## 2. Window & layout
 
