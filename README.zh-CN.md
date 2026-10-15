@@ -20,10 +20,10 @@ Taskly 构建在 [Rivet](https://github.com/turinglambdaai/rivet) 之上：全�
 
 - **Reminders 风格界面**——智能视图（今天 / 计划 / 全部 / 已完成），emoji 图标 + 12 色板的自定义清单，明暗主题跟随系统，中英双语实时切换。
 - **自然语言快速添加**——输入 `明天买菜` 或 `standup @9am +1d`，回车前就能在实时预览 chip 里看到解析出的排程。
-- **对齐 Reminders 的交互**——悬停行显示 今天/明天 一键调度 chip；⌘/⇧ 多选、批量操作、单条撤销横幅；↑/↓ 导航，Return 行内展开（标题、日期/时间 chip、备注），Esc 收起；已完成任务收进可折叠分组。
+- **对齐 Reminders 的交互**——⌘/⇧ 多选、批量操作、删除一键撤销横幅；↑/↓ 导航，Return 行内展开（标题、日期/时间 chip、备注），Esc 收起；已完成任务收进可折叠分组。macOS 已全量对齐；Linux 已有撤销横幅与键盘流，Windows 正在补齐（[进度](docs/UX-BENCHMARKS.md)）。
 - **到期提醒通知**——60 秒轮询 + 启动检查，去重，超过三条合并为一条汇总。
 - **单文件数据**——所有任务存在一个 SQLite 文件（`~/.taskly/tasks.db`，WAL），丢进 iCloud/OneDrive/Dropbox 即可同步。格式文档化且稳定：[DATA-FORMAT](shared/spec/DATA-FORMAT.md)。
-- **面向 agent 的 CLI**——`taskly list|add|update|done|rm|search|mklist…`，`--json` 输出稳定、退出码固定、跨平台字节级一致（61 例 golden 套件钉死）。规格：[CLI-SPEC](shared/spec/CLI-SPEC.md)。
+- **面向 agent 的 CLI**——`taskly list|add|update|done|rm|search|mklist…`，`--json` 输出稳定、退出码固定、跨平台字节级一致（63 例 golden 套件钉死）。规格：[CLI-SPEC](shared/spec/CLI-SPEC.md)。
 - **在线更新（三平台）**——启动时静默检查 + 设置里手动检查；后端验证 [更新清单](shared/spec/UPDATE.md)（Ed25519）并下载产物，宿主负责安装：macOS 原地换装 bundle，Windows 退出并换装安装目录，Linux 应用内下载、解压覆盖完成安装。
 
 ## 诚实差距
@@ -65,8 +65,8 @@ racket racket/taskly/cli.rkt install-cli   # 安装到 ~/.local/bin/taskly
 
 ```bash
 raco rivet build        # 生成客户端、编译核心、构建宿主
-raco test racket/       # 62 个核心契约测试
-python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 61 例 golden 套件
+raco test racket/       # 契约测试
+python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 63 例 golden 套件
 ```
 
 ## 架构

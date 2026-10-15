@@ -34,11 +34,13 @@ watch architecture.
 - **Quick add with natural-language dates** — type 明天买菜 or
   `standup @9am +1d` and see the parsed schedule in a live preview chip
   before you hit Enter.
-- **Reminders-parity interactions** — hover a row for one-click
-  今天/明天 schedule chips; ⌘/⇧ multi-select with batch actions and a
-  single undo banner; ↑/↓ navigation, Return expands the row in place
-  (title, date/time chips, notes), Esc collapses; completed tasks fold
-  under a collapsible header.
+- **Reminders-parity interactions** — ⌘/⇧ multi-select with batch
+  actions and a one-step undo banner for deletes; ↑/↓ navigation,
+  Return expands the row in place (title, date/time chips, notes),
+  Esc collapses; completed tasks fold under a collapsible header.
+  Complete on macOS today; Linux ships the undo banner and the
+  keyboard flow, Windows is catching up
+  ([status](docs/UX-BENCHMARKS.md)).
 - **Due-task notifications** — a 60 s poll plus a startup check, deduped,
   capped at three separate banners (more → one summary).
 - **One data file** — your tasks live in a single SQLite file
@@ -47,7 +49,7 @@ watch architecture.
   [DATA-FORMAT](shared/spec/DATA-FORMAT.md).
 - **Agent-facing CLI** — `taskly list|add|update|done|rm|search|mklist…`
   with stable `--json` output, fixed exit codes, and byte-level
-  cross-platform parity pinned by a 61-case golden suite. Spec:
+  cross-platform parity pinned by a 63-case golden suite. Spec:
   [CLI-SPEC](shared/spec/CLI-SPEC.md).
 - **Online updates (all platforms)** — silent check at launch plus a
   manual check in Settings; the backend verifies the signed
@@ -106,8 +108,8 @@ macOS, CMake + GTK 4 headers on Linux, Windows App SDK on Windows):
 
 ```bash
 raco rivet build        # generate clients, compile the core, build the host
-raco test racket/       # 62 core contract tests
-python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 61-case golden suite
+raco test racket/       # contract tests
+python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 63-case golden suite
 ```
 
 ## Architecture

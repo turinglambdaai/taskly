@@ -8,7 +8,7 @@ Taskly 是 Rivet 架构的待办应用（monorepo）：**一个 Racket CS 领域
 
 | 组件 | 技术 | 目录 | 验证状态 |
 |---|---|---|---|
-| 领域核心 + CLI | Racket CS 9.3 | `racket/taskly/`（+ `racket/tests/`） | ✅ 62 core 测试 + 61 例 golden CLI 全绿 |
+| 领域核心 + CLI | Racket CS 9.3 | `racket/taskly/`（+ `racket/tests/`） | ✅ 契约测试 + 63 例 golden CLI 全绿 |
 | macOS 宿主 14+ | Swift 6 + SwiftUI | `macos-host/` | ✅ CI 构建 |
 | Windows 宿主 10+ | WinUI 3 (C++/WinRT) | `windows/` | ✅ CI 构建 |
 | Linux 宿主 | GTK 4（C++/CMake） | `linux/` | ✅ CI 构建 + xvfb 冒烟 |
@@ -20,9 +20,9 @@ Taskly 是 Rivet 架构的待办应用（monorepo）：**一个 Racket CS 领域
 ```bash
 # 核心（任何平台）
 raco rivet build          # 生成客户端 + 编译核心 bundle + 构建当前平台宿主
-raco test racket/         # 62 个核心契约测试
+raco test racket/         # 契约测试
 scripts/taskly-cli.sh list --json                          # dev CLI（系统 racket）
-python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 61 例 golden 套件（--record 重录）
+python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 63 例 golden 套件（--record 重录）
 
 # 发布链
 bash scripts/check-release-version.sh [tag]   # VERSION == rivet.rktd == tag
@@ -69,7 +69,7 @@ taskly/
 │   ├── spec/           六份契约文档（canonical）
 │   ├── i18n/           zh/en 单源
 │   ├── emoji.json      清单图标单源
-│   └── cli-golden/     61 例 golden CLI 套件（cases.json + runner.py + golden/）
+│   └── cli-golden/     63 例 golden CLI 套件（cases.json + runner.py + golden/）
 ├── scripts/            taskly-cli.sh · sync-i18n.sh · check-release-version.sh · make-update-manifest.sh · update-keys.sh · e2e/
 ├── docs/               GitHub Pages 站点（taskly.jrtx.site）
 ├── .github/workflows/  ci.yml（contract·core+golden·三平台宿主）· release.yml（三平台打包+签名清单）

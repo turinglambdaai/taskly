@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -232,11 +233,28 @@ jobs:
           cd dist
           for f in *.sha256; do [ -s "$f" ] || rm -f "$f"; done
           cat *.sha256 > SHA256SUMS
-          gh release create "$GITHUB_REF_NAME" \
-            --title "Taskly ${VERSION}" \
-            --notes-file /tmp/notes.md \
-            *.zip *.tar.gz *.dmg *.msi *.deb *.rpm *.AppImage \
-            *.sha256 SHA256SUMS update-manifest.json
+          # The manifest only exists when the signing key was present.
+          # Assemble the upload list per-glob so a missing file can never
+          # kill the create midway with a half-published release.
+          uploads=( )
+          for pattern in *.zip *.tar.gz *.dmg *.msi *.deb *.rpm *.AppImage *.sha256; do
+            uploads+=( "$pattern" )
+          done
+          uploads+=( SHA256SUMS )
+          if [[ -f update-manifest.json ]]; then
+            uploads+=( update-manifest.json )
+          fi
+          # Idempotent publish: a failed run leaves the release (and some
+          # assets) behind; re-runs edit + re-upload over it instead of
+          # colliding with "release already exists".
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --notes-file /tmp/notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --title "Taskly ${VERSION}" \
+              --notes-file /tmp/notes.md
+          fi
+          gh release upload "$GITHUB_REF_NAME" --clobber "${uploads[@]}"
       - name: Stable alias copies (versionless direct-download links)
         env:
           GH_TOKEN: ${{ github.token }}

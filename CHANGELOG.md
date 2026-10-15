@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **macOS: the hover quick-schedule chips (今天/明天) are gone from the
+  task row.** Hover now only quiets the row fill and emphasizes the
+  info button — hovering never moves row content, matching Reminders,
+  which keeps its quick-date buttons in the details popover and the
+  context menu. The one-click dates moved to where that intent lives:
+  the expanded row's date popover now leads with 今天 / 明天 / 本周末
+  (the coming weekend day) above the calendar.
+- **macOS: the list now refreshes just past each local midnight**, so
+  Today membership, 今天/明天 labels, and overdue colors are no longer
+  stale in a window left open overnight.
+- Windows/Linux: relative day labels, overdue red, and the due-today
+  accent now parse the date part of timestamps stored by quick-add
+  (`yyyy-MM-dd HH:mm:ss`) — such tasks previously rendered the raw
+  timestamp and never matched 今天/明天/逾期.
+- Windows: due-date labels gained the 昨天 relative word, and the
+  completed-state date color now goes quiet like macOS/Linux; the
+  tomorrow-specific tint was dropped (no other host has one).
+- Linux: date comparison is normalized to -1/0/1 — string-compare sign
+  differences ("09-30" vs "10-01" → +8) made yesterday detection and
+  overdue red miss at month boundaries.
+
+### Fixed
+- **Update feed: the linux/arm64 tarball entry was missing**, so arm64
+  Linux users never received update notifications even though arm64
+  artifacts shipped. `make-update-manifest.sh` now lists and asserts
+  all five feed artifacts.
+- Release workflow: publishing no longer fails midway when the signing
+  secret is absent (the manifest is simply omitted from the upload
+  list), and re-runs converge — an existing release gets its notes
+  edited and assets re-uploaded with `--clobber` instead of colliding.
+- Release preflight now rejects lightweight tags (v0.1.0/v0.1.4/v0.2.0
+  were lightweight) and checks `racket/info.rkt`'s version against
+  VERSION (it had drifted at 0.1.0; now 0.2.0).
+- Docs/site: the website no longer claims a single binary shipping GUI
+  and CLI together (contradicting README's Honest gaps — the release
+  packages don't include a standalone CLI yet); README states the
+  per-platform status of the Reminders-parity interactions; golden
+  suite counts corrected to 63; hardcoded contract-test counts removed.
+
 ## [0.2.0] - 2026-10-14
 
 ### Added
