@@ -22,7 +22,14 @@
 (require crypto
          net/base64
          net/url
-         rivet/distribution
+         ;; rivet/distribution centralized the release-target vocabulary
+         ;; (platform-symbol, architecture-symbol, installer-extension);
+         ;; taskly keeps its own leaf copies — version.rkt must load without
+         ;; the update machinery, and the local installer-extension maps the
+         ;; portable update payload, not the installer taxonomy. Revisit the
+         ;; overlap when the rivet pin advances past that centralization.
+         (except-in rivet/distribution
+                    platform-symbol architecture-symbol installer-extension)
          racket/file
          racket/list
          racket/path
