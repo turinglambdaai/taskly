@@ -253,9 +253,11 @@ void MainWindow::RunUpdateCheck(bool silent) {
     RecordUpdateCheck();
     if (!silent) {
       SetStatus(L"");
+      // Primary action = the escape hatch: when the check cannot reach the
+      // feed (offline, blocked CDN), the user can still download manually.
       ShowUpdateDialog(L"Taskly", tf("updateCheckFailed", wide(e.what())),
-                       L"", t("dialogConfirm"), nullptr,
-                       t("updateCopyError"));
+                       t("updateOpenReleases"), t("dialogConfirm"),
+                       [] { open_releases_page(); }, t("updateCopyError"));
     }
   }
 }
@@ -268,9 +270,11 @@ void MainWindow::HandleUpdateCheckResult(
   }
   if (!ok) {
     if (!silent) {
+      // Same escape hatch as the sync catch: a failed check should always
+      // leave the manual download one click away.
       ShowUpdateDialog(L"Taskly", tf("updateCheckFailed", wide(failure)),
-                       L"", t("dialogConfirm"), nullptr,
-                       t("updateCopyError"));
+                       t("updateOpenReleases"), t("dialogConfirm"),
+                       [] { open_releases_page(); }, t("updateCopyError"));
     }
     return;
   }
@@ -296,8 +300,9 @@ void MainWindow::HandleUpdateCheckResult(
     return;
   }
   auto const detail = check.error.value_or(check.status);
-  ShowUpdateDialog(L"Taskly", tf("updateCheckFailed", wide(detail)), L"",
-                   t("dialogConfirm"), nullptr, t("updateCopyError"));
+  ShowUpdateDialog(L"Taskly", tf("updateCheckFailed", wide(detail)),
+                   t("updateOpenReleases"), t("dialogConfirm"),
+                   [] { open_releases_page(); }, t("updateCopyError"));
 }
 
 void MainWindow::RecordUpdateCheck() {
