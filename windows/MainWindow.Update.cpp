@@ -338,7 +338,7 @@ void MainWindow::StartDownload() {
   SetStatus(t("updateDownloading"));
   // The full-width notice above the body — the status bar line alone was
   // too easy to miss during a multi-minute download (0.2.1 feedback).
-  UpdateDownloadBar().Title(winrt::box_value(t("updateDownloading")));
+  UpdateDownloadBar().Title(t("updateDownloading"));
   UpdateDownloadProgress().IsIndeterminate(true);
   UpdateDownloadBar().IsOpen(true);
 
@@ -457,8 +457,8 @@ void MainWindow::HandleUpdatePoll(
       UpdateDownloadProgress().IsIndeterminate(false);
     }
     UpdateDownloadProgress().Value(static_cast<double>(percent));
-    UpdateDownloadBar().Title(winrt::box_value(
-        tf("updateDownloadPercent", std::to_wstring(percent))));
+    UpdateDownloadBar().Title(
+        tf("updateDownloadPercent", std::to_wstring(percent)));
   }
   SetStatus(tf("updateDownloadPercent", std::to_wstring(percent)));
 }
