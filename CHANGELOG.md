@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Windows: the title bar no longer shows the broken blank icon.**
+  The system title-bar icon rendered as an empty placeholder glyph (the
+  exe icon resource is not picked up for this install shape). The icon
+  and its click-menu are now hidden for a clean title bar matching the
+  macOS look; taskbar and Alt-Tab keep the real app icon.
 - **The app forgot the manually opened database location.** Nothing ever
   wrote the `last-db-path` config key, so a database opened from the file
   menu was reopened only as long as the process lived — and a config

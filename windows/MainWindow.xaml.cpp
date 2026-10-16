@@ -700,6 +700,15 @@ void MainWindow::ApplyTitleBarTheme() {
   auto const muted = dark ? winrt::Windows::UI::Color{0xFF, 0xA8, 0xA5, 0xA3}
                           : winrt::Windows::UI::Color{0xFF, 0x79, 0x77, 0x75};
   auto titleBar = AppWindow().TitleBar();
+  // The default title-bar icon renders as a blank placeholder glyph for
+  // this MSI install (the exe icon resource is never picked up), which
+  // reads as broken. macOS keeps its title bar free of an app icon, so
+  // hide the icon and its click-menu for a matching look. Taskbar and
+  // Alt-Tab still show the real app icon from the exe resource. On
+  // Windows builds older than the IconShowOptions support this is
+  // simply ignored.
+  titleBar.IconShowOptions(
+      winrt::Microsoft::UI::Windowing::IconShowOptions::HideIconAndSystemMenu);
   titleBar.BackgroundColor(background);
   titleBar.ForegroundColor(foreground);
   titleBar.InactiveBackgroundColor(background);
