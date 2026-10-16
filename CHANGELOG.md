@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **The app forgot the manually opened database location.** Nothing ever
+  wrote the `last-db-path` config key, so a database opened from the file
+  menu was reopened only as long as the process lived — and a config
+  rewrite (the update-check timestamp) silently dropped the pre-0.x
+  underscore form (`last_db_path`) that earlier files carried. An OTA
+  restart then fell back to the default empty DB and asked for the file
+  again. Now `open_database` persists the path on success (all hosts),
+  and config rewrites carry the legacy key through. Data was never at
+  risk — only the remembered pointer was lost.
+
 ## [0.2.1] - 2026-10-16
 
 ### Changed

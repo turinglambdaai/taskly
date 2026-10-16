@@ -5,6 +5,7 @@
          racket/date
          racket/file
          racket/format
+         racket/path
          racket/string
          "config.rkt"
          "date-parser.rkt"
@@ -83,6 +84,12 @@
   (when previous (close-taskly-service previous))
   (define service (open-taskly-service path))
   (set-box! current-service service)
+  ;; Remember the opened database (DATA-FORMAT §7): hosts start against
+  ;; default_database, so a manually opened file must survive relaunch.
+  ;; The bootstrap path writes back the same value — idempotent.
+  (define config (read-config))
+  (hash-set! config "last-db-path" (path->string (path->complete-path path)))
+  (write-config! config)
   (snapshot->dto service))
 
 (define-rpc (close_database : Void)
@@ -287,7 +294,7 @@
 ;; Test seam: the generated RPC handlers are plain functions; contract
 ;; tests import them directly without standing up an RVT1 server.
 (module+ rpcs
-  (provide get_setting set_setting))
+  (provide get_setting set_setting open_database))
 
 ;; The managed development host speaks the exact same RVT1 protocol over
 ;; stdin/stdout. This is deliberately only a transport alternative: the

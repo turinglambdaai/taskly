@@ -5,9 +5,11 @@
 
 (require rackunit
          racket/file
+         racket/path
          (submod "../taskly/backend.rkt" rpcs)
          "../taskly/config.rkt"
-         "../taskly/paths.rkt")
+         "../taskly/paths.rkt"
+         "../taskly/service.rkt")
 
 (define temp-root (make-temporary-file "taskly-backend-test-~a" 'directory))
 
@@ -35,6 +37,32 @@
 
      ;; The whitelist regression: last-selected-list-id still works.
      (set_setting "last-selected-list-id" "7")
-     (check-equal? (get_setting "last-selected-list-id") "7")))
+     (check-equal? (get_setting "last-selected-list-id") "7")
+
+     ;; open_database remembers the opened file (DATA-FORMAT §7) so hosts
+     ;; restart against it — the 0.2.1 OTA regression: manually opened DBs
+     ;; were forgotten because nothing ever wrote last-db-path.
+     (define remembered-db (build-path temp-root "remembered.db"))
+     (close-taskly-service (open-taskly-service remembered-db))
+     (open_database (path->string remembered-db))
+     (check-equal? (config-ref (read-config) "last-db-path")
+                   (path->string (path->complete-path remembered-db)))
+     (check-equal? (resolve-database-path)
+                   (path->complete-path remembered-db))
+
+     ;; A legacy underscore key survives a config rewrite (pre-0.x files),
+     ;; and the new key wins over it when both exist.
+     (define legacy-config (build-path temp-root "legacy-config.ini"))
+     (call-with-output-file legacy-config
+       (lambda (out)
+         (displayln "# Taskly configuration" out)
+         (displayln "language = zh" out)
+         (displayln "last_db_path = /sync/old.db" out)))
+     (define legacy-loaded (read-config legacy-config))
+     (check-equal? (resolve-database-path #f legacy-loaded)
+                   (path->complete-path "/sync/old.db"))
+     (write-config! legacy-loaded legacy-config)
+     (check-equal? (config-ref (read-config legacy-config) "last_db_path")
+                   "/sync/old.db")))
  (lambda ()
    (delete-directory/files temp-root)))
