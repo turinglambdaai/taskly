@@ -47,6 +47,7 @@
         </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -77,8 +78,28 @@
             </MenuBarItem>
         </MenuBar>
 
+        <!-- Update download notice: full-width above the body. The status
+             bar line alone was too easy to miss during a multi-minute
+             download (user feedback, 0.2.1). -->
+        <InfoBar
+            x:Name="UpdateDownloadBar"
+            Grid.Row="1"
+            Margin="12,8,12,0"
+            IsOpen="False"
+            IsClosable="False"
+            Severity="Informational">
+            <InfoBar.Content>
+                <ProgressBar
+                    x:Name="UpdateDownloadProgress"
+                    Margin="0,0,16,10"
+                    Minimum="0"
+                    Maximum="100"
+                    IsIndeterminate="True" />
+            </InfoBar.Content>
+        </InfoBar>
+
         <!-- Body: sidebar | task pane -->
-        <Grid x:Name="BodyGrid" Grid.Row="1">
+        <Grid x:Name="BodyGrid" Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="280" MinWidth="200" MaxWidth="420" />
                 <ColumnDefinition Width="Auto" />
@@ -424,7 +445,7 @@
         </Grid>
 
         <!-- Status bar -->
-        <Border Grid.Row="2" Background="{ThemeResource TasklySidebarBrush}">
+        <Border Grid.Row="3" Background="{ThemeResource TasklySidebarBrush}">
             <TextBlock
                 x:Name="StatusText"
                 Margin="12,4"

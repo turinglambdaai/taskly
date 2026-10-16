@@ -336,6 +336,11 @@ void MainWindow::StartDownload() {
   update_downloading_ = true;
   update_download_start_ = epoch_seconds();
   SetStatus(t("updateDownloading"));
+  // The full-width notice above the body — the status bar line alone was
+  // too easy to miss during a multi-minute download (0.2.1 feedback).
+  UpdateDownloadBar().Title(winrt::box_value(t("updateDownloading")));
+  UpdateDownloadProgress().IsIndeterminate(true);
+  UpdateDownloadBar().IsOpen(true);
 
   auto const dispatcher = DispatcherQueue();
   auto const weak = get_weak();
@@ -423,6 +428,7 @@ void MainWindow::HandleUpdatePoll(
       update_timer_ = nullptr;
     }
     update_downloading_ = false;
+    UpdateDownloadBar().IsOpen(false);
     auto const path = state.downloaded_path.value_or("");
     if (path.empty()) {
       FailDownload("downloaded file path missing");
@@ -438,10 +444,23 @@ void MainWindow::HandleUpdatePoll(
       update_timer_ = nullptr;
     }
     update_downloading_ = false;
+    UpdateDownloadBar().IsOpen(false);
     FailDownload(state.message.value_or("download failed"));
     return;
   }
-  SetStatus(tf("updateDownloadPercent", std::to_wstring(state.percent)));
+  // Content-Length can be missing behind proxies/mirrors (total 0 →
+  // indeterminate ring); once a real percent arrives, switch the bar to
+  // determinate and title it with the number.
+  auto const percent = state.percent;
+  if (percent > 0) {
+    if (UpdateDownloadProgress().IsIndeterminate()) {
+      UpdateDownloadProgress().IsIndeterminate(false);
+    }
+    UpdateDownloadProgress().Value(static_cast<double>(percent));
+    UpdateDownloadBar().Title(winrt::box_value(
+        tf("updateDownloadPercent", std::to_wstring(percent))));
+  }
+  SetStatus(tf("updateDownloadPercent", std::to_wstring(percent)));
 }
 
 void MainWindow::FailDownload(std::string const& message) {
@@ -450,6 +469,7 @@ void MainWindow::FailDownload(std::string const& message) {
     update_timer_.Stop();
     update_timer_ = nullptr;
   }
+  UpdateDownloadBar().IsOpen(false);
   SetStatus(L"");
   ShowUpdateDialog(L"Taskly", tf("updateInstallFailed", wide(message)), L"",
                    t("dialogConfirm"), nullptr, t("updateCopyError"));
