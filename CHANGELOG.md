@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Windows: the MSI update download followed no redirects and could
+  never deliver a real installer.** The msi/appimage download path
+  opened the release URL without redirections — GitHub answers those
+  URLs with a 302 into the CDN, so the "download" was the empty 302
+  body (no progress ever shown), and the checksum sidecar comparison
+  was the only thing standing between the user and a 0-byte installer.
+  The port now follows redirects like the signed-manifest zip flow and
+  the sidecar fetch already do (the same 302 trap rivet#153 fixed
+  upstream). Where an accelerated/mirror route returns the file
+  directly, downloads keep working as before.
 - **Windows: the title bar no longer shows the broken blank icon.**
   The system title-bar icon rendered as an empty placeholder glyph (the
   exe icon resource is not picked up for this install shape). The icon

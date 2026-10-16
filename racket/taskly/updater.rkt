@@ -448,10 +448,15 @@
   ;; Shared by the msi and appimage flows: parse the response head so the
   ;; progress percent can use Content-Length (0 → indeterminate), then hand
   ;; the body port to the copy loop. Connection: close makes the copy end at
-  ;; EOF like the manifest-verified zip flow.
+  ;; EOF like the manifest-verified zip flow. Redirections MUST follow:
+  ;; release asset URLs 302 into the CDN, and without redirections this
+  ;; downloads the empty 302 body — a 0-byte "installer" (the 1620
+  ;; msiexec failure of 0.2.1's first Windows OTA; the same trap rivet#153
+  ;; fixed for the zip flow).
   (define in (get-impure-port (string->url url)
                               '("User-Agent: Taskly-Updater/1"
-                                "Connection: close")))
+                                "Connection: close")
+                              #:redirections 10))
   (let loop ([total 0])
     (define line (read-line in 'return-linefeed))
     (cond
