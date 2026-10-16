@@ -314,6 +314,7 @@
                             Height="28"
                             CornerRadius="10"
                             VerticalContentAlignment="Center"
+                            UseSystemFocusVisuals="False"
                             TextChanged="OnSearchTextChanged" />
                         <CheckBox
                             x:Name="ShowCompletedCheck"
@@ -360,6 +361,7 @@
                                     MinHeight="40"
                                     FontSize="14"
                                     VerticalAlignment="Center"
+                                    UseSystemFocusVisuals="False"
                                     VerticalContentAlignment="Center"
                                     BorderThickness="0"
                                     Background="Transparent"

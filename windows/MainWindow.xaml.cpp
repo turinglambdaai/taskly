@@ -1157,6 +1157,9 @@ winrt::fire_and_forget MainWindow::PromptAsync(
   auto input = mxc::TextBox{};
   input.PlaceholderText(placeholder);
   input.Text(initial);
+  // The system focus indicator (blue outline + white inner frame) clashes
+  // with the card-style inputs; the focused border does the talking.
+  input.UseSystemFocusVisuals(false);
 
   auto dialog = mxc::ContentDialog{};
   dialog.Title(winrt::box_value(title));
