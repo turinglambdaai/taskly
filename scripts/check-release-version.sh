@@ -20,7 +20,10 @@ if [[ -n "$TAG" ]]; then
     fail "tag '$TAG' does not match VERSION '$VERSION'"
   # Release tags must be annotated — lightweight tags have slipped in
   # (v0.1.0, v0.1.4, v0.2.0) and the family convention requires the tag
-  # message to travel with the ref.
+  # message to travel with the ref. CI checkouts may not carry the tag
+  # object (actions/checkout hands back a detached commit), so fetch the
+  # real ref explicitly first; locally this is a no-op.
+  git -C "$ROOT" fetch -q --no-tags --force origin "refs/tags/$TAG:refs/tags/$TAG" 2>/dev/null || true
   [[ "$(git -C "$ROOT" cat-file -t "$TAG" 2>/dev/null)" == "tag" ]] || \
     fail "tag '$TAG' is lightweight — release tags must be annotated (git tag -a)"
 fi
