@@ -21,12 +21,14 @@ going commercial; pricing/licensing decisions are the business half.
 ## 2. Signing & notarization (non-negotiable for paid desktop software)
 
 - [ ] macOS: Apple Developer Program, Developer ID Application cert,
-      hardened runtime, notarization (staple), Sparkle-style updater or
-      Velopack-style delta updates. Gatekeeper is the #1 refund trigger.
-- [ ] Windows: code-signing cert (EV/OV), sign the installer AND the exe;
-      Velopack releases already support signing + delta updates. SmartScreen
-      reputation builds with consistent signing over time.
-- [ ] Linux: Flathub verification (repo ownership check).
+      hardened runtime, notarization (staple). Gatekeeper is the #1 refund
+      trigger; the in-app updater (signed manifests, in-place swap) is
+      already shipped — only the signing identity is missing.
+- [ ] Windows: code-signing cert (EV/OV), sign the MSI AND the exe.
+      SmartScreen reputation builds with consistent signing over time.
+- [ ] Linux: distro packaging is GitHub-Releases-only today (deb/rpm/
+      AppImage/tar.gz); revisit store/Flathub verification only if that
+      channel decision changes.
 
 ## 3. Monetization engineering hooks (build when the model is chosen)
 
@@ -42,7 +44,7 @@ going commercial; pricing/licensing decisions are the business half.
       preflight + Racket core contract tests + golden CLI suite + GTK4,
       SwiftUI, and WinRT host builds with boot smoke).
 - [ ] Cross-platform DB conformance: open a DB written by each platform in
-      each other platform (fixture in `shared/`), including a v0.6.x DB.
+      each other platform (fixture in `shared/`).
 - [ ] Golden CLI suite: shared fixture lives in `shared/cli-golden/` (63
       cases, exact stdout/stderr/exit). Wired into `ci.yml` against the
       source-level CLI shim on the Linux runner — running the same fixture
@@ -59,15 +61,16 @@ going commercial; pricing/licensing decisions are the business half.
 - [ ] `release.yml`: tag → build all platforms → sign the update manifest
       (Ed25519) → upload artifacts → GitHub Release (store submissions when
       a store model lands).
-- [ ] Auto-update smoke: 0.6.x → 1.0 upgrade path keeps `~/.taskly` intact
-      (test on all three OSes with a real user DB copy).
+- [ ] Auto-update smoke: N → N+1 in-place update keeps `~/.taskly` intact
+      (test on all three OSes with a real user DB copy — the OTA path is
+      already exercised every release; keep the check deliberate).
 - [ ] Rollback plan: keep previous version downloadable; DB migrations are
       append-only so downgrades never lose data.
 
 ## 6. Support & docs
 
 - [ ] Landing/docs site already exists (`docs/`, GitHub Pages) — add:
-      data-format page (transparency = trust), CLI reference (agent users are
-      a paying niche), migration guide from the Avalonia 0.6.x.
+      data-format page (transparency = trust) and a CLI reference (agent
+      users are a paying niche).
 - [ ] In-app "Where is my data?" page pointing at `~/.taskly/tasks.db`.
 - [ ] Support inbox + refund policy wired into the store checkout.
