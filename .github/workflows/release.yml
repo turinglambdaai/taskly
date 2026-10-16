@@ -37,7 +37,13 @@ jobs:
           variant: CS
           version: '9.3'
       - name: Install Rivet (catalog)
-        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+        # keel pinned just below the commit that added
+        # tests/documentation — it collides with rivet v0.11.0's own
+        # tests/documentation module and fails every install (upstream
+        # issue filed against keel). Drop this pin once the rename lands.
+        run: |
+          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/keel.git#0740fdfbdab7bf5dab32232c82f07dd98aa6a196'
+          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Version preflight (VERSION == rivet.rktd == updater == tag)
         run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
       # DMG (human installer) + portable zip + SBOM + notices, launch
@@ -85,7 +91,9 @@ jobs:
           version: '9.3'
       - name: Install Rivet (catalog)
         shell: pwsh
-        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+        # keel pinned below the tests/documentation collision commit
+        # (upstream issue filed); drop once keel renames the module.
+        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/keel.git#0740fdfbdab7bf5dab32232c82f07dd98aa6a196' && raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Install WiX (v5; rivet's MSI toolchain)
         run: dotnet tool install --global wix --version 5.0.2
         shell: bash
@@ -142,6 +150,9 @@ jobs:
       # crypto backs the updater's signing.
       - name: Install Rivet (catalog) and backend packages
         run: |
+          # keel pinned below the tests/documentation collision commit
+          # (upstream issue filed); drop once keel renames the module.
+          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/keel.git#0740fdfbdab7bf5dab32232c82f07dd98aa6a196'
           raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
           raco pkg install --auto --no-docs db crypto
       - name: Install GTK4, rpm and packaging tooling
@@ -198,7 +209,13 @@ jobs:
           variant: CS
           version: '9.3'
       - name: Install Rivet (catalog)
-        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+        # keel pinned just below the commit that added
+        # tests/documentation — it collides with rivet v0.11.0's own
+        # tests/documentation module and fails every install (upstream
+        # issue filed against keel). Drop this pin once the rename lands.
+        run: |
+          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/keel.git#0740fdfbdab7bf5dab32232c82f07dd98aa6a196'
+          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
