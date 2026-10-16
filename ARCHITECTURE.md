@@ -1,9 +1,8 @@
 # Taskly Architecture — Shared Racket Core + Native Platform Shells
 
-> Status: **Mainline** — the Rivet rebuild is the product line (single `main` branch).
->
-> Stable releases continue from `main` until a platform passes the migration
-> gates in `docs/RIVET-MIGRATION.md`.
+> Status: **Mainline** — the Rivet rebuild is the product line (single `main`
+> branch); all three desktop hosts ship from it. The migration history lives
+> in git (the pre-rewrite native line ends at commit `51c9c1c`).
 
 ## Decision
 
@@ -23,7 +22,7 @@ parts where platform fidelity is the feature.
 | Concern | Owner |
 |---|---|
 | SQLite schema/migrations, queries | Racket core |
-| config and DB path resolution | Racket core (migration target; Windows shell still has transitional config code) |
+| config and DB path resolution | Racket core |
 | validation, date parsing, filtering | Racket core |
 | task/list state transitions | Racket core |
 | CLI semantics and exit classification | Racket core (migration target) |
@@ -102,8 +101,7 @@ taskly/
 │       ├── backend-wire-test.rkt
 │       ├── rivet-schema-test.rkt
 │       ├── updater-test.rkt
-│       ├── cli-update-test.rkt
-│       └── dotnet-rivet-smoke/
+│       └── cli-update-test.rkt
 ├── macos-host/        # SwiftUI host (arm64 + x64)
 ├── windows/           # C++/WinRT host (x64)
 ├── linux/             # GTK4 host (x64 + arm64; deb/rpm/AppImage/tar.gz)
@@ -135,12 +133,10 @@ work around reusable host/runtime problems inside Taskly.
 Capabilities Taskly has already driven into Rivet:
 
 1. named Record/DTO schema types layered compatibly on RVT1
-2. generated Swift, C++, and C# typed clients
-3. managed `IRivetClient` runtime and development process transport
-4. Windows in-process .NET embedding through `rivet_native.dll`
-5. `raco rivet build-dotnet` for a self-contained Racket backend bundle
-6. strict protocol-channel behavior (backend declarations may not pollute stdout)
-7. generated C# support for ordinary domain names such as `Task`
+2. generated Swift and C++ typed clients
+3. strict protocol-channel behavior (backend declarations may not pollute stdout)
+4. release machinery this product consumes directly: signed update
+   manifests, DMG/MSI/Linux-package output, SBOM + notices
 
 Remaining framework/product gaps include:
 
@@ -150,16 +146,18 @@ Remaining framework/product gaps include:
 
 RVT1 remains protocol version 1. Records are schema/codegen constructs encoded
 as field-ordered RVT1 lists, so typed DTO support did not require a transport
-version break.
+version break. (An early .NET client path — C# codegen, `rivet_native.dll`,
+`raco rivet build-dotnet` — existed during the migration and was dropped when
+the Windows host settled on C++/WinRT; see the rivet PR #50/#51 discussion.)
 
 ## Migration safety
 
-Do not delete or simplify the existing native implementation merely because a
-Racket equivalent exists. Replacement happens platform by platform only after
-contract tests and desktop-quality acceptance gates pass.
-
+Hosts stay presentation-only: product behavior lives in the Racket core.
 Do not build a general-purpose declarative UI toolkit before Taskly needs one.
 If repeated native UI patterns justify an abstraction later, extract the
 smallest reusable primitive from real Taskly code.
 
-See `docs/RIVET-MIGRATION.md` for milestones and stop rules.
+Missing Rivet capabilities surface as upstream issues/PRs against
+`turinglambdaai/rivet` as product work hits them; the historical backlog of
+taskly-driven framework work (and its resolution record) is in git history
+and the rivet issue tracker.

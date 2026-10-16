@@ -13,7 +13,7 @@ Taskly 是 Rivet 架构的待办应用（monorepo）：**一个 Racket CS 领域
 | Windows 宿主 10+ | WinUI 3 (C++/WinRT) | `windows/` | ✅ CI 构建 |
 | Linux 宿主 | GTK 4（C++/CMake） | `linux/` | ✅ CI 构建 + xvfb 冒烟 |
 
-宿主代码中的 `GeneratedBackend.swift` / `GeneratedBackend.hpp` / 客户端代码由 `raco rivet build` 从 `racket/taskly/backend.rkt`（RPC 契约）生成，**不要手改**。架构决策记录：`ARCHITECTURE.md`；迁移史：`docs/RIVET-MIGRATION.md`。
+宿主代码中的 `GeneratedBackend.swift` / `GeneratedBackend.hpp` / 客户端代码由 `raco rivet build` 从 `racket/taskly/backend.rkt`（RPC 契约）生成，**不要手改**。架构决策记录：`ARCHITECTURE.md`；迁移史只在 git 历史（原生线止于 `51c9c1c`）。发现 rivet 能力缺口直接提 rivet issue/PR。
 
 ## 快速命令
 
