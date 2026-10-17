@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **macOS: clicking the task checkbox did not complete the task.** The
+  checkbox button's label is a stack of circles whose fill is transparent
+  while the task is open, and SwiftUI hit-tests a plain button against its
+  label's rendered content — so the effective click target was just the
+  1.5pt ring stroke. Tapping the center, the natural place to click, did
+  nothing: no state change, no error, and the engine never saw a
+  `set_completed` call. The same missing-hit-shape pattern affected the
+  row's info and collapse buttons, the sidebar's new-list plus, the pane's
+  sidebar toggle, and the search clear button. Every one of these labels
+  now carries an explicit `contentShape(Rectangle())` so the whole control
+  area is clickable. Verified end to end with real mouse clicks against an
+  isolated database: check, uncheck, and the state-bar count all update.
+
 ## [0.2.2] - 2026-10-16
 
 ### Fixed

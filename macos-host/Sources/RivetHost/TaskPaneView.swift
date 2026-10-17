@@ -56,6 +56,7 @@ struct TaskPaneView: View {
                 Image(systemName: "sidebar.left")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(model.theme.secondaryText)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help(model.isSidebarVisible ? model.t("sidebarHide") : model.t("sidebarShow"))
@@ -96,6 +97,7 @@ struct TaskPaneView: View {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 11))
                                 .foregroundStyle(model.theme.tertiaryText)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }

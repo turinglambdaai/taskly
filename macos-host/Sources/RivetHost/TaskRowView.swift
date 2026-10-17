@@ -102,6 +102,9 @@ struct TaskRowView: View {
                     .foregroundStyle(model.theme.tertiaryText)
                     // 45% at rest, full on row hover (DESIGN-TOKENS task row).
                     .opacity(isHovering ? 1 : 0.45)
+                    // Hit target: the SF Symbol glyph alone is far smaller
+                    // than the intended touch area.
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help(model.t("contextMenuDetails"))
@@ -212,6 +215,9 @@ struct TaskRowView: View {
                         .symbolEffect(.bounce, value: task.completed)
                 }
             }
+            // Hit target: unchecked the ring's fill is transparent, so the
+            // default label hit area is just the 1.5pt stroke line.
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -344,6 +350,7 @@ struct TaskRowView: View {
                 Image(systemName: "chevron.up.circle")
                     .font(.system(size: 15))
                     .foregroundStyle(model.theme.tertiaryText)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help(model.t("contextMenuDetails"))

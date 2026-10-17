@@ -116,6 +116,7 @@ struct SidebarView: View {
                     Image(systemName: "plus")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(model.theme.accent)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(!model.isConnected)
