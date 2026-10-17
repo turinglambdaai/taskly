@@ -2816,18 +2816,15 @@ void build_menubar() {
   g_menu_append(theme_section, tr("themeDark").c_str(), "win.theme-dark");
   g_menu_append_section(settings_menu, nullptr, G_MENU_MODEL(theme_section));
   g_object_unref(theme_section);
-  // Settings ▸ Check for Updates… (UPDATE.md trigger contract; bypasses the
-  // launch throttle).
-  auto* update_section = g_menu_new();
-  g_menu_append(update_section, tr("updateCheckNow").c_str(),
-                "win.check-updates");
-  g_menu_append_section(settings_menu, nullptr, G_MENU_MODEL(update_section));
-  g_object_unref(update_section);
   g_menu_append_submenu(menu, tr("menuSettings").c_str(),
                         G_MENU_MODEL(settings_menu));
   g_object_unref(settings_menu);
 
+  // Family menu convention: Check for Updates… and About are a pair in the
+  // Help menu (UPDATE.md trigger contract; the manual entry bypasses the
+  // launch throttle).
   auto* help_menu = g_menu_new();
+  g_menu_append(help_menu, tr("updateCheckNow").c_str(), "win.check-updates");
   g_menu_append(help_menu, tr("menuAbout").c_str(), "win.about");
   g_menu_append_submenu(menu, tr("menuHelp").c_str(), G_MENU_MODEL(help_menu));
   g_object_unref(help_menu);

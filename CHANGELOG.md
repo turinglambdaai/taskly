@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- "Check for Updates…" moved next to About per the family menu
+  convention: App menu below About on macOS, Help menu (above About) on
+  Windows and Linux — it had lived at the bottom of the Settings menu on
+  every platform.
+
 ### Fixed
 - **macOS: clicking the task checkbox did not complete the task.** The
   checkbox button's label is a stack of circles whose fill is transparent

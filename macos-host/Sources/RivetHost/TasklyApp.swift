@@ -23,10 +23,15 @@ struct TasklyApp: App {
             // View menu).
             CommandGroup(replacing: .toolbar) {}
             CommandGroup(replacing: .sidebar) {}
-            CommandGroup(replacing: .help) {
+            CommandGroup(replacing: .appInfo) {
                 Button(model.t("menuAbout")) {
                     model.aboutVisible = true
                 }
+            }
+            // Family menu convention: Check for Updates… lives in the App
+            // menu directly below About.
+            CommandGroup(after: .appInfo) {
+                Button(model.t("menuCheckUpdates")) { model.checkForUpdates() }
             }
             // Localized Quit (the system item is AppKit-English regardless of
             // the app language); terminate stays the normal path.
@@ -103,8 +108,6 @@ struct TasklyCommands: Commands {
                     model.setTheme("dark")
                 }
             }
-            Divider()
-            Button(model.t("menuCheckUpdates")) { model.checkForUpdates() }
         }
     }
 

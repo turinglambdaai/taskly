@@ -70,10 +70,12 @@
                     <MenuFlyoutItem x:Name="MenuThemeLight" Click="OnThemeLight" />
                     <MenuFlyoutItem x:Name="MenuThemeDark" Click="OnThemeDark" />
                 </MenuFlyoutSubItem>
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem x:Name="MenuCheckUpdates" Click="OnCheckUpdates" />
             </MenuBarItem>
             <MenuBarItem Title="Help" x:Name="MenuHelp">
+                <!-- Family menu convention: Check for Updates… and About are
+                     a pair in the Help menu. -->
+                <MenuFlyoutItem x:Name="MenuCheckUpdates" Click="OnCheckUpdates" />
+                <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="MenuAbout" Click="OnAbout" />
             </MenuBarItem>
         </MenuBar>

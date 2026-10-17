@@ -223,7 +223,10 @@
                       (embedded-public-key)
                       update-key-id
                       (rollout-bucket)
-                      maximum-download-bytes))
+                      maximum-download-bytes
+                      ;; rivet #271: component #f = the plain whole-app
+                      ;; artifact (legacy manifests carry no component).
+                      #f))
     (define candidate (select-update config manifest))
     (cond
       [candidate
@@ -516,7 +519,10 @@
                     (embedded-public-key)
                     update-key-id
                     (rollout-bucket)
-                    maximum-download-bytes))
+                    maximum-download-bytes
+                    ;; rivet #271: component #f = the plain whole-app
+                    ;; artifact (legacy manifests carry no component).
+                    #f))
   (define destination
     (cond
       [(msi-flavor?) (destination-path data-dir candidate ".msi")]

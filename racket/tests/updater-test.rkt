@@ -124,7 +124,10 @@
                             "https://dl.example/taskly/taskly-9.9.9.zip"
                             (sha256-file/hex artifact-file)
                             (file-size artifact-file)
-                            'zip '()))))
+                            'zip '()
+                            ;; rivet #271: component #f = the plain whole-app
+                            ;; artifact.
+                            #f))))
   ;; write-signed-manifest refuses malformed manifests before signing
   (define wrapped (open-output-bytes))
   (write-signed-manifest manifest priv "taskly-test" wrapped)
@@ -196,7 +199,10 @@
                                     stall-port (installer-extension))
                             (make-string 64 #\0)
                             1000
-                            'zip '()))))
+                            'zip '()
+                            ;; rivet #271: component #f = the plain whole-app
+                            ;; artifact.
+                            #f))))
   (define candidate
     (update-candidate manifest (first (update-manifest-artifacts manifest))))
   (define temporary

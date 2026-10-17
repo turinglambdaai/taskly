@@ -12,8 +12,9 @@
 - **Triggers**: one silent check shortly after launch (throttled: at most
   once per 4 hours, persisted as config key `last-update-check`, unix
   epoch seconds, host-owned via `get_setting`/`set_setting`), plus a
-  manual `Settings ▸ 检查更新… / Check for Updates…` menu item that
-  bypasses the throttle.
+  manual `检查更新… / Check for Updates…` menu item (family menu
+  convention: Help menu on Windows/Linux, App menu below About on macOS)
+  that bypasses the throttle.
 - **Silent mode**: network failure / rate limit → silently ignore (never
   nag). Manual mode reports every outcome.
 - **Newer version found** (semver compare, downgrades ignored) → dialog
