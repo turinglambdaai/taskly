@@ -81,12 +81,14 @@ cat > "$SCRIPT" <<RKT
   (define path (build-path dist file))
   (unless (file-exists? path)
     (error 'make-update-manifest "missing installer: ~a" path))
+  ;; rivet #271: trailing component field (#f = the plain app artifact).
   (update-artifact platform architecture
                    (string-append base-url "/" file)
                    (sha256-file/hex path)
                    (file-size path)
                    installer
-                   '()))
+                   '()
+                   #f))
 
 (define manifest
   (update-manifest "app.taskly.Taskly"
