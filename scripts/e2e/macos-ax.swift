@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import CoreGraphics
 import Foundation
 
 enum DriverError: Error, CustomStringConvertible {
@@ -34,10 +35,11 @@ func find(_ root: AXUIElement, identifierPrefix: String) -> AXUIElement? {
     }
 }
 
-func containsText(_ root: AXUIElement, _ expected: String) -> Bool {
+func containsStaticText(_ root: AXUIElement, _ expected: String) -> Bool {
     walk(root).contains { element in
-        [kAXTitleAttribute, kAXValueAttribute, kAXDescriptionAttribute]
-            .contains { stringAttribute(element, $0) == expected }
+        stringAttribute(element, kAXRoleAttribute) == (kAXStaticTextRole as String) &&
+            [kAXTitleAttribute, kAXValueAttribute, kAXDescriptionAttribute]
+                .contains { stringAttribute(element, $0) == expected }
     }
 }
 
@@ -74,6 +76,27 @@ func press(_ element: AXUIElement, _ description: String) throws {
     }
 }
 
+func typeText(_ value: String, into element: AXUIElement) throws {
+    guard AXUIElementSetAttributeValue(
+        element, kAXFocusedAttribute as CFString, kCFBooleanTrue
+    ) == .success else {
+        throw DriverError.failure("could not focus quick-add field")
+    }
+    guard let source = CGEventSource(stateID: .hidSystemState),
+          let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
+          let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) else {
+        throw DriverError.failure("could not create native keyboard events")
+    }
+    let characters = Array(value.utf16)
+    characters.withUnsafeBufferPointer { buffer in
+        guard let base = buffer.baseAddress else { return }
+        keyDown.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: base)
+        keyUp.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: base)
+    }
+    keyDown.post(tap: .cghidEventTap)
+    keyUp.post(tap: .cghidEventTap)
+}
+
 var diagnosticApplication: AXUIElement?
 var diagnosticOutput: URL?
 
@@ -99,11 +122,15 @@ do {
 
     let quickAdd: AXUIElement = try waitFor("quick-add field") { find(window, identifier: "quick-add") }
     let submit: AXUIElement = try waitFor("quick-add submit button") { find(window, identifier: "quick-add-submit") }
-    guard AXUIElementSetAttributeValue(quickAdd, kAXValueAttribute as CFString, "Acceptance task" as CFString) == .success else {
-        throw DriverError.failure("could not set quick-add value")
+    try typeText("Acceptance task", into: quickAdd)
+    _ = try waitFor("native quick-add input") {
+        stringAttribute(quickAdd, kAXValueAttribute) == "Acceptance task" ? true : nil
     }
     try press(submit, "quick-add-submit")
-    _ = try waitFor("RPC-created task row") { containsText(window, "Acceptance task") ? true : nil }
+    _ = try waitFor("quick-add submission") {
+        stringAttribute(quickAdd, kAXValueAttribute).isEmpty ? true : nil
+    }
+    _ = try waitFor("RPC-created task row") { containsStaticText(window, "Acceptance task") ? true : nil }
 
     let completion: AXUIElement = try waitFor("task completion control") {
         find(window, identifierPrefix: "task-complete-")
@@ -111,7 +138,7 @@ do {
     let completionIdentifier = stringAttribute(completion, kAXIdentifierAttribute)
     try press(completion, completionIdentifier)
     _ = try waitFor("changed Event reflected in the active view") {
-        containsText(window, "Acceptance task") ? nil : true
+        containsStaticText(window, "Acceptance task") ? nil : true
     }
 
     try writeJSON(snapshot(application), to: output.appendingPathComponent("accessibility.json"))
@@ -124,7 +151,7 @@ do {
 
     try writeJSON([
         "platform": "macos",
-        "actions": ["set:quick-add", "press:quick-add-submit", "press:\(completionIdentifier)"],
+        "actions": ["type:quick-add", "press:quick-add-submit", "press:\(completionIdentifier)"],
         "assertions": [
             "packaged SwiftUI window activated",
             "stable AXIdentifiers exposed",
