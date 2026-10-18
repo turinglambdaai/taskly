@@ -28,6 +28,12 @@ func find(_ root: AXUIElement, identifier: String) -> AXUIElement? {
     walk(root).first { stringAttribute($0, kAXIdentifierAttribute) == identifier }
 }
 
+func find(_ root: AXUIElement, identifierPrefix: String) -> AXUIElement? {
+    walk(root).first {
+        stringAttribute($0, kAXIdentifierAttribute).hasPrefix(identifierPrefix)
+    }
+}
+
 func containsText(_ root: AXUIElement, _ expected: String) -> Bool {
     walk(root).contains { element in
         [kAXTitleAttribute, kAXValueAttribute, kAXDescriptionAttribute]
@@ -68,6 +74,9 @@ func press(_ element: AXUIElement, _ description: String) throws {
     }
 }
 
+var diagnosticApplication: AXUIElement?
+var diagnosticOutput: URL?
+
 do {
     let arguments = CommandLine.arguments
     guard let pidIndex = arguments.firstIndex(of: "--pid"), pidIndex + 1 < arguments.count,
@@ -76,10 +85,12 @@ do {
         throw DriverError.failure("usage: macos-ax --pid PID --output DIRECTORY")
     }
     let output = URL(fileURLWithPath: arguments[outputIndex + 1], isDirectory: true)
+    diagnosticOutput = output
     try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
     guard AXIsProcessTrusted() else { throw DriverError.failure("accessibility access is unavailable") }
 
     let application = AXUIElementCreateApplication(pid)
+    diagnosticApplication = application
     let window: AXUIElement = try waitFor("Taskly window") {
         (attribute(application, kAXWindowsAttribute) as? [AXUIElement])?.first
     }
@@ -95,9 +106,10 @@ do {
     _ = try waitFor("RPC-created task row") { containsText(window, "Acceptance task") ? true : nil }
 
     let completion: AXUIElement = try waitFor("task completion control") {
-        find(window, identifier: "task-complete-1")
+        find(window, identifierPrefix: "task-complete-")
     }
-    try press(completion, "task-complete-1")
+    let completionIdentifier = stringAttribute(completion, kAXIdentifierAttribute)
+    try press(completion, completionIdentifier)
     _ = try waitFor("changed Event reflected in the active view") {
         containsText(window, "Acceptance task") ? nil : true
     }
@@ -112,7 +124,7 @@ do {
 
     try writeJSON([
         "platform": "macos",
-        "actions": ["set:quick-add", "press:quick-add-submit", "press:task-complete-1"],
+        "actions": ["set:quick-add", "press:quick-add-submit", "press:\(completionIdentifier)"],
         "assertions": [
             "packaged SwiftUI window activated",
             "stable AXIdentifiers exposed",
@@ -126,6 +138,9 @@ do {
         throw DriverError.failure("native application rejected termination")
     }
 } catch {
+    if let application = diagnosticApplication, let output = diagnosticOutput {
+        try? writeJSON(snapshot(application), to: output.appendingPathComponent("accessibility-failure.json"))
+    }
     FileHandle.standardError.write(Data("Taskly macOS acceptance failed: \(error)\n".utf8))
     exit(1)
 }
