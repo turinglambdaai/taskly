@@ -918,6 +918,8 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
   row.Tag(winrt::box_value<std::int64_t>(task.id));
 
   auto check = mxc::CheckBox{};
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+      check, L"task-complete-" + std::to_wstring(task.id));
   check.IsChecked(task.completed);
   check.MinWidth(0);
   check.Checked({this, &MainWindow::OnTaskCheckChanged});

@@ -2433,6 +2433,11 @@ void rebuild_task_list() {
         (g_state.api == nullptr ? tr("taskListInputHintNoDb")
                                 : tr("taskListInputHint"))
             .c_str());
+    if (g_state.quick_plus != nullptr) {
+      gtk_accessible_update_property(
+          GTK_ACCESSIBLE(g_state.quick_plus), GTK_ACCESSIBLE_PROPERTY_LABEL,
+          tr("taskListInputHint").c_str(), -1);
+    }
     g_state.open_editor_id = -1;
     return;
   }
@@ -3375,6 +3380,9 @@ void on_activate(GtkApplication* app, gpointer) {
   gtk_widget_set_hexpand(quick_box, TRUE);
   auto* quick_plus =
       gtk_button_new_from_icon_name("list-add-symbolic");
+  gtk_accessible_update_property(
+      GTK_ACCESSIBLE(quick_plus), GTK_ACCESSIBLE_PROPERTY_LABEL,
+      tr("taskListInputHint").c_str(), -1);
   gtk_widget_add_css_class(quick_plus, "quick-add-plus");
   gtk_widget_set_valign(quick_plus, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_start(quick_plus, 7);

@@ -108,6 +108,7 @@ macOS, CMake + GTK 4 headers on Linux, Windows App SDK on Windows):
 
 ```bash
 raco rivet build        # generate clients, compile the core, build the host
+raco rivet acceptance --json # full current-platform product evidence
 raco test racket/       # contract tests
 python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 63-case golden suite
 ```
@@ -126,8 +127,11 @@ python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 63-case g
 One spec keeps every surface consistent: product behavior
 ([PRODUCT-SPEC](shared/spec/PRODUCT-SPEC.md)), data format, CLI contract,
 design tokens, and the update contract — all under
-[shared/spec/](shared/spec/). CI enforces the CLI contract with the
-golden suite and byte-identical i18n on every push.
+[shared/spec/](shared/spec/). CI enforces the CLI contract with the golden
+suite and byte-identical i18n on every push. The source-controlled
+`rivet-acceptance.rktd` additionally requires real RVT1, native build,
+verified package, and accessibility-driven product behavior on Windows,
+macOS arm64/x64, and Linux.
 
 ## License
 
