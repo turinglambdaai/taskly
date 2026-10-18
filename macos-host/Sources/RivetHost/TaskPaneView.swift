@@ -147,6 +147,7 @@ struct TaskPaneView: View {
                     .opacity(model.quickAddText.trimmingCharacters(in: .whitespaces).isEmpty ? 0.45 : 1)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("quick-add-submit")
                 .help(model.t("taskListInputHint"))
 
                 TextField(model.t("taskListInputHint"), text: $model.quickAddText)
@@ -159,6 +160,7 @@ struct TaskPaneView: View {
                     .onChange(of: model.quickAddText) { _, _ in
                         model.quickAddTextChanged()
                     }
+                    .accessibilityIdentifier("quick-add")
 
                 if let preview = model.quickAddPreview {
                     HStack(spacing: 4) {

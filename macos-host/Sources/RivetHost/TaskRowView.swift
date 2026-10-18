@@ -220,6 +220,7 @@ struct TaskRowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("task-complete-\(task.id)")
     }
 
     // MARK: - Due-date semantics (DESIGN-TOKENS)

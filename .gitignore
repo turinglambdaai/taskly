@@ -58,6 +58,8 @@ Thumbs.db
 ## Testing
 coverage/
 *.log
+__pycache__/
+*.py[cod]
 
 ## Local workspace artifacts (not part of the project)
 Noise/

@@ -65,6 +65,7 @@ racket racket/taskly/cli.rkt install-cli   # 安装到 ~/.local/bin/taskly
 
 ```bash
 raco rivet build        # 生成客户端、编译核心、构建宿主
+raco rivet acceptance --json # 当前平台完整产品验收证据
 raco test racket/       # 契约测试
 python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 63 例 golden 套件
 ```
@@ -80,7 +81,7 @@ python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 63 例 go
 └─────────────────────────────┘            └────────────────────────────┘
 ```
 
-一套规格保证所有端一致：产品行为（[PRODUCT-SPEC](shared/spec/PRODUCT-SPEC.md)）、数据格式、CLI 契约、设计令牌、更新契约——都在 [shared/spec/](shared/spec/) 下。CI 在每次推送时用 golden 套件和字节级一致的 i18n 强制执行 CLI 契约。
+一套规格保证所有端一致：产品行为（[PRODUCT-SPEC](shared/spec/PRODUCT-SPEC.md)）、数据格式、CLI 契约、设计令牌、更新契约——都在 [shared/spec/](shared/spec/) 下。CI 在每次推送时用 golden 套件和字节级一致的 i18n 强制执行 CLI 契约；源码中的 `rivet-acceptance.rktd` 还要求 Windows、macOS arm64/x64、Linux 分别通过真实 RVT1、原生构建、已验证安装包和无障碍树驱动的产品行为验收。
 
 ## 许可证
 

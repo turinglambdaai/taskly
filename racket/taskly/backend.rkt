@@ -294,7 +294,7 @@
 ;; Test seam: the generated RPC handlers are plain functions; contract
 ;; tests import them directly without standing up an RVT1 server.
 (module+ rpcs
-  (provide get_setting set_setting open_database))
+  (provide get_setting set_setting open_database close_database))
 
 ;; The managed development host speaks the exact same RVT1 protocol over
 ;; stdin/stdout. This is deliberately only a transport alternative: the

@@ -20,6 +20,7 @@ Taskly 是 Rivet 架构的待办应用（monorepo）：**一个 Racket CS 领域
 ```bash
 # 核心（任何平台）
 raco rivet build          # 生成客户端 + 编译核心 bundle + 构建当前平台宿主
+raco rivet acceptance --json # 当前平台完整验收：契约、真实 RVT1、构建、打包、原生 UI
 raco test racket/         # 契约测试
 scripts/taskly-cli.sh list --json                          # dev CLI（系统 racket）
 python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 63 例 golden 套件（--record 重录）
@@ -32,6 +33,14 @@ scripts/make-update-manifest.sh v<ver> <dist-dir>   # 签名更新清单（Ed255
 scripts/sync-i18n.sh            # shared/i18n → 各宿主资源目录
 scripts/sync-i18n.sh --check    # CI 模式：仅校验
 ```
+
+开始修改已有 checkout 前，必须先检查 `git status`，再以 fast-forward-only
+方式更新 tracked remote。工作树非干净、分支已分叉或远端不可达时，保留现场并
+报告，不得用 stash/reset/清理生成目录掩盖状态。记录本次工作的起始 commit。
+
+`rivet-acceptance.rktd` 是可执行的完成定义。Agent 不得通过删除 requirement、
+放宽断言、改 golden 期望或用 CLI 代替 GUI 行为来让变更变绿；required suite
+只要在声明平台未执行、超时、失败或没有生成本次运行的新证据，就不能称为完成。
 
 发布 = 改 `VERSION` + `rivet.rktd` + `CHANGELOG.md`（三处同值）→ 推 tag `v*`，release.yml 自动打包三平台 + SHA256SUMS + 签名 update manifest。
 

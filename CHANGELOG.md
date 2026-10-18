@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Add an executable cross-platform product acceptance contract. Windows,
+  macOS arm64/x64, and Linux now run shared Racket contracts, a real RVT1
+  embedded-backend round trip, native compilation, verified packaging, and an
+  accessibility-driven critical UI flow against a disposable user profile.
+  The gate archives fresh interaction, accessibility, and platform diagnostic
+  evidence; fixed-sleep boot smoke and CLI substitutions no longer count as
+  proof of native product behavior.
+
 ## [0.2.3] - 2026-10-17
 
 ### Changed
