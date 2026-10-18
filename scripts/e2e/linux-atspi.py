@@ -62,6 +62,18 @@ def find_named(root, name, expected_role=None):
     return None
 
 
+def find_editable_named(root, name):
+    for node in walk(root):
+        if (node.name or "") != name:
+            continue
+        try:
+            node.queryEditableText()
+            return node
+        except Exception:
+            continue
+    return None
+
+
 def contains_text(root, expected):
     return any((node.name or "") == expected or text(node) == expected for node in walk(root))
 
@@ -90,7 +102,10 @@ def main():
 
     application = wait_for("Taskly application", find_application)
     window = wait_for("Taskly frame", lambda: next((n for n in walk(application) if role(n) == "frame"), None))
-    entry = wait_for("quick-add entry", lambda: find_named(window, "+ Add Task", "text"))
+    # GTK/AT-SPI role names vary between distro accessibility stacks
+    # (commonly "text" or "entry"). The editable-text interface is the
+    # stable behavioral contract we actually need.
+    entry = wait_for("quick-add entry", lambda: find_editable_named(window, "+ Add Task"))
     submit = wait_for("quick-add submit", lambda: find_named(window, "+ Add Task", "push button"))
     entry.queryEditableText().setTextContents("Acceptance task")
     press(submit)

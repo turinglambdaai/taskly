@@ -65,4 +65,8 @@
      (check-equal? (config-ref (read-config legacy-config) "last_db_path")
                    "/sync/old.db")))
  (lambda ()
+   ;; open_database installs a process-wide service just like the embedded
+   ;; host. Close it before removing the disposable profile so Windows does
+   ;; not retain an open SQLite handle during test cleanup.
+   (close_database)
    (delete-directory/files temp-root)))

@@ -2848,6 +2848,9 @@ void apply_language() {
                                  tr("searchHint").c_str());
   gtk_entry_set_placeholder_text(g_state.quick_add,
                                  tr("taskListInputHint").c_str());
+  gtk_accessible_update_property(
+      GTK_ACCESSIBLE(g_state.quick_add), GTK_ACCESSIBLE_PROPERTY_LABEL,
+      tr("taskListInputHint").c_str(), -1);
   gtk_button_set_label(
       GTK_BUTTON(g_state.show_completed_toggle),
       (g_state.show_completed ? tr("hideCompletedToggle")
@@ -3390,6 +3393,9 @@ void on_activate(GtkApplication* app, gpointer) {
   gtk_box_append(GTK_BOX(quick_box), quick_plus);
   auto* quick_add = gtk_entry_new();
   gtk_widget_add_css_class(quick_add, "quick-add");
+  gtk_accessible_update_property(
+      GTK_ACCESSIBLE(quick_add), GTK_ACCESSIBLE_PROPERTY_LABEL,
+      tr("taskListInputHint").c_str(), -1);
   gtk_widget_set_hexpand(quick_add, TRUE);
   gtk_box_append(GTK_BOX(quick_box), quick_add);
   auto* preview = gtk_label_new("");
