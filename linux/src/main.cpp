@@ -1370,11 +1370,17 @@ void start_update_download() {
   auto* label = gtk_label_new(tr("updateDownloading").c_str());
   gtk_box_append(GTK_BOX(content), label);
 
-  // Canceling only detaches the progress UI — the backend keeps downloading
-  // (family parity: there is no cancel RPC).
+  // start_download is intentionally a start/cancel toggle while a transfer
+  // is active, so the existing generated client can stop the backend worker
+  // without a schema-only regeneration.
   g_signal_connect(
       dialog, "response",
-      G_CALLBACK(+[](GtkDialog* dialog, gint, gpointer) {
+      G_CALLBACK(+[](GtkDialog* dialog, gint response, gpointer) {
+        if (response == GTK_RESPONSE_CANCEL && g_state.api != nullptr &&
+            g_update.download_in_flight) {
+          g_state.api->start_download_async(
+              [](rivet_app::Result<void>) {});
+        }
         stop_update_poll();
         g_update.progress_dialog = nullptr;
         g_update.progress_bar = nullptr;
