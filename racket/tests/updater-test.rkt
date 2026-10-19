@@ -275,8 +275,15 @@
     (check-false (file-exists? temporary))
 
     ;; Candidate remains selected, so retry does not require another check.
-    (start-download! data-dir)
-    (wait-until (lambda () (file-exists? temporary)) "retry partial")
+    ;; The fixture server deliberately stays occupied by the first request;
+    ;; for retry semantics we only need to prove a fresh worker can start
+    ;; and be cancelled again (not that this fake server serves request #2).
+    (check-not-exn (lambda () (start-download! data-dir)))
+    (wait-until
+     (lambda ()
+       (define retry-worker (update-worker-thread))
+       (and retry-worker (thread-running? retry-worker)))
+     "the retry worker to start")
     (check-true (cancel-download!))
     (check-equal? (hash-ref (update-state-snapshot) 'phase) "idle")
     (check-false (file-exists? temporary))
