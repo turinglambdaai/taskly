@@ -147,7 +147,7 @@ Pre-map bare words (case-insensitive): `today` → `+0d`, `tomorrow`/`tmw` →
 
 Then DateParser:
 1. Relative `+N{m|h|d|w|M}` — regex `^(\d*)([mhdwM])$`, digits optional
-   (default 1), **case-sensitive** (`m` minutes, `M` month = 30 days), from now.
+   (default 1), **case-sensitive** (`m` minutes, `M` = 30 days). Minutes/hours are elapsed durations; days/weeks/30-day months advance the local civil calendar while preserving wall-clock time across DST transitions.
 2. `@time`: `now` | `H` | `H:MM` | `Ham` | `Hpm` | `H:MMam` | `H:MMpm`
    (am/pm any case; 12am→0, pm<12→+12; hour 0–23, min 0–59). Optional
    trailing modifier: `tomorrow`/`tmw`, or `sun..sat` = next such weekday
