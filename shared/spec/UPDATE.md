@@ -25,7 +25,10 @@
   pattern — Ed25519 manifest verify and sha256 artifact verify live in
   the backend; hosts never implement crypto). Hosts poll `update_state`
   (phase: idle | checking | downloading | downloaded | error) and show
-  progress.
+  progress. For schema compatibility, `start_download` is a start/cancel
+  toggle while a transfer is active: a second call interrupts the worker,
+  removes partial data, returns to `idle`, and preserves the candidate
+  so the user can retry.
 - **Download must be bounded and cancellable**: a stalled transfer
   surfaces a retryable error after a finite timeout, and the progress UI
   offers Cancel — cancelling stops the transfer and returns to the
