@@ -28,18 +28,40 @@
           (pad2 (date-minute d))
           (pad2 (date-second d))))
 
-(define (valid-local-date-seconds year month day [hour 12] [minute 0])
+(define (valid-local-date-seconds year month day [hour 12] [minute 0] [second 0])
   (and (<= min-year year max-year)
        (with-handlers ([exn:fail? (lambda (_) #f)])
-         (define seconds (find-seconds 0 minute hour day month year #t))
+         (define seconds (find-seconds second minute hour day month year #t))
          (and seconds
               (let ([d (seconds->date seconds #t)])
                 (and (= year (date-year d))
                      (= month (date-month d))
                      (= day (date-day d))
                      (= hour (date-hour d))
-                     (= minute (date-minute d))))
+                     (= minute (date-minute d))
+                     (= second (date-second d))))
               seconds))))
+
+;; Advance a local civil date by N calendar days while preserving the local
+;; wall-clock time. We do the date arithmetic in UTC (where every day is
+;; exactly 86400 seconds), then resolve the resulting civil components back
+;; through find-seconds in the local timezone. This avoids DST drift such as
+;; "10am tomorrow" becoming 9am/11am.
+(define (local-calendar-days-later seconds days [hour #f] [minute #f] [second #f])
+  (define base (seconds->date seconds #t))
+  (define civil-noon
+    (find-seconds 0 0 12
+                  (date-day base) (date-month base) (date-year base)
+                  #f))
+  (define target-civil
+    (seconds->date (+ civil-noon (* days 86400)) #f))
+  (valid-local-date-seconds
+   (date-year target-civil)
+   (date-month target-civil)
+   (date-day target-civil)
+   (if hour hour (date-hour base))
+   (if minute minute (date-minute base))
+   (if second second (date-second base))))
 
 (define (parse-absolute input)
   (define candidates
@@ -67,15 +89,17 @@
   (match (regexp-match #px"^\\+(\\d*)([mhdwM])$" input)
     [(list _ amount-text unit)
      (define amount (if (string=? amount-text "") 1 (string->number amount-text)))
-     (define factor
+     (define now (now-seconds))
+     (define target
        (case (string-ref unit 0)
-         [(#\m) 60]
-         [(#\h) 3600]
-         [(#\d) 86400]
-         [(#\w) (* 7 86400)]
-         [(#\M) (* 30 86400)]
+         [(#\m) (+ now (* amount 60))]
+         [(#\h) (+ now (* amount 3600))]
+         [(#\d) (local-calendar-days-later now amount)]
+         [(#\w) (local-calendar-days-later now (* 7 amount))]
+         ;; The CLI contract defines M as 30 days, not a calendar month.
+         [(#\M) (local-calendar-days-later now (* 30 amount))]
          [else #f]))
-     (and factor (format-full (+ (now-seconds) (* amount factor))))]
+     (and target (format-full target))]
     [_ #f]))
 
 (define weekday-map
@@ -108,15 +132,15 @@
                            (cond
                              [(and modifier-text
                                    (member (string-downcase modifier-text) '("tomorrow" "tmw")))
-                              (+ base 86400)]
+                              (local-calendar-days-later base 1)]
                              [modifier-text
                               (define target-day (hash-ref weekday-map (string-downcase modifier-text) #f))
                               (and target-day
                                    (let* ([current-day (date-week-day (seconds->date base #t))]
                                           [raw-diff (modulo (- target-day current-day) 7)]
                                           [diff (if (zero? raw-diff) 7 raw-diff)])
-                                     (+ base (* diff 86400))))]
-                             [(< base (now-seconds)) (+ base 86400)]
+                                     (local-calendar-days-later base diff)))]
+                             [(< base (now-seconds)) (local-calendar-days-later base 1)]
                              [else base])])
                       (and target (format-full target))))))]
        [_ #f])]))
