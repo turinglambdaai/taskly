@@ -32,8 +32,15 @@
      (check-equal? (parse-date-time "2026-09-20") "2026-09-20")
      (check-false (parse-date-time "2026-02-30"))
      (check-equal? (parse-date-time "+2h") "2026-09-20 12:15:00")
+     ;; Day/week/month-shaped relative expressions use civil-calendar
+     ;; arithmetic so the local wall clock does not drift across DST.
+     (check-equal? (parse-date-time "+1d") "2026-09-21 10:15:00")
+     (check-equal? (parse-date-time "+1w") "2026-09-27 10:15:00")
+     (check-equal? (parse-date-time "+1M") "2026-10-20 10:15:00")
      (check-equal? (parse-date-time "@10:30") "2026-09-20 10:30:00")
      (check-equal? (parse-date-time "@09:00") "2026-09-21 09:00:00")
+     (check-equal? (parse-date-time "@10:30 tomorrow") "2026-09-21 10:30:00")
+     (check-equal? (parse-date-time "@10:30 mon") "2026-09-21 10:30:00")
      (define-values (today-date today-time) (parse-due-expression "today"))
      (check-equal? today-date "2026-09-20")
      (check-false today-time)
