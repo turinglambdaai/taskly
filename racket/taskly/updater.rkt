@@ -152,11 +152,17 @@
     [(and worker (thread-running? worker))
      (set-box! cancel-requested-box #t)
      (break-thread worker)
-     ;; The watchdog already relies on break-thread interrupting a blocked
-     ;; network read. Wait for the worker cleanup arm so a retry cannot race
-     ;; the previous transfer or inherit its partial file.
+     ;; Wait for termination before publishing idle. A very early cancel can
+     ;; land before the worker enters its with-handlers body, so the caller
+     ;; owns the final state normalization instead of relying solely on the
+     ;; worker cleanup arm.
      (sync (thread-dead-evt worker))
      (set-box! worker-thread-box #f)
+     (state-set! 'phase "idle")
+     (state-set! 'percent 0)
+     (state-set! 'message #f)
+     (state-set! 'downloadedPath #f)
+     (set-box! cancel-requested-box #f)
      #t]
     [else #f]))
 
