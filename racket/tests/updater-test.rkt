@@ -244,7 +244,11 @@
          (display "HTTP/1.1 200 OK\r\nContent-Length: 1000\r\nConnection: close\r\n\r\n" cout)
          (write-bytes (make-bytes 10 5) cout)
          (flush-output cout)
-         (sync (thread-receive-evt))))))
+         ;; Cancellation closes the client side; EOF releases this stalled
+         ;; server so it can accept the retry.
+         (read-byte cin)
+         (close-input-port cin)
+         (close-output-port cout)))))
   (define manifest
     (update-manifest
      app-identifier "9.9.9" 7 'stable
