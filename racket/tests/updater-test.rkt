@@ -19,6 +19,7 @@
                   verify-signed-manifest
                   update-manifest
                   update-artifact
+                  update-artifact-installer
                   update-candidate
                   update-candidate-artifact
                   updater-config
