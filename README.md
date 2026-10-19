@@ -80,9 +80,9 @@ Grab your build from
 | Linux ARM64 | full Linux artifact set on `ubuntu-24.04-arm` builds (`-linux-arm64`) | — |
 
 Every release carries a `SHA256SUMS` manifest and a signed
-`update-manifest.json` — the in-app updater's feed. Portable zip
-installs update themselves in place; MSI installs get pointed at the
-releases page.
+`update-manifest.json` — the in-app updater's feed. Portable zip,
+Windows MSI, and Linux AppImage installs update in place; every installed
+artifact is selected from and verified against the signed manifest.
 
 macOS builds are ad-hoc signed; if Gatekeeper complains on first launch,
 run `xattr -cr /Applications/Taskly.app`.
