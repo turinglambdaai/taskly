@@ -73,6 +73,7 @@
          set-update-error!
          set-update-candidate!
          update-worker-thread
+         cancel-download!
          perform-check!
          start-download!
          rollout-bucket)
@@ -134,6 +135,7 @@
 
 (define candidate-box (box #f))
 (define worker-thread-box (box #f))
+(define cancel-requested-box (box #f))
 
 ;; Test seams: install a checked candidate without a live network check,
 ;; and reach the running worker so a test can break it the way the
@@ -143,6 +145,20 @@
 
 (define (update-worker-thread)
   (unbox worker-thread-box))
+
+(define (cancel-download!)
+  (define worker (unbox worker-thread-box))
+  (cond
+    [(and worker (thread-running? worker))
+     (set-box! cancel-requested-box #t)
+     (break-thread worker)
+     ;; The watchdog already relies on break-thread interrupting a blocked
+     ;; network read. Wait for the worker cleanup arm so a retry cannot race
+     ;; the previous transfer or inherit its partial file.
+     (sync (thread-dead-evt worker))
+     (set-box! worker-thread-box #f)
+     #t]
+    [else #f]))
 
 ;; Download watchdog bounds. The copy loop waits on read-bytes-avail! with
 ;; no timeout, so a connection that stalls without RST/FIN parks the worker
@@ -388,7 +404,7 @@
     (appimage-artifact-urls candidate))
   (define-values (self temporary) (appimage-download-target))
   (define expected (fetch-sidecar-sha256! sidecar-url))
-  (with-handlers ([exn:fail?
+  (with-handlers ([(lambda (e) (or (exn:fail? e) (exn:break? e)))
                    (lambda (e)
                      (when (file-exists? temporary)
                        (delete-file temporary))
@@ -507,6 +523,7 @@
   (define candidate (unbox candidate-box))
   (unless candidate
     (error 'start-download! "no update is available; run a check first"))
+  (set-box! cancel-requested-box #f)
   (state-set! 'phase "downloading")
   (state-set! 'percent 0)
   (state-set! 'message #f)
@@ -544,11 +561,21 @@
                (define temporary
                  (path-add-extension destination #".partial"))
                (when (file-exists? temporary) (delete-file temporary))
-               (state-set! 'phase "error")
-               (state-set! 'message
-                           (if (exn:break? e)
-                               "update download stalled or timed out"
-                               (exn-message e))))])
+               (define cancelled?
+                 (and (exn:break? e) (unbox cancel-requested-box)))
+               (if cancelled?
+                   (begin
+                     (state-set! 'phase "idle")
+                     (state-set! 'percent 0)
+                     (state-set! 'message #f)
+                     (state-set! 'downloadedPath #f))
+                   (begin
+                     (state-set! 'phase "error")
+                     (state-set! 'message
+                                 (if (exn:break? e)
+                                     "update download stalled or timed out"
+                                     (exn-message e)))))
+               (set-box! cancel-requested-box #f))])
          (define path
            (cond
              [(msi-flavor?)
