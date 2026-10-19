@@ -73,6 +73,7 @@
          set-update-error!
          set-update-candidate!
          update-worker-thread
+         cancel-download!
          perform-check!
          update-install-kind
          start-download!
@@ -135,6 +136,7 @@
 
 (define candidate-box (box #f))
 (define worker-thread-box (box #f))
+(define cancel-requested-box (box #f))
 
 ;; Test seams: install a checked candidate without a live network check,
 ;; and reach the running worker so a test can break it the way the
@@ -144,6 +146,26 @@
 
 (define (update-worker-thread)
   (unbox worker-thread-box))
+
+(define (cancel-download!)
+  (define worker (unbox worker-thread-box))
+  (cond
+    [(and worker (thread-running? worker))
+     (set-box! cancel-requested-box #t)
+     (break-thread worker)
+     ;; Wait for termination before publishing idle. A very early cancel can
+     ;; land before the worker enters its with-handlers body, so the caller
+     ;; owns the final state normalization instead of relying solely on the
+     ;; worker cleanup arm.
+     (sync (thread-dead-evt worker))
+     (set-box! worker-thread-box #f)
+     (state-set! 'phase "idle")
+     (state-set! 'percent 0)
+     (state-set! 'message #f)
+     (state-set! 'downloadedPath #f)
+     (set-box! cancel-requested-box #f)
+     #t]
+    [else #f]))
 
 ;; Download watchdog bounds. The copy loop waits on read-bytes-avail! with
 ;; no timeout, so a connection that stalls without RST/FIN parks the worker
@@ -164,6 +186,7 @@
 
 (define (reset-update-state!)
   (set-box! candidate-box #f)
+  (set-box! cancel-requested-box #f)
   (set-box! update-state
             (hasheq 'phase "idle"
                     'percent 0
@@ -390,7 +413,7 @@
 
 (define (download-appimage-with-progress! config candidate)
   (define-values (self temporary) (appimage-download-target))
-  (with-handlers ([exn:fail?
+  (with-handlers ([(lambda (e) (or (exn:fail? e) (exn:break? e)))
                    (lambda (e)
                      (when (file-exists? temporary)
                        (delete-file temporary))
@@ -426,6 +449,7 @@
   (define candidate (unbox candidate-box))
   (unless candidate
     (error 'start-download! "no update is available; run a check first"))
+  (set-box! cancel-requested-box #f)
   (state-set! 'phase "downloading")
   (state-set! 'percent 0)
   (state-set! 'message #f)
@@ -463,11 +487,21 @@
                (define temporary
                  (path-add-extension destination #".partial"))
                (when (file-exists? temporary) (delete-file temporary))
-               (state-set! 'phase "error")
-               (state-set! 'message
-                           (if (exn:break? e)
-                               "update download stalled or timed out"
-                               (exn-message e))))])
+               (define cancelled?
+                 (and (exn:break? e) (unbox cancel-requested-box)))
+               (if cancelled?
+                   (begin
+                     (state-set! 'phase "idle")
+                     (state-set! 'percent 0)
+                     (state-set! 'message #f)
+                     (state-set! 'downloadedPath #f))
+                   (begin
+                     (state-set! 'phase "error")
+                     (state-set! 'message
+                                 (if (exn:break? e)
+                                     "update download stalled or timed out"
+                                     (exn-message e)))))
+               (set-box! cancel-requested-box #f))])
          (define path
            (cond
              [(appimage-flavor?)

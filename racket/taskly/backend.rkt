@@ -271,11 +271,16 @@
     (update-check->record (perform-check!))))
 
 ;; Runs on a backend worker thread; the host follows progress via
-;; update_state. Never raises: failures surface through the state's phase.
+;; update_state. A second call while a transfer is active is the cancellation
+;; signal used by the generated clients (keeps the RPC schema backward
+;; compatible while making the existing Cancel controls real).
 (define-rpc (start_download : Void)
   (with-handlers
       ([exn:fail? (lambda (e) (set-update-error! (exn-message e)))])
-    (start-download! (taskly-directory)))
+    (define worker (update-worker-thread))
+    (if (and worker (thread-running? worker))
+        (cancel-download!)
+        (start-download! (taskly-directory))))
   (void))
 
 (define-rpc (update_state : UpdateState)

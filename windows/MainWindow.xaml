@@ -90,6 +90,9 @@
             IsOpen="False"
             IsClosable="False"
             Severity="Informational">
+            <InfoBar.ActionButton>
+                <Button x:Name="UpdateDownloadCancel" Click="OnCancelUpdateDownload" />
+            </InfoBar.ActionButton>
             <InfoBar.Content>
                 <ProgressBar
                     x:Name="UpdateDownloadProgress"

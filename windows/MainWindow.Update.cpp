@@ -339,6 +339,7 @@ void MainWindow::StartDownload() {
   // The full-width notice above the body — the status bar line alone was
   // too easy to miss during a multi-minute download (0.2.1 feedback).
   UpdateDownloadBar().Title(t("updateDownloading"));
+  UpdateDownloadCancel().Content(winrt::box_value(t("dialogCancel")));
   UpdateDownloadProgress().IsIndeterminate(true);
   UpdateDownloadBar().IsOpen(true);
 
@@ -377,6 +378,51 @@ void MainWindow::StartDownload() {
     }
   });
   update_timer_.Start();
+}
+
+void MainWindow::OnCancelUpdateDownload(
+    winrt::Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) {
+  if (!update_downloading_ || backend_ == nullptr || !backend_->running()) {
+    return;
+  }
+  auto const dispatcher = DispatcherQueue();
+  auto const weak = get_weak();
+  auto backend = backend_;
+  try {
+    rivet_app::API api(*backend);
+    // start_download is a start/cancel toggle while a transfer is active.
+    (void)api.start_download_async(
+        [dispatcher, weak](rivet_app::Result<void> result) {
+          std::string failure;
+          try {
+            result.get();
+          } catch (std::exception const& e) {
+            failure = e.what();
+          }
+          dispatcher.TryEnqueue(
+              [weak, failure = std::move(failure)] {
+                if (auto window = weak.get()) {
+                  if (!failure.empty()) {
+                    window->FailDownload(failure);
+                    return;
+                  }
+                  if (window->update_timer_) {
+                    window->update_timer_.Stop();
+                    window->update_timer_ = nullptr;
+                  }
+                  window->update_downloading_ = false;
+                  window->UpdateDownloadBar().IsOpen(false);
+                  window->SetStatus(L"");
+                  // Re-check immediately so cancellation returns to the
+                  // available-update offer with the candidate still usable.
+                  window->RunUpdateCheck(/*silent=*/false);
+                }
+              });
+        });
+  } catch (std::exception const& e) {
+    FailDownload(e.what());
+  }
 }
 
 void MainWindow::PollUpdateState(
