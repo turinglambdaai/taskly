@@ -179,6 +179,7 @@
 
 (define (reset-update-state!)
   (set-box! candidate-box #f)
+  (set-box! cancel-requested-box #f)
   (set-box! update-state
             (hasheq 'phase "idle"
                     'percent 0
