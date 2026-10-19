@@ -74,6 +74,12 @@ struct MainWindow : MainWindowT<MainWindow> {
   void OnNewTaskKeyDown(winrt::Windows::Foundation::IInspectable const&,
                         Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&);
 
+  // Update download action wired from XAML; event handlers must be public
+  // because generated Connect() binds them through MainWindowT.
+  void OnCancelUpdateDownload(
+      winrt::Windows::Foundation::IInspectable const&,
+      Microsoft::UI::Xaml::RoutedEventArgs const&);
+
 private:
   enum class ViewKind { Today, Planned, All, Completed, List };
 
@@ -150,9 +156,6 @@ private:
                                std::string const& failure, bool silent);
   void RecordUpdateCheck();
   void StartDownload();
-  void OnCancelUpdateDownload(
-      winrt::Windows::Foundation::IInspectable const&,
-      Microsoft::UI::Xaml::RoutedEventArgs const&);
   void PollUpdateState(
       std::shared_ptr<rivet::windows::Backend> const& backend);
   void HandleUpdatePoll(rivet_app::Result<rivet_app::UpdateState> const& result);
