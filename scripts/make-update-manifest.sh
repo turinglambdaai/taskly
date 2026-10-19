@@ -141,7 +141,7 @@ cat > "$SCRIPT" <<RKT
                            key-id
                            out)
     (newline out)))
-(printf "manifest: ~a (5 artifacts, key-id ~a)\\n"
+(printf "manifest: ~a (8 artifacts, key-id ~a)\\n"
         (build-path dist "update-manifest.json") key-id)
 RKT
 
