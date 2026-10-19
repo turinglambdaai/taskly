@@ -74,6 +74,12 @@ struct MainWindow : MainWindowT<MainWindow> {
   void OnNewTaskKeyDown(winrt::Windows::Foundation::IInspectable const&,
                         Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&);
 
+  // Update download action wired from XAML; event handlers must be public
+  // because generated Connect() binds them through MainWindowT.
+  void OnCancelUpdateDownload(
+      winrt::Windows::Foundation::IInspectable const&,
+      Microsoft::UI::Xaml::RoutedEventArgs const&);
+
 private:
   enum class ViewKind { Today, Planned, All, Completed, List };
 
