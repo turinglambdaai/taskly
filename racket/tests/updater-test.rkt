@@ -224,3 +224,58 @@
     (reset-update-state!))
   (kill-thread stall-server)
   (tcp-close listener))
+
+
+(test-case "user cancellation stops the worker, cleans partials, and permits retry"
+  (define data-dir (make-temporary-file "taskly-updater-cancel-data-~a" 'directory))
+  (define listener (tcp-listen 0 16 #f))
+  (define-values (_listen-host cancel-port _peer-host _peer-port)
+    (tcp-addresses listener #t))
+  (define stall-server
+    (thread
+     (lambda ()
+       ;; Serve two stalled transfers so the test can prove a retry starts
+       ;; after the first cancellation.
+       (for ([attempt (in-range 2)])
+         (define-values (cin cout) (tcp-accept listener))
+         (let drain ()
+           (define line (read-line cin 'return-linefeed))
+           (unless (or (eof-object? line) (equal? line "")) (drain)))
+         (display "HTTP/1.1 200 OK\r\nContent-Length: 1000\r\nConnection: close\r\n\r\n" cout)
+         (write-bytes (make-bytes 10 5) cout)
+         (flush-output cout)
+         (sync (thread-receive-evt))))))
+  (define manifest
+    (update-manifest
+     app-identifier "9.9.9" 7 'stable
+     "2026-10-09T00:00:00Z" "0.0.0" #f #t 100
+     (list (update-artifact (platform-symbol) (architecture-symbol)
+                            (format "http://127.0.0.1:~a/taskly-9.9.9~a"
+                                    cancel-port (installer-extension))
+                            (make-string 64 #\0)
+                            1000
+                            'zip '() #f))))
+  (define candidate
+    (update-candidate manifest (first (update-manifest-artifacts manifest))))
+  (define temporary
+    (path-add-extension (destination-path data-dir candidate) #".partial"))
+  (parameterize ([current-taskly-home
+                  (make-temporary-file "taskly-updater-cancel-home-~a" 'directory)])
+    (reset-update-state!)
+    (set-update-candidate! candidate)
+    (start-download! data-dir)
+    (wait-until (lambda () (file-exists? temporary)) "first partial")
+    (check-true (cancel-download!))
+    (check-equal? (hash-ref (update-state-snapshot) 'phase) "idle")
+    (check-false (hash-ref (update-state-snapshot) 'message))
+    (check-false (file-exists? temporary))
+
+    ;; Candidate remains selected, so retry does not require another check.
+    (start-download! data-dir)
+    (wait-until (lambda () (file-exists? temporary)) "retry partial")
+    (check-true (cancel-download!))
+    (check-equal? (hash-ref (update-state-snapshot) 'phase) "idle")
+    (check-false (file-exists? temporary))
+    (reset-update-state!))
+  (kill-thread stall-server)
+  (tcp-close listener))
