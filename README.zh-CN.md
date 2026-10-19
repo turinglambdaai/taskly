@@ -43,7 +43,7 @@ Taskly 构建在 [Rivet](https://github.com/turinglambdaai/rivet) 之上：全�
 | Linux x64 | `taskly-<version>-linux-x64.tar.gz` | `taskly-<version>-linux-x64.deb` / `.rpm` / `.AppImage` |
 | Linux ARM64 | `ubuntu-24.04-arm` 构建全套 Linux 产物（`-linux-arm64`） | — |
 
-每个版本都带 `SHA256SUMS` 清单和签名的 `update-manifest.json`（应用内更新的 feed）。便携 zip 安装原地自动更新；MSI 安装版会引导到发布页。
+每个版本都带 `SHA256SUMS` 清单和签名的 `update-manifest.json`（应用内更新的 feed）。便携 zip、Windows MSI 和 Linux AppImage 都可原地更新；实际安装的产物都会直接从签名清单中选择并校验。
 
 macOS 包为 ad-hoc 签名；首次启动如被 Gatekeeper 拦截，执行 `xattr -cr /Applications/Taskly.app` 即可。
 

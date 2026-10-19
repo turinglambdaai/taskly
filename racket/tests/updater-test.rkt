@@ -19,7 +19,11 @@
                   verify-signed-manifest
                   update-manifest
                   update-artifact
+                  update-artifact-installer
                   update-candidate
+                  update-candidate-artifact
+                  updater-config
+                  select-update
                   fetch-update-manifest
                   update-manifest-version
                   update-manifest-artifacts
@@ -145,6 +149,40 @@
                 #:key-id "some-other-key")))
   (delete-file priv-path)
   (delete-file artifact-file))
+
+(test-case "signed manifest selects the requested installable artifact"
+  (define manifest
+    (update-manifest
+     app-identifier "9.9.9" 7 'stable
+     "2026-10-09T00:00:00Z" "0.0.0" #f #t 100
+     (list
+      (update-artifact 'windows 'x64
+                       "https://dl.example/taskly/taskly-9.9.9-windows-x64.zip"
+                       (make-string 64 #\a) 10 'zip '() #f)
+      (update-artifact 'windows 'x64
+                       "https://dl.example/taskly/taskly-9.9.9-windows-x64.msi"
+                       (make-string 64 #\b) 20 'msi '() #f)
+      (update-artifact 'linux 'x64
+                       "https://dl.example/taskly/taskly-9.9.9-linux-x64.tar.gz"
+                       (make-string 64 #\c) 30 'targz '() #f)
+      (update-artifact 'linux 'x64
+                       "https://dl.example/taskly/taskly-9.9.9-linux-x86_64.AppImage"
+                       (make-string 64 #\d) 40 'appimage '() #f))))
+  (define common
+    (updater-config app-identifier "0.0.1" 'stable
+                    'windows 'x64 #f #f 0 (* 1024 1024) #f))
+  (check-equal?
+   (update-artifact-installer
+    (update-candidate-artifact
+     (select-update common manifest #:install-kind 'msi)))
+   'msi)
+  (check-equal?
+   (update-artifact-installer
+    (update-candidate-artifact
+     (select-update (struct-copy updater-config common [platform 'linux])
+                    manifest
+                    #:install-kind 'appimage)))
+   'appimage))
 
 (test-case "embedded release identity is coherent"
   (check-equal? app-identifier "app.taskly.Taskly")

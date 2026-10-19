@@ -7,8 +7,10 @@
 #   <dist-dir>  directory containing the release artifacts, i.e. the names
 #               the release pipeline produces:
 #                 taskly-<ver>-macos-arm64.zip   taskly-<ver>-macos-x64.zip
-#                 taskly-<ver>-windows-x64.zip   taskly-<ver>-linux-x64.tar.gz
-#                 taskly-<ver>-linux-arm64.tar.gz
+#                 taskly-<ver>-windows-x64.zip   taskly-<ver>-windows-x64.msi
+#                 taskly-<ver>-linux-x64.tar.gz   taskly-<ver>-linux-arm64.tar.gz
+#                 taskly-<ver>-linux-x86_64.AppImage
+#                 taskly-<ver>-linux-aarch64.AppImage
 #   <key-path>  Ed25519 private key PEM (default: $UPDATE_KEY_PATH, then
 #               ~/.taskly/update-signing-key.pem)
 #
@@ -31,8 +33,11 @@ VERSION="${TAG#v}"
 for artifact in "$DIST/taskly-$VERSION-macos-arm64.zip" \
                 "$DIST/taskly-$VERSION-macos-x64.zip" \
                 "$DIST/taskly-$VERSION-windows-x64.zip" \
+                "$DIST/taskly-$VERSION-windows-x64.msi" \
                 "$DIST/taskly-$VERSION-linux-x64.tar.gz" \
-                "$DIST/taskly-$VERSION-linux-arm64.tar.gz"; do
+                "$DIST/taskly-$VERSION-linux-arm64.tar.gz" \
+                "$DIST/taskly-$VERSION-linux-x86_64.AppImage" \
+                "$DIST/taskly-$VERSION-linux-aarch64.AppImage"; do
   [[ -f "$artifact" ]] || { echo "error: missing $artifact" >&2; exit 1; }
 done
 [[ -f "$KEY" ]] || { echo "error: missing signing key $KEY (see scripts/update-keys.sh)" >&2; exit 1; }
@@ -114,10 +119,16 @@ cat > "$SCRIPT" <<RKT
                                    (format "taskly-~a-macos-x64.zip" version) 'zip)
                          (artifact 'windows 'x64
                                    (format "taskly-~a-windows-x64.zip" version) 'zip)
+                         (artifact 'windows 'x64
+                                   (format "taskly-~a-windows-x64.msi" version) 'msi)
                          (artifact 'linux 'x64
                                    (format "taskly-~a-linux-x64.tar.gz" version) 'targz)
+                         (artifact 'linux 'x64
+                                   (format "taskly-~a-linux-x86_64.AppImage" version) 'appimage)
                          (artifact 'linux 'arm64
-                                   (format "taskly-~a-linux-arm64.tar.gz" version) 'targz))))
+                                   (format "taskly-~a-linux-arm64.tar.gz" version) 'targz)
+                         (artifact 'linux 'arm64
+                                   (format "taskly-~a-linux-aarch64.AppImage" version) 'appimage))))
 
 ;; write-signed-manifest validates the struct against the manifest schema
 ;; before signing, so a malformed manifest fails the release instead of
@@ -130,7 +141,7 @@ cat > "$SCRIPT" <<RKT
                            key-id
                            out)
     (newline out)))
-(printf "manifest: ~a (5 artifacts, key-id ~a)\\n"
+(printf "manifest: ~a (8 artifacts, key-id ~a)\\n"
         (build-path dist "update-manifest.json") key-id)
 RKT
 

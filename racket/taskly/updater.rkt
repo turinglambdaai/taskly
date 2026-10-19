@@ -74,6 +74,7 @@
          set-update-candidate!
          update-worker-thread
          perform-check!
+         update-install-kind
          start-download!
          rollout-bucket)
 
@@ -227,7 +228,11 @@
                       ;; rivet #271: component #f = the plain whole-app
                       ;; artifact (legacy manifests carry no component).
                       #f))
-    (define candidate (select-update config manifest))
+    (define kind (update-install-kind))
+    (define candidate
+      (if kind
+          (select-update config manifest #:install-kind kind)
+          (select-update config manifest)))
     (cond
       [candidate
        (set-box! candidate-box candidate)
@@ -318,12 +323,10 @@
     (rename-file-or-directory temporary destination #t)
     destination))
 
-;; ---------- MSI flavor (Windows installs under Program Files) ----------
-;; The feed's windows entry is the portable zip; MSI installs update through
-;; the sibling .msi release asset: same asset base with .zip → .msi, and the
-;; checksum comes from the published .msi.sha256 sidecar. (The Ed25519
-;; manifest still authenticates the zip entry that carried the version; the
-;; sidecar is a plain checksum fetched over the same HTTPS origin.)
+;; ---------- install flavor selection ----------
+;; MSI and AppImage are first-class artifacts in the signed manifest. The
+;; installed flavor selects the matching signed artifact during check-update,
+;; so the bytes later executed/installed are covered by Ed25519 + SHA-256.
 
 (define (install-flavor)
   (string-downcase (or (config-ref (read-config) "install-flavor") "zip")))
@@ -332,17 +335,19 @@
   (and (eq? (platform-symbol) 'windows)
        (equal? (install-flavor) "msi")))
 
-;; ---------- AppImage flavor (Linux installs run from an AppImage) ----------
-;; The feed's linux entry is the tar.gz; AppImage installs update through the
-;; sibling .AppImage release asset. Asset families disagree on arch names —
-;; feed/deb/rpm use x64|arm64, AppImage builds use x86_64|aarch64 — so the
-;; derivation maps the arch before appending. The download lands NEXT TO the
-;; running image (same filesystem → atomic rename) and replaces it after the
-;; sidecar checksum verifies; the host re-execs the replaced image on consent.
+;; AppImage downloads land next to the running image (same filesystem →
+;; atomic rename), verify against the signed manifest, then replace $APPIMAGE;
+;; the host re-execs the replaced image on consent.
 
 (define (appimage-flavor?)
   (and (eq? (platform-symbol) 'linux)
        (equal? (install-flavor) "appimage")))
+
+(define (update-install-kind)
+  (cond
+    [(msi-flavor?) 'msi]
+    [(appimage-flavor?) 'appimage]
+    [else #f]))
 
 ;; Pure so tests can pin the derivation — the arch-name mapping is the trap.
 (define (appimage-asset-name tar-gz-filename architecture)
@@ -383,17 +388,21 @@
                                #f
                                (path-only self))))
 
-(define (download-appimage-with-progress! candidate)
-  (define-values (appimage-url sidecar-url)
-    (appimage-artifact-urls candidate))
+(define (download-appimage-with-progress! config candidate)
   (define-values (self temporary) (appimage-download-target))
-  (define expected (fetch-sidecar-sha256! sidecar-url))
   (with-handlers ([exn:fail?
                    (lambda (e)
                      (when (file-exists? temporary)
                        (delete-file temporary))
                      (raise e))])
-    (define-values (in total) (open-download-with-total! appimage-url))
+    (define artifact (update-candidate-artifact candidate))
+    (define total (update-artifact-size artifact))
+    (when (> total (updater-config-maximum-download-bytes config))
+      (error 'download-update "signed artifact size exceeds the download limit"))
+    (define in
+      (get-pure-port (string->url (update-artifact-url artifact))
+                     '("User-Agent: Taskly-Updater/1")
+                     #:redirections 10))
     (dynamic-wind
       void
       (lambda ()
@@ -402,101 +411,11 @@
           #:mode 'binary
           (lambda (out) (copy-with-progress! in out total))))
       (lambda () (close-input-port in)))
-    (define actual (string-downcase (sha256-file/hex temporary)))
-    (unless (string=? actual expected)
-      (raise-arguments-error 'start-download
-                             "downloaded appimage does not match its checksum sidecar"
-                             "expected" expected
-                             "actual" actual))
-    ;; The replaced image must stay executable: rename carries the temp
-    ;; file's modes, so set them explicitly before the swap. The setter
-    ;; takes integer bits (the vector form is a contract violation on
-    ;; Windows, where POSIX modes do not exist) — and the swap itself is
-    ;; only ever reached under APPIMAGE, i.e. never on Windows.
+    (verify-update-artifact! candidate temporary)
     (unless (eq? (system-type 'os) 'windows)
       (file-or-directory-permissions temporary #o755))
     (rename-file-or-directory temporary self #t)
     self))
-
-(define (msi-artifact-urls candidate)
-  (define url (update-artifact-url (update-candidate-artifact candidate)))
-  (unless (string-suffix? url ".zip")
-    (error 'start-download "cannot derive an msi url from a non-zip feed entry"))
-  (define stem (substring url 0 (- (string-length url) 4)))
-  (values (string-append stem ".msi")
-          (string-append stem ".msi.sha256")))
-
-(define (fetch-sidecar-sha256! url)
-  ;; sha256sum format: "<hex>  <filename>"; the first token is the digest.
-  (define in (get-pure-port (string->url url)
-                            '("User-Agent: Taskly-Updater/1")
-                            #:redirections 10))
-  (dynamic-wind
-    void
-    (lambda ()
-      (define digest
-        (let ([body (string-trim (port->string in))])
-          (if (string=? body "") "" (first (string-split body)))))
-      (unless (regexp-match? #px"^[0-9a-fA-F]{64}$" digest)
-        (error 'start-download "msi checksum sidecar has an unexpected shape"))
-      (string-downcase digest))
-    (lambda () (close-input-port in))))
-
-;; MSI downloads come from the same CDN without a signed manifest, so the
-;; response head is the only total available: open an impure port, parse
-;; Content-Length for the progress percent (0 → indeterminate), and hand the
-;; body port to the same copy loop. Connection: close keeps the copy ending
-;; at EOF, exactly like the zip flow.
-(define (open-download-with-total! url)
-  ;; Shared by the msi and appimage flows: parse the response head so the
-  ;; progress percent can use Content-Length (0 → indeterminate), then hand
-  ;; the body port to the copy loop. Connection: close makes the copy end at
-  ;; EOF like the manifest-verified zip flow. Redirections MUST follow:
-  ;; release asset URLs 302 into the CDN, and without redirections this
-  ;; downloads the empty 302 body — a 0-byte "installer" (the 1620
-  ;; msiexec failure of 0.2.1's first Windows OTA; the same trap rivet#153
-  ;; fixed for the zip flow).
-  (define in (get-impure-port (string->url url)
-                              '("User-Agent: Taskly-Updater/1"
-                                "Connection: close")
-                              #:redirections 10))
-  (let loop ([total 0])
-    (define line (read-line in 'return-linefeed))
-    (cond
-      [(eof-object? line) (values in 0)]
-      [(non-empty-string? (string-trim line))
-       (define match
-         (regexp-match #px"(?i:^content-length:\\s*(\\d+))" line))
-       (loop (if match (string->number (second match)) total))]
-      [else (values in total)])))
-
-(define (download-msi-with-progress! config candidate destination)
-  (define-values (msi-url sidecar-url) (msi-artifact-urls candidate))
-  (define expected (fetch-sidecar-sha256! sidecar-url))
-  (make-parent-directory* destination)
-  (define temporary (path-add-extension destination #".partial"))
-  (when (file-exists? temporary) (delete-file temporary))
-  (with-handlers ([exn:fail?
-                   (lambda (e)
-                     (when (file-exists? temporary) (delete-file temporary))
-                     (raise e))])
-    (define-values (in total) (open-download-with-total! msi-url))
-    (dynamic-wind
-      void
-      (lambda ()
-        (call-with-output-file temporary
-          #:exists 'truncate/replace
-          #:mode 'binary
-          (lambda (out) (copy-with-progress! in out total))))
-      (lambda () (close-input-port in)))
-    (define actual (string-downcase (sha256-file/hex temporary)))
-    (unless (string=? actual expected)
-      (raise-arguments-error 'start-download
-                             "downloaded msi does not match its checksum sidecar"
-                             "expected" expected
-                             "actual" actual))
-    (rename-file-or-directory temporary destination #t)
-    destination))
 
 ;; Runs on a backend worker thread; the host follows progress via the
 ;; update-state RPC. Never raises: failures surface through the phase.
@@ -551,10 +470,8 @@
                                (exn-message e))))])
          (define path
            (cond
-             [(msi-flavor?)
-              (download-msi-with-progress! config candidate destination)]
              [(appimage-flavor?)
-              (download-appimage-with-progress! candidate)]
+              (download-appimage-with-progress! config candidate)]
              [else
               (download-with-progress! config candidate destination)]))
          (state-set! 'phase "downloaded")
