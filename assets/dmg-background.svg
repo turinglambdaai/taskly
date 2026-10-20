@@ -12,8 +12,14 @@
   <rect width="1320" height="800" fill="url(#bg)"/>
   <rect x="14" y="14" width="1292" height="772" rx="26" fill="none" stroke="#c15f3c" stroke-opacity="0.16" stroke-width="2"/>
 
-  <text x="660" y="150" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="88" font-weight="600" letter-spacing="2" fill="#2b211b">taskly</text>
+  <text x="660" y="150" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="88" font-weight="600" letter-spacing="2" fill="#2b211b">Taskly</text>
   <text x="660" y="216" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="34" font-weight="400" fill="#2b211b" fill-opacity="0.62">A focused, keyboard-friendly task manager</text>
+
+  <!-- Explicit direction label is separate from the Finder icon labels. -->
+  <text x="660" y="352" text-anchor="middle"
+        font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="24" font-weight="600" letter-spacing="5"
+        fill="#895849">DRAG TO INSTALL</text>
 
   <!-- Keep the drag cue on the line connecting Finder's two icon slots.
        Straight geometry avoids the prior upward arc looking detached from
@@ -25,5 +31,5 @@
         fill="none" stroke="#c15f3c" stroke-opacity="0.88"
         stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/>
 
-  <text x="660" y="672" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="30" font-weight="400" fill="#2b211b" fill-opacity="0.55">Drag taskly into Applications to install</text>
+  <text x="660" y="672" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#2b211b" fill-opacity="0.8">Drag Taskly into Applications</text>
 </svg>

@@ -119,4 +119,6 @@ widths. Monochrome, no gradients — must read on light and dark docks alike.
   1320×800 background. The Taskly and Applications icon slots are controlled
   by pinned Rivet (positions 130,160 and 450,160 at 80pt icons). Keep the
   straight drag arrow centered in the clear space between those slots and
-  do not draw art over the icon/label areas.
+  do not draw art over the icon/label areas. The small `DRAG TO INSTALL`
+  cue and high-contrast bottom instruction sit entirely in the background's
+  clear middle and lower text zones, never underneath Finder's icon labels.
