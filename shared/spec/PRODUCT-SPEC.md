@@ -52,6 +52,13 @@ README's honest gaps).
   text first runs through ExtractTimeCommand (trailing `@10am`, `+1d`…),
   target list = selected list else first list (none → error
   `taskCreateListFirst`); new task lands at top; counts refresh.
+  Snapshot rendering is equally view-scoped: responses must be checked
+  against the currently selected view/list and completed-visibility flag.
+  Results from a previous selection must never appear under the newly
+  selected list title. When a database is opened with a restored named
+  list, its initial ALL snapshot must not populate that named list; query
+  the selected list first.
+
 - Empty states: not connected → 📂 + `taskListEmptyHint`; connected and
   empty → ✓ + `taskListEmpty`.
 - Row order per view (SQL in DATA-FORMAT/CLI-SPEC §list): All & list views
