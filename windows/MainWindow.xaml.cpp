@@ -596,6 +596,12 @@ MainWindow::MainWindow() {
   // handler runs during construction, it re-renders rows before activation.
   // The initial UI already has its XAML controls and language applied.
   ApplyTheme(settings_.theme);
+  // Do not reference a resource defined in the same Grid's
+  // ThemeDictionaries from the Grid's own XAML attribute: on a cold
+  // WinUI launch the forward ThemeResource lookup can surface as an
+  // unhandled XAML load exception before the window is created.
+  // Resolve the brush only after InitializeComponent + RequestedTheme.
+  RootGrid().Background(ThemeBrush(L"TasklySurfaceBrush"));
   RootGrid().ActualThemeChanged(
       [weak = get_weak()](auto&&, auto&&) {
         if (auto window = weak.get()) {
@@ -798,6 +804,7 @@ void MainWindow::ApplyTitleBarTheme() {
 // time — XAML ThemeResource bindings update themselves, hand-built rows do
 // not.
 void MainWindow::OnEffectiveThemeChanged() {
+  RootGrid().Background(ThemeBrush(L"TasklySurfaceBrush"));
   ApplyTitleBarTheme();
   RenderSidebar();
   RenderTasks();
