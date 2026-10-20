@@ -1175,6 +1175,8 @@ winrt::fire_and_forget MainWindow::PromptAsync(
     std::wstring const& initial,
     std::function<void(std::wstring const&)> on_ok) {
   auto input = mxc::TextBox{};
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+      input, L"prompt-input");
   input.PlaceholderText(placeholder);
   input.Text(initial);
   // The system focus indicator (blue outline + white inner frame) clashes
