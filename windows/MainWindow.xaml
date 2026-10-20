@@ -405,7 +405,8 @@
                             <ListView
                                 x:Name="TaskList"
                                 Margin="16,0,16,16"
-                                SelectionMode="Single">
+                                SelectionMode="Extended"
+                                KeyDown="OnTaskListKeyDown">
                                 <ListView.ItemContainerStyle>
                                     <Style TargetType="ListViewItem">
                                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -424,7 +425,9 @@
                         VerticalScrollBarVisibility="Auto">
                         <ListView
                             x:Name="SearchResults"
-                            Margin="24,8,24,16">
+                            Margin="24,8,24,16"
+                            SelectionMode="Extended"
+                            KeyDown="OnTaskListKeyDown">
                             <ListView.ItemContainerStyle>
                                 <Style TargetType="ListViewItem">
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
