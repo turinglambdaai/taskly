@@ -117,7 +117,8 @@ private:
   winrt::fire_and_forget ReloadTasksAsync();
   winrt::fire_and_forget OpenDefaultDatabaseAsync();
   winrt::fire_and_forget OpenDatabaseAsync(std::wstring const& path);
-  winrt::fire_and_forget AddTaskAsync(std::wstring const& text);
+  winrt::fire_and_forget AddTaskAsync(std::wstring const& text,
+                                       std::int64_t target_list_id);
   winrt::fire_and_forget ToggleTaskAsync(std::int64_t id, bool completed);
   winrt::fire_and_forget RenameTaskAsync(std::int64_t id, std::wstring const& text);
   winrt::fire_and_forget SetTaskDueAsync(std::int64_t id, std::wstring const& due_date);
