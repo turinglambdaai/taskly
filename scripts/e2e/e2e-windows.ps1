@@ -245,6 +245,12 @@ try {
     $batchComplete = Wait-Until 'multi-selection action bar' {
         Find-ById $window 'bulk-complete'
     }
+    $batchSchedule = Wait-Until 'multi-selection scheduling action' {
+        Find-ById $window 'bulk-schedule'
+    }
+    if (-not $batchSchedule.Current.IsEnabled) {
+        throw 'batch scheduling is disabled for two selected tasks'
+    }
     $batchComplete.GetCurrentPattern(
         [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
     [void](Wait-Until 'both selected tasks completed by a single command' {
@@ -291,6 +297,7 @@ try {
             'view switches preserve task list ownership',
             'global search shows the real owning list for every task',
             'Ctrl/Shift multi-selection completes two tasks in one command',
+            'batch scheduling is visible and enabled when multiple tasks are selected',
             'native window close stopped the process'
         )
     } | ConvertTo-Json -Depth 5 |
