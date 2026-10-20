@@ -25,6 +25,8 @@ jobs:
         run: bash scripts/check-release-version.sh
       - name: Verify dependency pins stay aligned
         run: bash scripts/check-dependency-pins.sh
+      - name: Verify Windows installer bitmap and checkbox surface
+        run: python3 scripts/check-windows-installer-bitmaps.py
 
   core:
     name: Racket core (contract tests)

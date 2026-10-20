@@ -109,3 +109,18 @@ accent-filled white-text rounded button. No chrome field borders anywhere.
 White rounded square (macOS-squircle radius ≈ 22.5%) with a quiet checklist
 mark: one system-blue rounded bar over two neutral (`#CECED3`) bars, staggered
 widths. Monochrome, no gradients — must read on light and dark docks alike.
+
+## Windows MSI installer artwork
+
+WiX 5's `WixUI_InstallDir` shares `assets/wizard-dialog.bmp` (493×312)
+between welcome and completion pages. Its `ExitDialog` optional checkbox is
+**opaque** at x=135…355 and y=190…230 installer units, mapping to approximately
+x=180…473 and y=253…307 on the bitmap. Gradients under this native control
+produce a conspicuous rectangular patch.
+
+The image's **entire bottom footer** (y=248…311) is flat classic Windows
+button-face `#F0F0F0`, with a subtle divider at y=247. The interactive
+checkbox remains native and accessible, while its backing now blends into the
+same surface. Keep SVG, PNG preview, and shipping BMP synchronized.
+`scripts/check-windows-installer-bitmaps.py` verifies pixel identity and
+native checkbox surface in CI, packaged acceptance and Windows release.
