@@ -404,6 +404,7 @@
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <ListView
                                 x:Name="TaskList"
+                                AutomationProperties.AutomationId="task-list"
                                 Margin="16,0,16,16"
                                 SelectionMode="Extended"
                                 KeyDown="OnTaskListKeyDown">
@@ -425,6 +426,7 @@
                         VerticalScrollBarVisibility="Auto">
                         <ListView
                             x:Name="SearchResults"
+                            AutomationProperties.AutomationId="search-task-list"
                             Margin="24,8,24,16"
                             SelectionMode="Extended"
                             KeyDown="OnTaskListKeyDown">
