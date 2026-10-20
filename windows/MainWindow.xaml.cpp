@@ -1849,7 +1849,9 @@ winrt::fire_and_forget MainWindow::DeleteTaskAsync(std::int64_t id) {
     (void)api.delete_task_async(
         id, [dispatcher, weak, id](rivet_app::Result<bool> result) {
           try {
-            result.get();
+            if (!result.get()) {
+              throw std::runtime_error("task deletion was not acknowledged");
+            }
             dispatcher.TryEnqueue([weak] {
               if (auto window = weak.get()) window->RefreshSearchIfActive();
             });
@@ -2461,6 +2463,12 @@ void MainWindow::StageTaskDeletion(
 
 void MainWindow::CommitPendingDeletion() {
   if (delete_undo_timer_) delete_undo_timer_.Stop();
+  if (backend_ == nullptr || !backend_->running()) {
+    // Deletion has not been persisted, so restore every staged row.
+    UndoPendingDeletion();
+    SetStatus(t("taskListEmptyHint"));
+    return;
+  }
   auto const ids = std::move(pending_delete_ids_);
   pending_delete_ids_.clear();
   UndoDeleteButton().Visibility(mx::Visibility::Collapsed);
