@@ -732,7 +732,7 @@ void apply_css(Palette const& p) {
   std::string css;
   css += ".taskly-root { background: " + std::string(p.background) + "; color: " + std::string(p.text) + "; }\n";
   css += ".taskly-sidebar { background: " + std::string(p.sidebar) + "; }\n";
-  css += ".taskly-divider { background: ' + std::string(p.divider) + '; min-width: 1px; min-height: 1px; }\n";
+  css += ".taskly-divider { background: " + std::string(p.divider) + "; min-width: 1px; min-height: 1px; }\n";
   css += ".taskly-statusbar { background: " + std::string(p.sidebar) + "; min-height: 28px; }\n";
   css += ".taskly-statusbar label { color: " + std::string(p.secondary) + "; font-size: 12px; }\n";
   css += "menubar { min-height: 30px; padding: 0 6px; background: " + std::string(p.background) + "; font-size: 13px; color: " + std::string(p.text) + "; }\n";
