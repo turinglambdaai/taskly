@@ -123,13 +123,13 @@ StartupPreferences read_startup_preferences() {
       if (separator == std::string::npos) continue;
       auto const key = ascii_lower(ascii_trim(line.substr(0, separator)));
       auto const value = ascii_lower(ascii_trim(line.substr(separator + 1)));
-      // Match the Racket config defaults and allowed values. Duplicate keys
-      // use the last valid value, as they do in read-config.
-      if (key == "language" && (value == "zh" || value == "en")) {
-        result.language = value;
-      } else if (key == "theme" &&
-                 (value == "system" || value == "light" || value == "dark")) {
-        result.theme = value;
+      // Match config-language/config-theme: last occurrence wins, and an
+      // invalid value falls back to that setting's documented default.
+      if (key == "language") {
+        result.language = (value == "zh" || value == "en") ? value : "zh";
+      } else if (key == "theme") {
+        result.theme = (value == "system" || value == "light" ||
+                        value == "dark") ? value : "system";
       }
     }
   } catch (std::exception const&) {
