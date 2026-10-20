@@ -1425,10 +1425,25 @@ winrt::fire_and_forget MainWindow::OpenDatabaseAsync(std::wstring const& path) {
                     find_by_id(snapshot.lists, restored) != nullptr) {
                   window->view_ = MainWindow::ViewKind::List;
                   window->view_list_id_ = restored;
+                } else {
+                  window->view_ = MainWindow::ViewKind::All;
+                  window->view_list_id_ = 0;
                 }
-                // A different database was just opened: always render, even
-                // if its content matches the previous one byte for byte.
-                window->ApplySnapshot(snapshot, /*force=*/true);
+                // open_database returns an ALL-view snapshot. Never show
+                // those rows under a restored named-list heading: wait for
+                // the filtered list snapshot instead.
+                if (window->view_ == MainWindow::ViewKind::List) {
+                  window->has_applied_snapshot_ = false;
+                  window->current_counts_ = snapshot.counts;
+                  window->lists_ = snapshot.lists;
+                  window->tasks_.clear();
+                  window->RenderSidebar();
+                  window->RenderTasks();
+                  window->ReloadTasksAsync();
+                } else {
+                  // Opening another DB invalidates the previous fingerprint.
+                  window->ApplySnapshot(snapshot, /*force=*/true);
+                }
                 // An in-flight download owns the status line.
                 if (!window->update_downloading_) {
                   window->SetStatus(t("statusDatabaseConnected"));
