@@ -238,6 +238,7 @@
                                 Foreground="{ThemeResource TasklySecondaryTextBrush}" />
                             <Button
                                 x:Name="NewListButton"
+                                AutomationProperties.AutomationId="create-list"
                                 Grid.Column="1"
                                 Padding="6,2"
                                 Background="Transparent"
