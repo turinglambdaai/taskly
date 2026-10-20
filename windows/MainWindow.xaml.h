@@ -82,6 +82,8 @@ struct MainWindow : MainWindowT<MainWindow> {
                              Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnBulkMoveClicked(winrt::Windows::Foundation::IInspectable const&,
                          Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnBulkScheduleClicked(winrt::Windows::Foundation::IInspectable const&,
+                             Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   // Update download action wired from XAML; event handlers must be public
   // because generated Connect() binds them through MainWindowT.
@@ -118,6 +120,8 @@ private:
   void RefreshBulkActionBar();
   std::vector<std::int64_t> SelectedTaskIds();
   void MoveSelectedTasks(std::int64_t target_list_id);
+  void ScheduleSelectedTasks(std::vector<std::int64_t> const& ids,
+                             std::wstring const& due);
   void RefreshQuickAddPreview();
   void ApplyTitleBarTheme();
   void OnEffectiveThemeChanged();
