@@ -456,6 +456,7 @@ void rebuild_task_list();
 void refresh_bulk_bar();
 std::vector<std::int64_t> selected_task_ids();
 void reload_snapshot();
+void run_search(std::string const& keyword);
 void save_setting(char const* key, std::string const& value);
 void apply_language();
 void apply_theme(std::string const& theme);
@@ -2645,48 +2646,79 @@ void rebuild_task_list() {
 }
 
 // ---------------------------------------------------------------------------
-// Undo banner — task deletion is a 6-second undoable operation (macOS M4);
-// undo re-adds the task with its original fields (new id).
+// Undoable deletion: stage for six seconds, preserving original task IDs.
+// No backend delete is sent until timeout or explicit dismissal, so an
+// Undo action is reversible without re-creating a different task record.
 // ---------------------------------------------------------------------------
-
-gpointer banner_task() {
-  return g_object_get_data(G_OBJECT(g_state.banner_box), "banner-task");
-}
 
 guint banner_timeout() {
   return GPOINTER_TO_UINT(
       g_object_get_data(G_OBJECT(g_state.banner_box), "banner-timeout"));
 }
 
-void clear_banner(guint timeout) {
-  if (timeout != 0) {
-    g_source_remove(timeout);
-  }
-  g_object_set_data(G_OBJECT(g_state.banner_box), "banner-task", nullptr);
+void hide_delete_banner() {
+  auto const timeout = banner_timeout();
+  if (timeout != 0) g_source_remove(timeout);
   g_object_set_data(G_OBJECT(g_state.banner_box), "banner-timeout",
                     GUINT_TO_POINTER(0));
   gtk_revealer_set_reveal_child(
       GTK_REVEALER(g_object_get_data(G_OBJECT(g_state.banner_box),
-                                     "banner-revealer")),
-      FALSE);
+                                     "banner-revealer")), FALSE);
+}
+
+void refresh_after_staged_delete() {
+  if (g_state.current_search.empty()) {
+    rebuild_task_list();
+  } else {
+    run_search(g_state.current_search);
+  }
+}
+
+void undo_staged_delete() {
+  hide_delete_banner();
+  for (auto const id : g_state.staged_delete_ids) {
+    g_state.suppressed_delete_ids.erase(id);
+  }
+  g_state.staged_delete_ids.clear();
+  g_state.staged_delete_api = nullptr;
+  refresh_after_staged_delete();
+}
+
+void commit_staged_delete() {
+  hide_delete_banner();
+  auto const ids = std::move(g_state.staged_delete_ids);
+  g_state.staged_delete_ids.clear();
+  auto* requested_api = g_state.staged_delete_api;
+  g_state.staged_delete_api = nullptr;
+  if (g_state.api == nullptr || g_state.api.get() != requested_api) {
+    // A DB switch or disconnect happened during the undo window. Never
+    // apply deletions to the new database just because IDs happen to match.
+    for (auto const id : ids) g_state.suppressed_delete_ids.erase(id);
+    refresh_after_staged_delete();
+    return;
+  }
+  for (auto const id : ids) delete_task_by_id(id);
 }
 
 int on_undo_timeout(gpointer) {
-  auto* task = static_cast<rivet_app::Task*>(banner_task());
-  delete task;
-  clear_banner(0);
+  // This GLib source is already firing; don't remove it from inside itself.
+  g_object_set_data(G_OBJECT(g_state.banner_box), "banner-timeout",
+                    GUINT_TO_POINTER(0));
+  commit_staged_delete();
   return G_SOURCE_REMOVE;
 }
 
-void show_undo_banner(rivet_app::Task const& deleted) {
-  auto const previous_task = banner_task();
-  auto const previous_timeout = banner_timeout();
-  if (previous_task != nullptr) {
-    delete static_cast<rivet_app::Task*>(previous_task);
+void stage_delete_tasks(std::vector<std::int64_t> const& ids) {
+  if (g_state.api == nullptr || g_state.banner_box == nullptr) return;
+  if (!g_state.staged_delete_ids.empty()) commit_staged_delete();
+  for (auto const id : ids) {
+    if (find_selected_task(id) == nullptr) continue;
+    if (g_state.suppressed_delete_ids.insert(id).second) {
+      g_state.staged_delete_ids.push_back(id);
+    }
   }
-  if (previous_timeout != 0) {
-    g_source_remove(previous_timeout);  // the old banner never fires again
-  }
+  if (g_state.staged_delete_ids.empty()) return;
+  g_state.staged_delete_api = g_state.api.get();
 
   auto* revealer = GTK_REVEALER(
       g_object_get_data(G_OBJECT(g_state.banner_box), "banner-revealer"));
@@ -2696,48 +2728,33 @@ void show_undo_banner(rivet_app::Task const& deleted) {
   gtk_widget_set_margin_end(card, 12);
   gtk_widget_set_margin_top(card, 8);
   gtk_widget_set_margin_bottom(card, 8);
-  auto* message =
-      gtk_label_new(format_positional(tr("bannerTaskDeleted"), deleted.text)
-                        .c_str());
+  auto const count = std::to_string(g_state.staged_delete_ids.size());
+  auto* message = gtk_label_new(
+      format_positional(tr("bannerTasksDeleted"), count).c_str());
   gtk_label_set_ellipsize(GTK_LABEL(message), PANGO_ELLIPSIZE_END);
   gtk_widget_set_hexpand(message, TRUE);
   gtk_box_append(GTK_BOX(card), message);
   auto* undo = gtk_button_new_with_label(tr("bannerUndo").c_str());
   gtk_widget_add_css_class(undo, "flat");
   gtk_widget_add_css_class(undo, "accent-toggle");
+  g_signal_connect(undo, "clicked",
+                   G_CALLBACK(+[](GtkButton*, gpointer) {
+                     undo_staged_delete();
+                   }), nullptr);
   gtk_box_append(GTK_BOX(card), undo);
   auto* close = gtk_button_new_from_icon_name("window-close-symbolic");
   gtk_widget_add_css_class(close, "flat");
+  g_signal_connect(close, "clicked",
+                   G_CALLBACK(+[](GtkButton*, gpointer) {
+                     commit_staged_delete();
+                   }), nullptr);
   gtk_box_append(GTK_BOX(card), close);
-
-  auto* task_copy = new rivet_app::Task(deleted);
-  g_signal_connect(
-      undo, "clicked",
-      G_CALLBACK(+[](GtkButton*, gpointer user_data) {
-        auto* task = static_cast<rivet_app::Task*>(user_data);
-        auto const timeout = banner_timeout();
-        add_task_full(*task);
-        delete task;
-        clear_banner(timeout);
-        flash_status(tr("statusTaskAdded"));
-      }),
-      task_copy);
-  g_signal_connect(
-      close, "clicked",
-      G_CALLBACK(+[](GtkButton*, gpointer user_data) {
-        auto* task = static_cast<rivet_app::Task*>(user_data);
-        auto const timeout = banner_timeout();
-        delete task;
-        clear_banner(timeout);
-      }),
-      task_copy);
   gtk_revealer_set_child(revealer, card);
   gtk_revealer_set_reveal_child(revealer, TRUE);
-
-  g_object_set_data(G_OBJECT(g_state.banner_box), "banner-task", task_copy);
-  auto const timeout = g_timeout_add_seconds(6, on_undo_timeout, task_copy);
+  auto const timeout = g_timeout_add_seconds(6, on_undo_timeout, nullptr);
   g_object_set_data(G_OBJECT(g_state.banner_box), "banner-timeout",
                     GUINT_TO_POINTER(timeout));
+  refresh_after_staged_delete();
 }
 
 // ---------------------------------------------------------------------------
