@@ -122,3 +122,7 @@ widths. Monochrome, no gradients — must read on light and dark docks alike.
   do not draw art over the icon/label areas. The small `DRAG TO INSTALL`
   cue and high-contrast bottom instruction sit entirely in the background's
   clear middle and lower text zones, never underneath Finder's icon labels.
+- Final visual acceptance must inspect the mounted DMG in Finder (not only the
+  raw SVG/PNG): app icon, Applications target, arrowhead and labels must stay
+  aligned at native scale. The 1320x800 renderer check is necessary but cannot
+  prove Finder's overlay composition is correct.
