@@ -676,6 +676,7 @@ void MainWindow::ApplyLanguage() {
   ShowCompletedCheck().Content(winrt::box_value(t("showCompletedToggle")));
   BulkCompleteButton().Content(winrt::box_value(t("bulkComplete")));
   BulkMoveButton().Content(winrt::box_value(t("menuMoveToList")));
+  BulkScheduleButton().Content(winrt::box_value(t("bulkSchedule")));
   RenderSidebar();
   RenderTasks();
 }
@@ -1679,6 +1680,9 @@ winrt::fire_and_forget MainWindow::SetTaskDueAsync(std::int64_t id,
   updated.due_date =
       due.empty() ? std::nullopt
                   : std::optional<std::string>(winrt::to_string(due));
+  // A date-less task cannot retain an invisible due time. Match Linux
+  // date-clear semantics and the shared "clear schedule" contract.
+  if (due.empty()) updated.due_time = std::nullopt;
   auto const dispatcher = DispatcherQueue();
   auto const weak = get_weak();
   auto backend = backend_;
@@ -2293,6 +2297,43 @@ void MainWindow::OnBulkMoveClicked(
     menu.Items().Append(target);
   }
   menu.ShowAt(BulkMoveButton());
+}
+
+void MainWindow::ScheduleSelectedTasks(
+    std::vector<std::int64_t> const& ids, std::wstring const& due) {
+  // Freeze the selection when opening the flyout, not when an asynchronous
+  // view refresh eventually invokes a menu callback.
+  for (auto const id : ids) {
+    if (FindTaskForAction(id) != nullptr) {
+      SetTaskDueAsync(id, due);
+    }
+  }
+}
+
+void MainWindow::OnBulkScheduleClicked(
+    winrt::Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) {
+  auto const ids = SelectedTaskIds();
+  if (ids.size() < 2) return;
+  auto menu = mxc::MenuFlyout{};
+  auto const weak = get_weak();
+  auto add_option = [&](winrt::hstring const& text,
+                        std::wstring const& due) {
+    auto option = mxc::MenuFlyoutItem{};
+    option.Text(text);
+    option.Click([weak, ids, due](
+                     winrt::Windows::Foundation::IInspectable const&,
+                     Microsoft::UI::Xaml::RoutedEventArgs const&) {
+      if (auto window = weak.get()) {
+        window->ScheduleSelectedTasks(ids, due);
+      }
+    });
+    menu.Items().Append(option);
+  };
+  add_option(t("navToday"), date_string(0));
+  add_option(t("dateTomorrow"), date_string(1));
+  add_option(t("dialogClear"), L"");
+  menu.ShowAt(BulkScheduleButton());
 }
 
 void MainWindow::OnTaskListKeyDown(
