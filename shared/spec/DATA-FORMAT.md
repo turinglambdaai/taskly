@@ -110,6 +110,7 @@ sides trimmed; keys case-insensitive. Writer emits two fixed header lines:
 |---|---|---|
 | `last-db-path` | last opened DB — written by `open_database` on success, read at startup by `default_database` (read also accepts legacy `last_db_path`, which rewrites must carry through) | — |
 | `language` | `zh` / `en` | `zh` |
+| `theme` | `system` / `light` / `dark`; Windows applies it before the first window paint | `system` |
 | `last-selected-list-id` | int as string; unparseable → 0 | `0` |
 | `last-update-check` | unix seconds of the last auto-update check (UPDATE.md throttle) | `0` |
 
