@@ -3561,7 +3561,7 @@ void on_activate(GtkApplication* app, gpointer) {
   auto* bulk_move = gtk_button_new_with_label(tr("menuMoveToList").c_str());
   g_signal_connect(
       bulk_move, "clicked",
-      G_CALLBACK(+[](GtkButton* button, gpointer) {
+      G_CALLBACK((+[](GtkButton* button, gpointer) {
         auto* old = static_cast<GtkWidget*>(
             g_object_get_data(G_OBJECT(button), "batch-popover"));
         if (old != nullptr) gtk_widget_unparent(old);
@@ -3595,13 +3595,13 @@ void on_activate(GtkApplication* app, gpointer) {
         gtk_widget_set_parent(popover, GTK_WIDGET(button));
         g_object_set_data(G_OBJECT(button), "batch-popover", popover);
         gtk_popover_popup(GTK_POPOVER(popover));
-      }),
+      })),
       nullptr);
   gtk_box_append(GTK_BOX(bulk_bar), bulk_move);
   auto* bulk_schedule = gtk_button_new_with_label(tr("bulkSchedule").c_str());
   g_signal_connect(
       bulk_schedule, "clicked",
-      G_CALLBACK(+[](GtkButton* button, gpointer) {
+      G_CALLBACK((+[](GtkButton* button, gpointer) {
         auto* previous = static_cast<GtkWidget*>(
             g_object_get_data(G_OBJECT(button), "batch-date-popover"));
         if (previous != nullptr) {
@@ -3631,7 +3631,7 @@ void on_activate(GtkApplication* app, gpointer) {
                 auto* p = static_cast<GtkWidget*>(g_object_get_data(
                     G_OBJECT(g_state.bulk_schedule), "batch-date-popover"));
                 if (p != nullptr) gtk_popover_popdown(GTK_POPOVER(p));
-              }), nullptr);
+              })), nullptr);
           gtk_box_append(GTK_BOX(options), option);
         };
         add_option(tr("navToday"), date_string(0));
