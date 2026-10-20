@@ -909,11 +909,12 @@ void MainWindow::RenderTasks() {
 void MainWindow::RenderSearchResults() {
   SearchResults().Items().Clear();
   for (auto const& task : search_results_) {
-    SearchResults().Items().Append(MakeTaskRow(task));
+    SearchResults().Items().Append(MakeTaskRow(task, /*search_result=*/true));
   }
 }
 
-mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
+mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task,
+                                   bool search_result) {
   auto row = mxc::Grid{};
   row.ColumnDefinitions().Append(mxc::ColumnDefinition{});
   row.ColumnDefinitions().Append(mxc::ColumnDefinition{});
@@ -969,8 +970,11 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
   auto meta = mxc::StackPanel{};
   meta.Orientation(mxc::Orientation::Horizontal);
   meta.Spacing(8);
-  if (view_ != ViewKind::List && task.list_name.has_value() &&
-      !task.list_name->empty()) {
+  // A search can return tasks from ANY list, even when the sidebar has a
+  // named list selected. Show ownership on all search rows to avoid
+  // implying a result belongs to the active list.
+  if ((search_result || view_ != ViewKind::List) &&
+      task.list_name.has_value() && !task.list_name->empty()) {
     auto list_label = mxc::StackPanel{};
     list_label.Orientation(mxc::Orientation::Horizontal);
     list_label.Spacing(4);
@@ -1092,6 +1096,16 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
   // Double-click edits the text.
   row.DoubleTapped({this, &MainWindow::OnEditTask});
   return row;
+}
+
+rivet_app::Task const* MainWindow::FindTaskForAction(
+    std::int64_t id) const {
+  // The search pane has an independent, global result set. Its tasks may
+  // not be part of the currently selected list's filtered snapshot.
+  if (!current_search_.empty()) {
+    if (auto const* task = find_by_id(search_results_, id)) return task;
+  }
+  return find_by_id(tasks_, id);
 }
 
 winrt::hstring MainWindow::DueLabel(std::string const& due_date) const {
@@ -1616,7 +1630,7 @@ winrt::fire_and_forget MainWindow::SetTaskDueAsync(std::int64_t id,
     co_return;
   }
   // Start from the stored task so untouched fields survive update_task.
-  auto const* stored = find_by_id(tasks_, id);
+  auto const* stored = FindTaskForAction(id);
   if (stored == nullptr) {
     co_return;
   }
@@ -1652,7 +1666,7 @@ winrt::fire_and_forget MainWindow::MoveTaskToListAsync(
   if (backend_ == nullptr || !backend_->running()) {
     co_return;
   }
-  auto const* stored = find_by_id(tasks_, id);
+  auto const* stored = FindTaskForAction(id);
   auto const* destination = find_by_id(lists_, target_list_id);
   if (stored == nullptr || destination == nullptr ||
       stored->list_id == target_list_id) {
@@ -2358,7 +2372,7 @@ void MainWindow::OnEditTask(
   } else {
     return;
   }
-  auto const* task = find_by_id(tasks_, id);
+  auto const* task = FindTaskForAction(id);
   if (task == nullptr) {
     return;
   }
