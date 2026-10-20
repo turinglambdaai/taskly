@@ -987,6 +987,10 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task,
     list_label.Children().Append(dot);
     auto list_text = mxc::TextBlock{};
     list_text.Text(wide(*task.list_name));
+    if (search_result) {
+      winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+          list_text, L"task-owner-" + std::to_wstring(task.id));
+    }
     list_text.FontSize(12);
     list_text.Foreground(ThemeBrush(L"TasklySecondaryTextBrush"));
     list_text.VerticalAlignment(mx::VerticalAlignment::Center);
@@ -1096,6 +1100,10 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task,
   // Double-click edits the text.
   row.DoubleTapped({this, &MainWindow::OnEditTask});
   return row;
+}
+
+void MainWindow::RefreshSearchIfActive() {
+  if (!current_search_.empty()) RunSearchAsync(current_search_);
 }
 
 rivet_app::Task const* MainWindow::FindTaskForAction(
@@ -1581,6 +1589,9 @@ winrt::fire_and_forget MainWindow::ToggleTaskAsync(std::int64_t id,
         [dispatcher, weak](rivet_app::Result<rivet_app::Task> result) {
           try {
             result.get();
+            dispatcher.TryEnqueue([weak] {
+              if (auto window = weak.get()) window->RefreshSearchIfActive();
+            });
           } catch (std::exception const& e) {
             auto message = std::string(e.what());
             dispatcher.TryEnqueue([weak, message = std::move(message)] {
@@ -1610,6 +1621,9 @@ winrt::fire_and_forget MainWindow::RenameTaskAsync(std::int64_t id,
         [dispatcher, weak](rivet_app::Result<rivet_app::Task> result) {
           try {
             result.get();
+            dispatcher.TryEnqueue([weak] {
+              if (auto window = weak.get()) window->RefreshSearchIfActive();
+            });
           } catch (std::exception const& e) {
             auto message = std::string(e.what());
             dispatcher.TryEnqueue([weak, message = std::move(message)] {
@@ -1647,6 +1661,9 @@ winrt::fire_and_forget MainWindow::SetTaskDueAsync(std::int64_t id,
         updated, [dispatcher, weak](rivet_app::Result<rivet_app::Task> result) {
           try {
             result.get();
+            dispatcher.TryEnqueue([weak] {
+              if (auto window = weak.get()) window->RefreshSearchIfActive();
+            });
           } catch (std::exception const& e) {
             auto message = std::string(e.what());
             dispatcher.TryEnqueue([weak, message = std::move(message)] {
@@ -1689,6 +1706,7 @@ winrt::fire_and_forget MainWindow::MoveTaskToListAsync(
             dispatcher.TryEnqueue([weak, list_name] {
               if (auto window = weak.get()) {
                 window->SetStatus(tf("statusTaskMoved", list_name));
+                window->RefreshSearchIfActive();
               }
             });
           } catch (std::exception const& e) {
@@ -1718,6 +1736,9 @@ winrt::fire_and_forget MainWindow::DeleteTaskAsync(std::int64_t id) {
         id, [dispatcher, weak](rivet_app::Result<bool> result) {
           try {
             result.get();
+            dispatcher.TryEnqueue([weak] {
+              if (auto window = weak.get()) window->RefreshSearchIfActive();
+            });
           } catch (std::exception const& e) {
             auto message = std::string(e.what());
             dispatcher.TryEnqueue([weak, message = std::move(message)] {
