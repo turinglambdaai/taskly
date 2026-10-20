@@ -352,6 +352,9 @@
                     <Button x:Name="BulkMoveButton"
                             AutomationProperties.AutomationId="bulk-move"
                             Click="OnBulkMoveClicked" />
+                    <Button x:Name="BulkScheduleButton"
+                            AutomationProperties.AutomationId="bulk-schedule"
+                            Click="OnBulkScheduleClicked" />
                 </StackPanel>
 
                 <Grid Grid.Row="2">
