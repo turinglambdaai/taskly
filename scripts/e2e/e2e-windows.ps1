@@ -187,6 +187,24 @@ try {
         return $false
     })
 
+    # Search is global, even while 生活 is selected. A result must
+    # display its owning list, never appear as an unlabeled local row.
+    $searchBox = Wait-Until 'search box' { Find-ById $window 'task-search' }
+    $searchBox.GetCurrentPattern(
+        [System.Windows.Automation.ValuePattern]::Pattern).SetValue($plainTask)
+    $owner = Wait-Until 'search result list owner' {
+        Find-ById $window 'task-owner-2'
+    }
+    if ($owner.Current.Name -ne '生活') {
+        throw ("search result claims wrong owner: {0}" -f $owner.Current.Name)
+    }
+    $searchBox.GetCurrentPattern(
+        [System.Windows.Automation.ValuePattern]::Pattern).SetValue('')
+    [void](Wait-Until 'search cleared' {
+        if ($null -eq (Find-ById $window 'task-owner-2')) { return $true }
+        return $false
+    })
+
     $nodes = $window.FindAll(
         [System.Windows.Automation.TreeScope]::Descendants,
         [System.Windows.Automation.Condition]::TrueCondition)
@@ -222,6 +240,7 @@ try {
             'new task submitted by Enter is owned by 生活, not 工作',
             'task checkbox and plain-text title are vertically aligned',
             'view switches preserve task list ownership',
+            'global search shows the real owning list for every task',
             'native window close stopped the process'
         )
     } | ConvertTo-Json -Depth 5 |
