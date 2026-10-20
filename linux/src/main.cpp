@@ -2973,7 +2973,7 @@ bool g_quick_add_in_flight = false;
 void on_quick_add_activate(GtkEntry* entry, gpointer) {
   auto const submitted =
       std::string(gtk_editable_get_text(GTK_EDITABLE(entry)));
-  if (submitted.find_first_not_of(" \\t\\r\\n") == std::string::npos ||
+  if (submitted.find_first_not_of(" \t\r\n") == std::string::npos ||
       g_state.api == nullptr || g_quick_add_in_flight) {
     return;
   }
