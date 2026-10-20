@@ -123,6 +123,8 @@ private:
   winrt::fire_and_forget RenameTaskAsync(std::int64_t id, std::wstring const& text);
   winrt::fire_and_forget SetTaskDueAsync(std::int64_t id, std::wstring const& due_date);
   winrt::fire_and_forget DeleteTaskAsync(std::int64_t id);
+  winrt::fire_and_forget MoveTaskToListAsync(
+      std::int64_t id, std::int64_t target_list_id);
   winrt::fire_and_forget CreateListAsync(std::wstring const& name);
   winrt::fire_and_forget RenameListAsync(std::int64_t id, std::wstring const& name);
   winrt::fire_and_forget DeleteListAsync(std::int64_t id);
