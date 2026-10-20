@@ -259,6 +259,40 @@ try {
         return $false
     })
 
+    # A batch deletion must be fully reversible without giving tasks
+    # replacement IDs (including their list ownership and due metadata).
+    $undoName1 = 'Undo safety task one'
+    $undoName2 = 'Undo safety task two'
+    foreach ($title in @($undoName1, $undoName2)) {
+        $quickAdd.GetCurrentPattern(
+            [System.Windows.Automation.ValuePattern]::Pattern).SetValue($title)
+        $quickAdd.SetFocus()
+        [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+        [void](Wait-Until ("saved task: {0}" -f $title) {
+            Find-ByName $window $title
+        })
+    }
+    Select-TaskForBatch $undoName1 $false
+    Select-TaskForBatch $undoName2 $true
+    $deleteBatch = Wait-Until 'bulk-delete action' {
+        Find-ById $window 'bulk-delete'
+    }
+    $deleteBatch.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    $undo = Wait-Until 'undo-delete action' {
+        $item = Find-ById $window 'undo-delete'
+        if ($null -ne $item -and
+            -not $item.Current.IsOffscreen) { return $item }
+        return $null
+    }
+    $undo.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    foreach ($title in @($undoName1, $undoName2)) {
+        [void](Wait-Until ("task restored without backend delete: {0}" -f $title) {
+            Find-ByName $window $title
+        })
+    }
+
     $nodes = $window.FindAll(
         [System.Windows.Automation.TreeScope]::Descendants,
         [System.Windows.Automation.Condition]::TrueCondition)
@@ -297,6 +331,7 @@ try {
             'view switches preserve task list ownership',
             'global search shows the real owning list for every task',
             'Ctrl/Shift multi-selection completes two tasks in one command',
+            'bulk deletion undo restores original rows before backend mutation',
             'batch scheduling is visible and enabled when multiple tasks are selected',
             'native window close stopped the process'
         )
