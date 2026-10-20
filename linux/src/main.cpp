@@ -970,8 +970,14 @@ void batch_complete_selected() {
   }
 }
 
-void batch_move_selected(std::int64_t target) {
-  for (auto const id : selected_task_ids()) {
+struct BatchMoveCommand {
+  std::vector<std::int64_t> ids;
+  std::int64_t target;
+};
+
+void batch_move_selected(BatchMoveCommand const& command) {
+  for (auto const id : command.ids) {
+    auto const target = command.target;
     if (auto const* task = find_selected_task(id)) {
       if (task->list_id == target) continue;
       auto updated = *task;  // Preserve all other fields.
@@ -3538,21 +3544,28 @@ void on_activate(GtkApplication* app, gpointer) {
         if (old != nullptr) gtk_widget_unparent(old);
         auto* popover = gtk_popover_new();
         auto* options = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+        auto const ids = selected_task_ids();
         for (auto const& list : g_state.lists) {
           auto* option = gtk_button_new_with_label(
               (list.icon.value_or("") + " " + list.name).c_str());
           gtk_widget_add_css_class(option, "flat");
+          // Capture the original selected IDs and full 64-bit list ID.
+          // Reading the current selection after the popover opens can
+          // accidentally move a different task after a snapshot refresh.
+          auto* command = new BatchMoveCommand{ids, list.id};
+          g_object_set_data_full(
+              G_OBJECT(option), "batch-move-command", command,
+              +[](gpointer data) { delete static_cast<BatchMoveCommand*>(data); });
           g_signal_connect(
               option, "clicked",
-              G_CALLBACK(+[](GtkButton*, gpointer data) {
-                auto const target = static_cast<std::int64_t>(
-                    GPOINTER_TO_INT(data));
-                batch_move_selected(target);
+              G_CALLBACK(+[](GtkButton* pressed, gpointer) {
+                auto* command = static_cast<BatchMoveCommand*>(
+                    g_object_get_data(G_OBJECT(pressed), "batch-move-command"));
+                if (command != nullptr) batch_move_selected(*command);
                 auto* popover = static_cast<GtkWidget*>(
                     g_object_get_data(G_OBJECT(g_state.bulk_move), "batch-popover"));
                 if (popover) gtk_popover_popdown(GTK_POPOVER(popover));
-              }),
-              GINT_TO_POINTER(static_cast<gint>(list.id)));
+              }), nullptr);
           gtk_box_append(GTK_BOX(options), option);
         }
         gtk_popover_set_child(GTK_POPOVER(popover), options);
