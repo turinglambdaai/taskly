@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 #include "pch.h"
 #include "GeneratedBackend.hpp"
 #include "MainWindow.g.h"
