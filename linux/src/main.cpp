@@ -955,14 +955,25 @@ void reload_snapshot() {
           ? std::optional<std::int64_t>(list_id)
           : std::nullopt,
       include_completed,
-      [](rivet_app::Result<rivet_app::Snapshot> result) {
+      [view_kind, list_id, include_completed](
+          rivet_app::Result<rivet_app::Snapshot> result) {
         // Release the reload gate on every terminal path so later polls and
         // `changed` events are not swallowed.
         dispatch_ui([] {
           g_state.reload_in_flight.store(false, std::memory_order_release);
         });
         on_result(std::move(result),
-                  [](rivet_app::Snapshot const& snapshot) {
+                  [view_kind, list_id, include_completed](
+                      rivet_app::Snapshot const& snapshot) {
+                    // Lists can change during an asynchronous RPC. Never
+                    // paint an outdated Work snapshot under a Life heading.
+                    // Reload with the new view after the in-flight gate clears.
+                    if (g_state.view != view_kind ||
+                        g_state.view_list_id != list_id ||
+                        g_state.show_completed != include_completed) {
+                      reload_snapshot();
+                      return;
+                    }
                     g_state.current_counts = snapshot.counts;
                     g_state.lists = snapshot.lists;
                     g_state.tasks = snapshot.tasks;
@@ -3056,7 +3067,16 @@ void open_database_at(std::string const& path) {
                       g_state.view_list_id = 0;
                     }
                     rebuild_sidebar();
-                    rebuild_task_list();
+                    if (g_state.view == ViewKind::List) {
+                      // open_database returns an ALL-view snapshot. Wait for
+                      // the authoritative selected-list query before showing
+                      // rows under the restored named list's heading.
+                      g_state.tasks.clear();
+                      rebuild_task_list();
+                      reload_snapshot();
+                    } else {
+                      rebuild_task_list();
+                    }
                     refresh_persistent_status();
                     // Reminders: a different database resets the per-session
                     // dedupe set; every open runs the startup check.
