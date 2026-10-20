@@ -1885,7 +1885,7 @@ struct TaskEditor {
 
 void on_editor_save_clicked(GtkButton*, gpointer user_data) {
   auto* editor = static_cast<TaskEditor*>(user_data);
-  auto const* stored = find_by_id(g_state.tasks, editor->task_id);
+  auto const* stored = find_selected_task(editor->task_id);
   if (stored == nullptr) return;
   auto updated = *stored;
   updated.text = gtk_editable_get_text(GTK_EDITABLE(editor->text));
@@ -1931,7 +1931,7 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
   if (revealer == nullptr) {
     auto* editor = new TaskEditor();
     editor->task_id = id;
-    auto const* task = find_by_id(g_state.tasks, id);
+    auto const* task = find_selected_task(id);
 
     editor->text = GTK_ENTRY(gtk_entry_new());
     editor->notes = GTK_ENTRY(gtk_entry_new());
@@ -2702,7 +2702,7 @@ std::int64_t action_id(GVariant* parameter) {
 
 void on_action_task_due_today(GSimpleAction*, GVariant* parameter, gpointer) {
   auto const id = action_id(parameter);
-  if (auto const* task = find_by_id(g_state.tasks, id)) {
+  if (auto const* task = find_selected_task(id)) {
     auto updated = *task;
     updated.due_date = date_string(0);
     save_task_edits(updated);
@@ -2712,7 +2712,7 @@ void on_action_task_due_today(GSimpleAction*, GVariant* parameter, gpointer) {
 void on_action_task_due_tomorrow(GSimpleAction*, GVariant* parameter,
                                  gpointer) {
   auto const id = action_id(parameter);
-  if (auto const* task = find_by_id(g_state.tasks, id)) {
+  if (auto const* task = find_selected_task(id)) {
     auto updated = *task;
     updated.due_date = date_string(1);
     save_task_edits(updated);
@@ -2721,7 +2721,7 @@ void on_action_task_due_tomorrow(GSimpleAction*, GVariant* parameter,
 
 void on_action_task_due_clear(GSimpleAction*, GVariant* parameter, gpointer) {
   auto const id = action_id(parameter);
-  if (auto const* task = find_by_id(g_state.tasks, id)) {
+  if (auto const* task = find_selected_task(id)) {
     auto updated = *task;
     updated.due_date = std::nullopt;
     updated.due_time = std::nullopt;
@@ -2740,7 +2740,7 @@ void on_action_task_edit(GSimpleAction*, GVariant* parameter, gpointer) {
 
 void on_action_task_delete(GSimpleAction*, GVariant* parameter, gpointer) {
   auto const id = action_id(parameter);
-  auto const* task = find_by_id(g_state.tasks, id);
+  auto const* task = find_selected_task(id);
   if (task == nullptr) return;
   show_undo_banner(*task);
   flash_status(tr("statusTaskDeleted"));
