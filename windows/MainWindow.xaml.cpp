@@ -2227,7 +2227,7 @@ void MainWindow::OnShowCompletedChanged(
   ReloadTasksAsync();
 }
 
-std::vector<std::int64_t> MainWindow::SelectedTaskIds() const {
+std::vector<std::int64_t> MainWindow::SelectedTaskIds() {
   // Capture task identity before starting any asynchronous mutations:
   // a changed event may re-render the view before the final RPC completes.
   auto list = current_search_.empty() ? TaskList() : SearchResults();
