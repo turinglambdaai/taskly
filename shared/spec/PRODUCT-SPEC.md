@@ -149,8 +149,14 @@ pickers. Save (blank text silently ignored), Delete (confirm first), Cancel
   (light) / 深色 (dark), persisted in config `theme`; follow-system tracks
   OS personalization live. Windows reads the persisted language and theme
   before first window activation (no temporary English/light frame); the
-  backend settings RPC remains authoritative once connected. macOS follows the system appearance at launch
-  and live; its Settings toggle is a per-session override. Plus 检查更新… /
+  backend settings RPC remains authoritative once connected. macOS follows
+  the system appearance at launch and live; its Settings toggle is a
+  per-session override. Async persistence
+  acknowledgements must **not** overwrite local settings changed since the
+  request began (including `last-selected-list-id`, theme and language).
+  The locally selected list remains authoritative through overlapping
+  preferences saves; the backend result confirms persistence or an error.
+  Plus 检查更新… /
   Check for Updates… (manual online-update check; auto-check runs at
   launch and every 4 h — contract: `UPDATE.md`).
 - Help: About — `Taskly v<version>` + `© 2026 Taskly Team` +
