@@ -2271,8 +2271,9 @@ void MainWindow::OnBulkCompleteClicked(
   }
 }
 
-void MainWindow::MoveSelectedTasks(std::int64_t target_list_id) {
-  for (auto id : SelectedTaskIds()) {
+void MainWindow::MoveSelectedTasks(std::vector<std::int64_t> const& ids,
+                                   std::int64_t target_list_id) {
+  for (auto const id : ids) {
     if (auto const* task = FindTaskForAction(id)) {
       if (task->list_id != target_list_id) {
         MoveTaskToListAsync(id, target_list_id);
@@ -2284,15 +2285,17 @@ void MainWindow::MoveSelectedTasks(std::int64_t target_list_id) {
 void MainWindow::OnBulkMoveClicked(
     winrt::Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) {
+  auto const ids = SelectedTaskIds();
+  if (ids.size() < 2) return;
   auto menu = mxc::MenuFlyout{};
   for (auto const& list : lists_) {
     auto target = mxc::MenuFlyoutItem{};
     target.Text(wide(list.icon.value_or("")) + L" " + wide(list.name));
     auto const id = list.id;
-    target.Click([weak = get_weak(), id](
+    target.Click([weak = get_weak(), id, ids](
                      winrt::Windows::Foundation::IInspectable const&,
                      Microsoft::UI::Xaml::RoutedEventArgs const&) {
-      if (auto window = weak.get()) window->MoveSelectedTasks(id);
+      if (auto window = weak.get()) window->MoveSelectedTasks(ids, id);
     });
     menu.Items().Append(target);
   }
