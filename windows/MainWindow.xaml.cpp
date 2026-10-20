@@ -1488,6 +1488,9 @@ winrt::fire_and_forget MainWindow::OpenDatabaseAsync(std::wstring const& path) {
   if (backend_ == nullptr || !backend_->running() || path.empty()) {
     co_return;
   }
+  // Pending deletions must never commit against another database that
+  // happens to contain the same numeric task IDs.
+  if (!pending_delete_ids_.empty()) UndoPendingDeletion();
   auto const dispatcher = DispatcherQueue();
   auto const weak = get_weak();
   auto backend = backend_;
@@ -1500,6 +1503,7 @@ winrt::fire_and_forget MainWindow::OpenDatabaseAsync(std::wstring const& path) {
             auto const snapshot = result.get();
             dispatcher.TryEnqueue([weak, snapshot] {
               if (auto window = weak.get()) {
+                window->suppressed_deleted_task_ids_.clear();
                 // Restore the last-selected list when it still exists —
                 // checked against the incoming snapshot because ApplySnapshot
                 // owns the render pass.
@@ -2000,6 +2004,7 @@ void MainWindow::OnCloseDatabase(
   if (backend_ == nullptr || !backend_->running()) {
     return;
   }
+  if (!pending_delete_ids_.empty()) UndoPendingDeletion();
   auto const dispatcher = DispatcherQueue();
   auto const weak = get_weak();
   auto backend = backend_;
@@ -2012,6 +2017,7 @@ void MainWindow::OnCloseDatabase(
             if (auto window = weak.get()) {
               window->lists_.clear();
               window->tasks_.clear();
+              window->suppressed_deleted_task_ids_.clear();
               window->current_counts_ = {};
               // The next snapshot must render even if it matches the one the
               // closed database ended with.
