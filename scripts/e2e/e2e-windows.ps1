@@ -78,6 +78,11 @@ try {
 
     $desktop = [System.Windows.Automation.AutomationElement]::RootElement
     $window = Wait-Until 'Taskly window' {
+        # An early process exit is a startup failure, not slow UI automation.
+        $process.Refresh()
+        if ($process.HasExited) {
+            throw ('Taskly exited before creating a window (PID {0}, exit code {1})' -f $process.Id, $process.ExitCode)
+        }
         $condition = [System.Windows.Automation.PropertyCondition]::new(
             [System.Windows.Automation.AutomationElement]::ProcessIdProperty,
             $process.Id)
@@ -138,6 +143,21 @@ try {
     } | ConvertTo-Json -Depth 5 |
         Set-Content -LiteralPath (Join-Path $output 'interaction-trace.json') -Encoding utf8
 } finally {
+    # Archive process state even on a failed or timed-out launch.
+    if ($process) {
+        try {
+            $process.Refresh()
+            [ordered]@{
+                pid = $process.Id
+                exitedBeforeCleanup = $process.HasExited
+                exitCode = if ($process.HasExited) { $process.ExitCode } else { $null }
+                mainWindowHandle = [int64]$process.MainWindowHandle
+                mainWindowTitle = $process.MainWindowTitle
+                executable = $executable.FullName
+            } | ConvertTo-Json -Depth 3 |
+                Set-Content -LiteralPath (Join-Path $output 'launch-diagnostic.json') -Encoding utf8
+        } catch {}
+    }
     try { Capture-Screen (Join-Path $output 'screen-final.png') } catch {}
     if ($process -and -not $process.HasExited) {
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
