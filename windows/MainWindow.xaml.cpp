@@ -591,13 +591,17 @@ MainWindow::MainWindow() {
   ApplyLanguage();
   // Hand-built rows take their brushes from code at build time, so a theme
   // flip must re-render them; the title bar colors ride the same event.
+  // Apply the persisted theme before subscribing to theme-change events.
+  // RequestedTheme may synchronously trigger ActualThemeChanged; if the
+  // handler runs during construction, it re-renders rows before activation.
+  // The initial UI already has its XAML controls and language applied.
+  ApplyTheme(settings_.theme);
   RootGrid().ActualThemeChanged(
       [weak = get_weak()](auto&&, auto&&) {
         if (auto window = weak.get()) {
           window->OnEffectiveThemeChanged();
         }
       });
-  ApplyTheme(settings_.theme);
   InitializeBackendAsync();
 }
 
