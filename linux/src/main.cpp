@@ -959,7 +959,7 @@ std::vector<std::int64_t> selected_task_ids() {
     auto* row = GTK_LIST_BOX_ROW(node->data);
     auto const pointer = g_object_get_data(G_OBJECT(row), "task-id");
     if (pointer != nullptr) {
-      ids.push_back(static_cast<std::int64_t>(GPOINTER_TO_INT(pointer)));
+      ids.push_back(static_cast<std::int64_t>(GPOINTER_TO_SIZE(pointer)));
     }
   }
   g_list_free(selected);
@@ -1934,7 +1934,7 @@ void open_list_editor(
 void on_task_check_toggled(GtkCheckButton* button, gpointer) {
   if (g_state.api == nullptr) return;
   auto const id = static_cast<std::int64_t>(
-      GPOINTER_TO_INT(g_object_get_data(G_OBJECT(button), "task-id")));
+      GPOINTER_TO_SIZE(g_object_get_data(G_OBJECT(button), "task-id")));
   toggle_task(id, gtk_check_button_get_active(button));
 }
 
@@ -2108,7 +2108,7 @@ void open_task_editor(std::int64_t id, bool focus_date) {
        child != nullptr;
        child = gtk_widget_get_next_sibling(child)) {
     if (!GTK_IS_LIST_BOX_ROW(child)) continue;
-    auto const row_id = static_cast<std::int64_t>(GPOINTER_TO_INT(
+    auto const row_id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
         g_object_get_data(G_OBJECT(child), "task-id")));
     if (row_id == id) {
       set_task_editor_expanded(GTK_LIST_BOX_ROW(child), id, true,
@@ -2125,7 +2125,7 @@ void collapse_open_editor() {
        child != nullptr;
        child = gtk_widget_get_next_sibling(child)) {
     if (!GTK_IS_LIST_BOX_ROW(child)) continue;
-    auto const row_id = static_cast<std::int64_t>(GPOINTER_TO_INT(
+    auto const row_id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
         g_object_get_data(G_OBJECT(child), "task-id")));
     if (row_id == g_state.open_editor_id) {
       set_task_editor_expanded(GTK_LIST_BOX_ROW(child), row_id, false,
@@ -2139,7 +2139,7 @@ void collapse_open_editor() {
 void show_task_menu(GtkWidget* row, gdouble x, gdouble y, bool user_list) {
   auto* menu = g_menu_new();
   if (user_list) {
-    auto const list_id = static_cast<std::int64_t>(GPOINTER_TO_INT(
+    auto const list_id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
         g_object_get_data(G_OBJECT(row), "list-id")));
     auto* section = g_menu_new();
     g_menu_append(section, tr("dialogEditList").c_str(),
@@ -2149,7 +2149,7 @@ void show_task_menu(GtkWidget* row, gdouble x, gdouble y, bool user_list) {
     g_menu_append_section(menu, nullptr, G_MENU_MODEL(section));
     g_object_unref(section);
   } else {
-    auto const task_id = static_cast<std::int64_t>(GPOINTER_TO_INT(
+    auto const task_id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
         g_object_get_data(G_OBJECT(row), "task-id")));
     auto* due_section = g_menu_new();
     g_menu_append(due_section, tr("navToday").c_str(),
@@ -2201,7 +2201,7 @@ void on_row_gesture_pressed(GtkGestureClick* gesture, gint n_press,
   } else if (button == 1 && n_press == 2 && is_user_list) {
     // Task rows use GtkListBox's native row-activated signal instead:
     // handling both double-click gestures would toggle the editor twice.
-    auto const id = static_cast<std::int64_t>(GPOINTER_TO_INT(
+    auto const id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
         g_object_get_data(G_OBJECT(row), "list-id")));
     auto* parameter = g_variant_new_string(std::to_string(id).c_str());
     g_action_group_activate_action(
@@ -2248,7 +2248,7 @@ GtkWidget* make_task_row(rivet_app::Task const& task) {
   gtk_check_button_set_active(GTK_CHECK_BUTTON(check), task.completed);
   gtk_widget_set_valign(check, GTK_ALIGN_CENTER);
   g_object_set_data(G_OBJECT(check), "task-id",
-                    GINT_TO_POINTER(static_cast<gint>(task.id)));
+                    GSIZE_TO_POINTER(static_cast<gsize>(task.id)));
   g_signal_connect(check, "toggled", G_CALLBACK(on_task_check_toggled),
                    nullptr);
   gtk_box_append(GTK_BOX(box), check);
@@ -2302,7 +2302,7 @@ GtkWidget* make_task_row(rivet_app::Task const& task) {
 
   gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(row), box);
   g_object_set_data(G_OBJECT(row), "task-id",
-                    GINT_TO_POINTER(static_cast<gint>(task.id)));
+                    GSIZE_TO_POINTER(static_cast<gsize>(task.id)));
   attach_row_gestures(row, false);
   return row;
 }
@@ -2466,7 +2466,7 @@ GtkWidget* make_user_list_row(rivet_app::TodoList const& list) {
 
   gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(row), box);
   g_object_set_data(G_OBJECT(row), "list-id",
-                    GINT_TO_POINTER(static_cast<gint>(list.id)));
+                    GSIZE_TO_POINTER(static_cast<gsize>(list.id)));
   attach_row_gestures(row, true);
   return row;
 }
@@ -2522,7 +2522,7 @@ void rebuild_task_list() {
          child != nullptr;
          child = gtk_widget_get_next_sibling(child)) {
       if (!GTK_IS_LIST_BOX_ROW(child)) continue;
-      auto const row_id = static_cast<std::int64_t>(GPOINTER_TO_INT(
+      auto const row_id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
           g_object_get_data(G_OBJECT(child), "task-id")));
       if (row_id != g_state.open_editor_id) continue;
       auto* editor = static_cast<TaskEditor*>(
@@ -2558,7 +2558,7 @@ void rebuild_task_list() {
     auto const value = g_object_get_data(G_OBJECT(selected), "task-id");
     if (value != nullptr) {
       selected_task_ids.insert(
-          static_cast<std::int64_t>(GPOINTER_TO_INT(value)));
+          static_cast<std::int64_t>(GPOINTER_TO_SIZE(value)));
     }
   }
   g_list_free(selected_rows);
@@ -3055,7 +3055,7 @@ void on_user_row_selected(GtkListBox*, GtkListBoxRow* row, gpointer) {
   if (!g_state.current_search.empty()) {
     gtk_editable_set_text(GTK_EDITABLE(g_state.search_box), "");
   }
-  auto const id = static_cast<std::int64_t>(GPOINTER_TO_INT(
+  auto const id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
       g_object_get_data(G_OBJECT(row), "list-id")));
   g_state.view = ViewKind::List;
   g_state.view_list_id = id;
@@ -3769,7 +3769,7 @@ void on_activate(GtkApplication* app, gpointer) {
       G_CALLBACK(+[](GtkListBox*, GtkListBoxRow* row, gpointer) {
         auto const data = g_object_get_data(G_OBJECT(row), "task-id");
         if (data == nullptr) return;  // completed-section header
-        auto const id = static_cast<std::int64_t>(GPOINTER_TO_INT(data));
+        auto const id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(data));
         toggle_task_editor(row, id, false);
       }), nullptr);
   gtk_widget_add_css_class(task_list, "task-row-list");
