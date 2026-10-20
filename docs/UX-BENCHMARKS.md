@@ -78,7 +78,11 @@ Scheduled（有日期的）。
 
 - ✅ macOS 已落地：⌘/⇧ 多选 + 批量完成/排期/移动/删除，删除走单条撤销横幅
   （PRODUCT-SPEC §5b 已收录批量语义）。
-- 🔜 短期：Windows/Linux 跟进同一套多选与批量语义（见 README 平台状态）。
+- ✅ Windows 列表选择基础：WinUI Extended 模式支持 Ctrl/Shift
+  多选、方向键与范围选择；Enter 打开当前选中任务的编辑对话框，Esc
+  清除选择。按任务 ID 在列表刷新后恢复选择（普通列表与搜索结果）。
+- 🔜 **尚未完成**：Windows 的批量完成/排期/移动/删除、行内详情展开和撤销；
+  Linux 的批量操作；以及三平台按真实快捷键进行实机回归。
 
 ### 2.5 Quick Find
 
