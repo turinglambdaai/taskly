@@ -3696,7 +3696,7 @@ void on_activate(GtkApplication* app, gpointer) {
         gtk_widget_set_parent(popover, GTK_WIDGET(button));
         g_object_set_data(G_OBJECT(button), "batch-date-popover", popover);
         gtk_popover_popup(GTK_POPOVER(popover));
-      }), nullptr);
+      })), nullptr);
   gtk_box_append(GTK_BOX(bulk_bar), bulk_schedule);
   gtk_box_append(GTK_BOX(pane), bulk_bar);
 
