@@ -2966,31 +2966,66 @@ std::optional<std::int64_t> quick_add_target_list() {
   return std::nullopt;
 }
 
+// Async parsing/saving must never consume an unsent draft. Keep one add
+// in flight so repeated Enter/plus cannot create duplicate tasks.
+bool g_quick_add_in_flight = false;
+
 void on_quick_add_activate(GtkEntry* entry, gpointer) {
-  auto const text = std::string(gtk_editable_get_text(GTK_EDITABLE(entry)));
-  if (text.empty() || g_state.api == nullptr) return;
+  auto const submitted =
+      std::string(gtk_editable_get_text(GTK_EDITABLE(entry)));
+  if (submitted.find_first_not_of(" \\t\\r\\n") == std::string::npos ||
+      g_state.api == nullptr || g_quick_add_in_flight) {
+    return;
+  }
   auto const target = quick_add_target_list();
   if (!target.has_value()) {
     flash_status(tr("taskCreateListFirst"));
     return;
   }
-  gtk_editable_set_text(GTK_EDITABLE(entry), "");
-  gtk_label_set_text(g_state.quick_add_preview, "");
-  // One quick-add grammar on every platform: the backend splits text + due
-  // (parse_quick_add); this host only forwards the result.
+
+  // Capture the concrete destination before the parser request. If the
+  // user selects another list while this runs, its target cannot change.
+  // Do not clear the GtkEntry until the backend has actually persisted it.
+  g_quick_add_in_flight = true;
   g_state.api->parse_quick_add_async(
-      text, [target](rivet_app::Result<rivet_app::QuickAddParse> result) {
-        on_result(
-            std::move(result),
-            [target](rivet_app::QuickAddParse const& parse) {
-              rivet_app::Task seed{};
-              seed.text = parse.text;
-              seed.list_id = *target;
-              seed.due_date = parse.due_date;
-              seed.due_time = parse.due_time;
-              add_task_full(seed);
-              flash_status(tr("statusTaskAdded"));
-            });
+      submitted, [submitted, target](
+                     rivet_app::Result<rivet_app::QuickAddParse> result) {
+        dispatch_ui([submitted, target, result = std::move(result)]() mutable {
+          try {
+            auto const parsed = result.get();
+            if (g_state.api == nullptr) {
+              g_quick_add_in_flight = false;
+              return;
+            }
+            g_state.api->add_task_async(
+                parsed.text, *target, parsed.due_date, parsed.due_time,
+                std::nullopt,
+                [submitted](rivet_app::Result<rivet_app::Task> added) {
+                  dispatch_ui([submitted, added = std::move(added)]() mutable {
+                    g_quick_add_in_flight = false;
+                    try {
+                      added.get();
+                      // Do not wipe task B when the completion for task A
+                      // arrives after the user has started typing again.
+                      if (std::string(gtk_editable_get_text(
+                              GTK_EDITABLE(g_state.quick_add))) == submitted) {
+                        gtk_editable_set_text(
+                            GTK_EDITABLE(g_state.quick_add), "");
+                        gtk_label_set_text(g_state.quick_add_preview, "");
+                        gtk_widget_set_visible(
+                            GTK_WIDGET(g_state.quick_add_preview), FALSE);
+                      }
+                      flash_status(tr("statusTaskAdded"));
+                    } catch (std::exception const& e) {
+                      set_status_error(e.what());
+                    }
+                  });
+                });
+          } catch (std::exception const& e) {
+            g_quick_add_in_flight = false;
+            set_status_error(e.what());
+          }
+        });
       });
 }
 
