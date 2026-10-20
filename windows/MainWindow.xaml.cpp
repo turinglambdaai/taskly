@@ -2399,7 +2399,7 @@ void MainWindow::OnBulkScheduleClicked(
   if (ids.size() < 2) return;
   auto menu = mxc::MenuFlyout{};
   auto const weak = get_weak();
-  auto add_option = [&](winrt::hstring const& text,
+  auto add_option = [&](std::wstring const& text,
                         std::wstring const& due) {
     auto option = mxc::MenuFlyoutItem{};
     option.Text(text);
