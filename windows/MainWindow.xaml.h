@@ -116,7 +116,7 @@ private:
   std::wstring full_date_today() const;
   void CommitQuickAdd();
   void RefreshBulkActionBar();
-  std::vector<std::int64_t> SelectedTaskIds() const;
+  std::vector<std::int64_t> SelectedTaskIds();
   void MoveSelectedTasks(std::int64_t target_list_id);
   void RefreshQuickAddPreview();
   void ApplyTitleBarTheme();
