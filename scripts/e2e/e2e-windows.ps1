@@ -116,19 +116,22 @@ try {
         [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
 
     function Select-TaskList {
-        param([int]$ListId)
-        $listGrid = Wait-Until ("list row {0}" -f $ListId) {
-            Find-ById $window ("list-{0}" -f $ListId)
+        param([int]$ListId, [string]$Name)
+        # WinUI's inner Grid is not a ControlView automation peer (verified
+        # against the failing packaged Windows screenshot). Resolve the
+        # displayed TextBlock instead, then select its ListViewItem parent.
+        $label = Wait-Until ("visible list: {0}" -f $Name) {
+            $found = Find-ById $window ("list-name-{0}" -f $ListId)
+            if ($null -eq $found) { $found = Find-ByName $window $Name }
+            return $found
         }
-        # ListView's selectable automation peer belongs to ListViewItem,
-        # not the hand-built inner Grid carrying the stable list id.
-        $item = $listGrid
+        $item = $label
         $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
         while ($null -ne $item -and
                $item.Current.ControlType -ne [System.Windows.Automation.ControlType]::ListItem) {
             $item = $walker.GetParent($item)
         }
-        if ($null -eq $item) { throw ("no selectable list item for {0}" -f $ListId) }
+        if ($null -eq $item) { throw ("no selectable list item for {0}" -f $Name) }
         $item.GetCurrentPattern(
             [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
     }
@@ -136,7 +139,7 @@ try {
     $paneTitle = Wait-Until 'active view label' {
         Find-ById $window 'current-view-title'
     }
-    Select-TaskList 2
+    Select-TaskList 2 '生活'
     [void](Wait-Until '生活 view selected' {
         if ($paneTitle.Current.Name -eq '生活') { return $true }
         return $false
@@ -151,13 +154,10 @@ try {
     $titleText = Wait-Until 'task saved under 生活' {
         Find-ByName $window $plainTask
     }
-    $plainRow = Wait-Until 'new task row by stable id' {
-        Find-ById $window 'task-row-2'
-    }
-    $titleText = Find-ByName $plainRow $plainTask
-    if ($null -eq $titleText) { throw 'expected task title missing in list row' }
+    # Layout assertions use the text and native checkbox peers: a Grid
+    # itself is not reliably exposed in WinUI UIA's ControlView.
     $plainCheck = Wait-Until 'new task checkbox' {
-        Find-ById $plainRow 'task-complete-2'
+        Find-ById $window 'task-complete-2'
     }
     # Both elements share the row's first Grid row; the title must
     # visually align with the native checkbox for a metadata-free task.
@@ -171,7 +171,7 @@ try {
         throw ("plain task title and checkbox are misaligned by {0:N1}px" -f $centerDiff)
     }
 
-    Select-TaskList 1
+    Select-TaskList 1 '工作'
     [void](Wait-Until '工作 view selected' {
         if ($paneTitle.Current.Name -eq '工作') { return $true }
         return $false
@@ -180,7 +180,7 @@ try {
         if ($null -eq (Find-ByName $window $plainTask)) { return $true }
         return $false
     })
-    Select-TaskList 2
+    Select-TaskList 2 '生活'
     [void](Wait-Until '生活 task remains in 生活' {
         if ($paneTitle.Current.Name -eq '生活' -and
             $null -ne (Find-ByName $window $plainTask)) { return $true }
