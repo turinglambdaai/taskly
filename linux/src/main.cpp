@@ -752,6 +752,7 @@ void apply_css(Palette const& p) {
   css += "listbox.task-row-list { background: " + std::string(p.background) + "; }\n";
   css += "listbox.task-row-list > row { min-height: 44px; padding: 9px 16px; background: " + std::string(p.background) + "; }\n";
   css += "listbox.task-row-list > row:hover { background: " + std::string(p.hover) + "; }\n";
+  css += "listbox.task-row-list > row:selected { background: " + std::string(p.selected) + "; color: " + std::string(p.text) + "; }\n";
   css += "listbox.sidebar-list { background: transparent; }\n";
   css += "listbox.sidebar-list > row { min-height: 34px; border-radius: 8px; margin: 1px 4px; padding: 5px 8px; background: " + std::string(p.surface) + "; border: 1px solid " + std::string(p.divider) + "; box-shadow: none; }\n";
   css += "listbox.sidebar-list > row:hover { background: " + std::string(p.hover) + "; }\n";
