@@ -84,6 +84,10 @@ struct MainWindow : MainWindowT<MainWindow> {
                          Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnBulkScheduleClicked(winrt::Windows::Foundation::IInspectable const&,
                              Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnBulkDeleteClicked(winrt::Windows::Foundation::IInspectable const&,
+                           Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnUndoDeleteClicked(winrt::Windows::Foundation::IInspectable const&,
+                           Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   // Update download action wired from XAML; event handlers must be public
   // because generated Connect() binds them through MainWindowT.
@@ -123,6 +127,9 @@ private:
                          std::int64_t target_list_id);
   void ScheduleSelectedTasks(std::vector<std::int64_t> const& ids,
                              std::wstring const& due);
+  void StageTaskDeletion(std::vector<std::int64_t> const& ids);
+  void CommitPendingDeletion();
+  void UndoPendingDeletion();
   void RefreshQuickAddPreview();
   void ApplyTitleBarTheme();
   void OnEffectiveThemeChanged();
@@ -202,6 +209,10 @@ private:
   std::vector<rivet_app::TodoList> lists_;
   std::vector<rivet_app::Task> tasks_;
   std::vector<rivet_app::Task> search_results_;
+  // Deletions are staged for six seconds, retaining original task IDs.
+  std::set<std::int64_t> suppressed_deleted_task_ids_;
+  std::vector<std::int64_t> pending_delete_ids_;
+  Microsoft::UI::Dispatching::DispatcherQueueTimer delete_undo_timer_{nullptr};
   std::wstring current_search_;
   ViewKind view_{ViewKind::All};
   std::int64_t view_list_id_{0};
