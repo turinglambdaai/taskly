@@ -406,6 +406,9 @@ struct AppState {
   GtkButton* sidebar_toggle{nullptr};
   GtkBox* banner_box{nullptr};
   GtkLabel* status_text{nullptr};
+  std::unordered_set<std::int64_t> suppressed_delete_ids;
+  std::vector<std::int64_t> staged_delete_ids;
+  rivet_app::API* staged_delete_api{nullptr};
 
   std::unique_ptr<rivet::linux_runtime::Backend> backend;
   std::unique_ptr<rivet_app::API> api;
@@ -460,7 +463,7 @@ void open_database_at(std::string const& path);
 void set_status(char const* message);
 void set_status_error(std::string const& message);
 void flash_status(std::string const& message);
-void show_undo_banner(rivet_app::Task const& deleted);
+void stage_delete_tasks(std::vector<std::int64_t> const& ids);
 void refresh_persistent_status();
 void set_view(ViewKind kind);
 
@@ -884,10 +887,28 @@ void toggle_task(std::int64_t id, bool completed) {
 }
 
 void delete_task_by_id(std::int64_t id) {
-  if (g_state.api == nullptr) return;
+  if (g_state.api == nullptr) {
+    g_state.suppressed_delete_ids.erase(id);
+    return;
+  }
   g_state.api->delete_task_async(
-      id, [](rivet_app::Result<bool> result) {
-        on_result(std::move(result), [](bool const&) {});
+      id, [id](rivet_app::Result<bool> result) {
+        dispatch_ui([id, result = std::move(result)]() mutable {
+          try {
+            if (!result.get()) {
+              throw std::runtime_error("task deletion was not acknowledged");
+            }
+          } catch (std::exception const& e) {
+            // The original record still exists: make it visible again.
+            g_state.suppressed_delete_ids.erase(id);
+            if (g_state.current_search.empty()) {
+              rebuild_task_list();
+            } else {
+              run_search(g_state.current_search);
+            }
+            set_status_error(e.what());
+          }
+        });
       });
 }
 
@@ -1024,6 +1045,7 @@ void run_search(std::string const& keyword) {
               g_state.search_results = results;
               gtk_list_box_remove_all(g_state.task_list);
               for (auto const& task : results) {
+                if (g_state.suppressed_delete_ids.count(task.id)) continue;
                 auto* row = make_task_row(task);
                 gtk_list_box_insert(g_state.task_list, row, -1);
                 if (selected_ids.find(task.id) != selected_ids.end()) {
@@ -2557,6 +2579,7 @@ void rebuild_task_list() {
   }
 
   auto insert_row = [&](rivet_app::Task const& task) {
+    if (g_state.suppressed_delete_ids.count(task.id)) return;
     auto* row = make_task_row(task);
     gtk_list_box_insert(g_state.task_list, row, -1);
     if (selected_task_ids.find(task.id) != selected_task_ids.end()) {
@@ -2770,9 +2793,7 @@ void on_action_task_delete(GSimpleAction*, GVariant* parameter, gpointer) {
   auto const id = action_id(parameter);
   auto const* task = find_selected_task(id);
   if (task == nullptr) return;
-  show_undo_banner(*task);
-  flash_status(tr("statusTaskDeleted"));
-  delete_task_by_id(id);
+  stage_delete_tasks({id});
 }
 
 void on_action_list_delete(GSimpleAction*, GVariant* parameter, gpointer) {
@@ -3598,6 +3619,13 @@ void on_activate(GtkApplication* app, gpointer) {
       })),
       nullptr);
   gtk_box_append(GTK_BOX(bulk_bar), bulk_move);
+  auto* bulk_delete = gtk_button_new_with_label(tr("listDelete").c_str());
+  g_signal_connect(
+      bulk_delete, "clicked",
+      G_CALLBACK(+[](GtkButton*, gpointer) {
+        stage_delete_tasks(selected_task_ids());
+      }), nullptr);
+  gtk_box_append(GTK_BOX(bulk_bar), bulk_delete);
   auto* bulk_schedule = gtk_button_new_with_label(tr("bulkSchedule").c_str());
   g_signal_connect(
       bulk_schedule, "clicked",
