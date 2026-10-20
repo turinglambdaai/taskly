@@ -674,6 +674,8 @@ void MainWindow::ApplyLanguage() {
   winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
       QuickAddButton(), t("taskListInputHint"));
   ShowCompletedCheck().Content(winrt::box_value(t("showCompletedToggle")));
+  BulkCompleteButton().Content(winrt::box_value(t("bulkComplete")));
+  BulkMoveButton().Content(winrt::box_value(t("menuMoveToList")));
   RenderSidebar();
   RenderTasks();
 }
@@ -917,6 +919,7 @@ void MainWindow::RenderTasks() {
     EmptyStateIcon().Text(L"\u2713");
     EmptyStateText().Text(t("taskListEmpty"));
   }
+  RefreshBulkActionBar();
 }
 
 void MainWindow::RenderSearchResults() {
@@ -934,6 +937,7 @@ void MainWindow::RenderSearchResults() {
       SearchResults().SelectedItems().Append(row);
     }
   }
+  RefreshBulkActionBar();
 }
 
 mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task,
@@ -2221,6 +2225,74 @@ void MainWindow::OnShowCompletedChanged(
   auto const checked = ShowCompletedCheck().IsChecked();
   show_completed_ = checked != nullptr && checked.Value();
   ReloadTasksAsync();
+}
+
+std::vector<std::int64_t> MainWindow::SelectedTaskIds() const {
+  // Capture task identity before starting any asynchronous mutations:
+  // a changed event may re-render the view before the final RPC completes.
+  auto list = current_search_.empty() ? TaskList() : SearchResults();
+  std::vector<std::int64_t> ids;
+  for (auto const& selected : list.SelectedItems()) {
+    if (auto row = selected.try_as<mxc::Grid>()) {
+      ids.push_back(winrt::unbox_value<std::int64_t>(row.Tag()));
+    }
+  }
+  return ids;
+}
+
+void MainWindow::RefreshBulkActionBar() {
+  auto const ids = SelectedTaskIds();
+  BulkActionBar().Visibility(
+      ids.size() > 1 ? mx::Visibility::Visible : mx::Visibility::Collapsed);
+  if (ids.size() > 1) {
+    BulkSelectionCount().Text(tf("bulkSelectedCount",
+                                 std::to_wstring(ids.size())));
+    BulkMoveButton().IsEnabled(lists_.size() > 1);
+  }
+}
+
+void MainWindow::OnTaskSelectionChanged(
+    winrt::Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&) {
+  RefreshBulkActionBar();
+}
+
+void MainWindow::OnBulkCompleteClicked(
+    winrt::Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) {
+  for (auto id : SelectedTaskIds()) {
+    if (auto const* task = FindTaskForAction(id)) {
+      if (!task->completed) ToggleTaskAsync(id, true);
+    }
+  }
+}
+
+void MainWindow::MoveSelectedTasks(std::int64_t target_list_id) {
+  for (auto id : SelectedTaskIds()) {
+    if (auto const* task = FindTaskForAction(id)) {
+      if (task->list_id != target_list_id) {
+        MoveTaskToListAsync(id, target_list_id);
+      }
+    }
+  }
+}
+
+void MainWindow::OnBulkMoveClicked(
+    winrt::Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) {
+  auto menu = mxc::MenuFlyout{};
+  for (auto const& list : lists_) {
+    auto target = mxc::MenuFlyoutItem{};
+    target.Text(wide(list.icon.value_or("")) + L" " + wide(list.name));
+    auto const id = list.id;
+    target.Click([weak = get_weak(), id](
+                     winrt::Windows::Foundation::IInspectable const&,
+                     Microsoft::UI::Xaml::RoutedEventArgs const&) {
+      if (auto window = weak.get()) window->MoveSelectedTasks(id);
+    });
+    menu.Items().Append(target);
+  }
+  menu.ShowAt(BulkMoveButton());
 }
 
 void MainWindow::OnTaskListKeyDown(
