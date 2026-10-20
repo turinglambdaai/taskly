@@ -2205,7 +2205,10 @@ GtkWidget* make_task_row(rivet_app::Task const& task) {
 
   // Meta line: owning list in multi-list views + due chip + notes preview.
   std::string meta;
-  if (g_state.view != ViewKind::List && task.list_name.has_value()) {
+  // Search is global even when a named list is selected. Always show
+  // actual ownership so a result from 工作 is never mistaken for 生活.
+  if ((g_state.view != ViewKind::List || !g_state.current_search.empty()) &&
+      task.list_name.has_value()) {
     meta = *task.list_name;
   }
   auto const due = due_chip_text(task);
