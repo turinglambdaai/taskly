@@ -117,7 +117,8 @@ private:
   void CommitQuickAdd();
   void RefreshBulkActionBar();
   std::vector<std::int64_t> SelectedTaskIds();
-  void MoveSelectedTasks(std::int64_t target_list_id);
+  void MoveSelectedTasks(std::vector<std::int64_t> const& ids,
+                         std::int64_t target_list_id);
   void RefreshQuickAddPreview();
   void ApplyTitleBarTheme();
   void OnEffectiveThemeChanged();
