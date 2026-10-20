@@ -465,6 +465,7 @@ void set_status(char const* message);
 void set_status_error(std::string const& message);
 void flash_status(std::string const& message);
 void stage_delete_tasks(std::vector<std::int64_t> const& ids);
+void undo_staged_delete();
 void refresh_persistent_status();
 void set_view(ViewKind kind);
 
@@ -2879,10 +2880,12 @@ void on_menu_open_database(GSimpleAction*, GVariant*, gpointer) {
 
 void on_menu_close_database(GSimpleAction*, GVariant*, gpointer) {
   if (g_state.api == nullptr) return;
+  if (!g_state.staged_delete_ids.empty()) undo_staged_delete();
   g_state.api->close_database_async([](rivet_app::Result<void> result) {
     on_result(std::move(result), [] {
       g_state.lists.clear();
       g_state.tasks.clear();
+      g_state.suppressed_delete_ids.clear();
       g_state.current_counts = {};
       g_state.view = ViewKind::Today;
       g_state.view_list_id = 0;
@@ -3199,10 +3202,12 @@ gboolean on_window_key_pressed(GtkEventControllerKey*, guint keyval,
 
 void open_database_at(std::string const& path) {
   if (g_state.api == nullptr || path.empty()) return;
+  if (!g_state.staged_delete_ids.empty()) undo_staged_delete();
   g_state.api->open_database_async(
       path, [path](rivet_app::Result<rivet_app::Snapshot> result) {
         on_result(std::move(result),
                   [path](rivet_app::Snapshot const& snapshot) {
+                    g_state.suppressed_delete_ids.clear();
                     g_state.current_counts = snapshot.counts;
                     g_state.lists = snapshot.lists;
                     g_state.tasks = snapshot.tasks;
