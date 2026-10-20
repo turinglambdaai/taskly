@@ -355,6 +355,9 @@
                     <Button x:Name="BulkScheduleButton"
                             AutomationProperties.AutomationId="bulk-schedule"
                             Click="OnBulkScheduleClicked" />
+                    <Button x:Name="BulkDeleteButton"
+                            AutomationProperties.AutomationId="bulk-delete"
+                            Click="OnBulkDeleteClicked" />
                 </StackPanel>
 
                 <Grid Grid.Row="2">
@@ -490,12 +493,21 @@
 
         <!-- Status bar -->
         <Border Grid.Row="3" Background="{ThemeResource TasklySidebarBrush}">
-            <TextBlock
-                x:Name="StatusText"
-                Margin="12,4"
-                FontSize="12"
-                Foreground="{ThemeResource TasklySecondaryTextBrush}"
-                TextTrimming="CharacterEllipsis" />
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock
+                    x:Name="StatusText"
+                    Margin="12,4"
+                    FontSize="12"
+                    VerticalAlignment="Center"
+                    Foreground="{ThemeResource TasklySecondaryTextBrush}"
+                    TextTrimming="CharacterEllipsis" />
+                <Button x:Name="UndoDeleteButton"
+                        AutomationProperties.AutomationId="undo-delete"
+                        Click="OnUndoDeleteClicked"
+                        Visibility="Collapsed"
+                        MinWidth="58"
+                        Padding="10,2" />
+            </StackPanel>
         </Border>
     </Grid>
 </Window>
