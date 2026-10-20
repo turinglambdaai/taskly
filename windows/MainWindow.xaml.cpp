@@ -839,6 +839,10 @@ void MainWindow::RenderSidebar() {
 
     auto text = mxc::TextBlock{};
     text.Text(wide(list.name));
+    // WinUI exposes TextBlock peers to UIA; the surrounding Grid is not
+    // reliably in ControlView. Test/assistive clients can find this label.
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+        text, L"list-name-" + std::to_wstring(list.id));
     text.TextTrimming(mx::TextTrimming::CharacterEllipsis);
     text.VerticalAlignment(mx::VerticalAlignment::Center);
     mxc::Grid::SetColumn(text, 1);
