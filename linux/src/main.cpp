@@ -3686,7 +3686,7 @@ void on_activate(GtkApplication* app, gpointer) {
                 auto* p = static_cast<GtkWidget*>(g_object_get_data(
                     G_OBJECT(g_state.bulk_schedule), "batch-date-popover"));
                 if (p != nullptr) gtk_popover_popdown(GTK_POPOVER(p));
-              })), nullptr);
+              }), nullptr);
           gtk_box_append(GTK_BOX(options), option);
         };
         add_option(tr("navToday"), date_string(0));
