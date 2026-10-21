@@ -134,4 +134,10 @@ native checkbox surface in CI, packaged acceptance and Windows release.
   1320×800 background. The Taskly and Applications icon slots are controlled
   by pinned Rivet (positions 130,160 and 450,160 at 80pt icons). Keep the
   straight drag arrow centered in the clear space between those slots and
-  do not draw art over the icon/label areas.
+  do not draw art over the icon/label areas. The small `DRAG TO INSTALL`
+  cue and high-contrast bottom instruction sit entirely in the background's
+  clear middle and lower text zones, never underneath Finder's icon labels.
+- Final visual acceptance must inspect the mounted DMG in Finder (not only the
+  raw SVG/PNG): app icon, Applications target, arrowhead and labels must stay
+  aligned at native scale. The 1320x800 renderer check is necessary but cannot
+  prove Finder's overlay composition is correct.
