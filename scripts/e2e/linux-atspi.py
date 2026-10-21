@@ -8,14 +8,24 @@ import pyatspi
 
 
 def children(node):
-    for index in range(node.childCount):
+    try:
+        count = node.childCount
+    except Exception:
+        return
+    for index in range(count):
         try:
-            yield node.getChildAtIndex(index)
+            child = node.getChildAtIndex(index)
+            # GTK can remove and rebuild a row between childCount and the
+            # D-Bus lookup while async task snapshots arrive.
+            if child is not None:
+                yield child
         except Exception:
             continue
 
 
 def walk(node):
+    if node is None:
+        return
     yield node
     for child in children(node):
         yield from walk(child)
@@ -36,7 +46,7 @@ def text(node):
         return ""
 
 
-def wait_for(description, probe, timeout=30.0):
+def wait_for(description, probe, timeout=60.0):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         value = probe()
@@ -78,6 +88,59 @@ def contains_text(root, expected):
     return any((node.name or "") == expected or text(node) == expected for node in walk(root))
 
 
+def matching_child_indexes(container, expected):
+    result = []
+    for index in range(container.childCount):
+        try:
+            child = container.getChildAtIndex(index)
+        except Exception:
+            continue
+        if contains_text(child, expected):
+            result.append(index)
+    return result
+
+
+def select_single_named_child(root, expected):
+    """Select the one direct row containing expected in a selection container."""
+    for container in walk(root):
+        try:
+            selection = container.querySelection()
+        except Exception:
+            continue
+        indexes = matching_child_indexes(container, expected)
+        if len(indexes) != 1:
+            continue
+        selection.clearSelection()
+        if not selection.selectChild(indexes[0]):
+            raise AssertionError(f"AT-SPI failed to select row containing {expected!r}")
+        return container
+    return None
+
+
+def select_named_children(root, expected_names):
+    """Select the direct rows that contain every expected task title."""
+    for container in walk(root):
+        try:
+            selection = container.querySelection()
+        except Exception:
+            continue
+        indexes = []
+        for expected in expected_names:
+            matches = matching_child_indexes(container, expected)
+            if len(matches) != 1:
+                indexes = []
+                break
+            indexes.append(matches[0])
+        if not indexes or len(set(indexes)) != len(expected_names):
+            continue
+        selection.clearSelection()
+        for index in indexes:
+            if not selection.selectChild(index):
+                raise AssertionError("AT-SPI failed to select all requested task rows")
+        return container
+    return None
+
+
 def snapshot(node, depth=0):
     result = {"name": node.name or "", "role": role(node)}
     value = text(node)
@@ -107,8 +170,62 @@ def main():
     # stable behavioral contract we actually need.
     entry = wait_for("quick-add entry", lambda: find_editable_named(window, "+ Add Task"))
     submit = wait_for("quick-add submit", lambda: find_named(window, "+ Add Task", "push button"))
+
+    wait_for("default-list sentinel", lambda: contains_text(window, "Default-list sentinel"))
+    wait_for("first 64-bit task row", lambda: contains_text(window, "64-bit task A"))
+    wait_for("second 64-bit task row", lambda: contains_text(window, "64-bit task B"))
+
+    wait_for(
+        "64-bit list row selection",
+        lambda: select_single_named_child(window, "64-bit identity list"),
+    )
+    wait_for(
+        "64-bit list filter",
+        lambda: not contains_text(window, "Default-list sentinel")
+        and contains_text(window, "64-bit task A")
+        and contains_text(window, "64-bit task B"),
+    )
+
+    wait_for(
+        "two 64-bit task rows selected for scheduling",
+        lambda: select_named_children(window, ["64-bit task A", "64-bit task B"]),
+    )
+    schedule = wait_for(
+        "batch schedule button",
+        lambda: find_named(window, "Schedule Selected", "push button"),
+    )
+    (args.output / "bulk-toolbar-debug.json").write_text(
+        json.dumps(snapshot(window), ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    delete = wait_for(
+        "batch delete button", lambda: find_named(window, "Delete", "push button")
+    )
+    press(schedule)
+    tomorrow = wait_for(
+        "Tomorrow schedule option", lambda: find_named(window, "Tomorrow", "push button")
+    )
+    press(tomorrow)
+    wait_for(
+        "two 64-bit task rows selected for deletion",
+        lambda: select_named_children(window, ["64-bit task A", "64-bit task B"]),
+    )
+    press(delete)
+    wait_for(
+        "staged tasks hidden",
+        lambda: not contains_text(window, "64-bit task A")
+        and not contains_text(window, "64-bit task B"),
+    )
+    undo = wait_for("undo banner", lambda: find_named(window, "Undo", "push button"))
+    press(undo)
+    wait_for(
+        "identity-preserving undo",
+        lambda: contains_text(window, "64-bit task A")
+        and contains_text(window, "64-bit task B"),
+    )
+
     entry.queryEditableText().setTextContents("Acceptance task")
     press(submit)
+    wait_for("quick-add field cleared", lambda: text(entry) == "")
     wait_for("RPC-created task row", lambda: contains_text(window, "Acceptance task"))
 
     (args.output / "accessibility.json").write_text(
@@ -118,11 +235,24 @@ def main():
         json.dumps(
             {
                 "platform": "linux",
-                "actions": ["set:quick-add", "press:quick-add-submit"],
+                "actions": [
+                    "select:64-bit-list-row",
+                    "select:two-64-bit-task-rows",
+                    "press:batch-schedule-tomorrow",
+                    "press:batch-delete",
+                    "press:undo",
+                    "set:quick-add",
+                    "press:quick-add-submit",
+                ],
                 "assertions": [
                     "packaged GTK4 frame activated on native Wayland",
                     "AT-SPI roles and names exposed",
-                    "RPC-created task appeared through the changed Event",
+                    "list and task IDs above 2^32 survive GTK row data",
+                    "batch scheduling clears hidden due times for both tasks",
+                    "six-second staged deletion hides both tasks without deleting them",
+                    "undo restores the original task IDs and metadata",
+                    "RPC-created task appeared after the quick-add field cleared",
+                    "quick-add preserved the selected 64-bit list ownership",
                 ],
             },
             indent=2,

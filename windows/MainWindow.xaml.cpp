@@ -1014,7 +1014,7 @@ void MainWindow::RenderTasks() {
                                     : mx::Visibility::Visible);
   SearchPane().Visibility(searching ? mx::Visibility::Visible
                                     : mx::Visibility::Collapsed);
-  auto const empty = !searching && tasks_.empty();
+  auto const empty = !searching && TaskList().Items().Size() == 0;
   EmptyState().Visibility(empty ? mx::Visibility::Visible
                                 : mx::Visibility::Collapsed);
   if (empty) {
@@ -1094,6 +1094,8 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task,
 
   auto text = mxc::TextBlock{};
   text.Text(wide(task.text));
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+      text, L"task-title-" + std::to_wstring(task.id));
   text.FontSize(14);
   text.TextTrimming(mx::TextTrimming::CharacterEllipsis);
   text.Margin(mx::ThicknessHelper::FromLengths(8, 0, 0, 0));

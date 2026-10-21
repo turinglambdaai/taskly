@@ -17,6 +17,56 @@ last-selected-list-id = 0
 last-update-check = $epoch
 EOF
 
+# Seed IDs beyond the 32-bit boundary so the GTK acceptance flow exercises
+# the exact row-data conversions used by list selection and batch actions.
+/usr/bin/python3 - "$home/.taskly/tasks.db" <<'PY'
+import sqlite3
+import sys
+
+database = sqlite3.connect(sys.argv[1])
+database.executescript(
+    """
+    PRAGMA journal_mode = WAL;
+    PRAGMA user_version = 4;
+    CREATE TABLE lists (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        icon TEXT,
+        color INTEGER,
+        created_at TEXT NOT NULL
+    );
+    CREATE TABLE tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        list_id INTEGER,
+        text TEXT NOT NULL,
+        due_date TEXT,
+        due_time TEXT,
+        completed INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        notes TEXT,
+        FOREIGN KEY (list_id) REFERENCES lists (id)
+    );
+    CREATE INDEX idx_tasks_list_id ON tasks(list_id);
+    CREATE INDEX idx_tasks_completed ON tasks(completed);
+    CREATE INDEX idx_tasks_due_date ON tasks(due_date);
+    INSERT INTO lists (id, name, icon, color, created_at) VALUES
+      (1, 'Default list', 'D', -16745729, '2026-10-21T00:00:00Z'),
+      (4294967301, '64-bit identity list', 'H', -13318311, '2026-10-21T00:00:00Z');
+    INSERT INTO tasks
+      (id, list_id, text, due_date, due_time, completed, created_at, notes)
+    VALUES
+      (1, 1, 'Default-list sentinel', NULL, NULL, 0,
+       '2026-10-21T00:00:00Z', NULL),
+      (4294967302, 4294967301, '64-bit task A', NULL, '09:30', 0,
+       '2026-10-21T00:00:00Z', 'metadata A'),
+      (4294967303, 4294967301, '64-bit task B', NULL, '10:45', 0,
+       '2026-10-21T00:00:00Z', 'metadata B');
+    """
+)
+database.commit()
+database.close()
+PY
+
 export HOME="$home"
 export XDG_RUNTIME_DIR="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/taskly-acceptance-runtime-$$"
 export WAYLAND_DISPLAY=wayland-taskly-acceptance
@@ -87,6 +137,29 @@ app_status=$?
 set -e
 app_pid=""
 [[ "$app_status" -eq 0 || "$app_status" -eq 143 ]]
+
+# UI actions must have targeted the full-width IDs and kept undo metadata.
+/usr/bin/python3 - "$home/.taskly/tasks.db" <<'PY'
+import datetime
+import sqlite3
+import sys
+
+database = sqlite3.connect(sys.argv[1])
+tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
+rows = database.execute(
+    "SELECT id, list_id, text, due_date, due_time, completed, notes "
+    "FROM tasks WHERE id IN (4294967302, 4294967303) ORDER BY id"
+).fetchall()
+assert rows == [
+    (4294967302, 4294967301, '64-bit task A', tomorrow, None, 0, 'metadata A'),
+    (4294967303, 4294967301, '64-bit task B', tomorrow, None, 0, 'metadata B'),
+], rows
+created = database.execute(
+    "SELECT list_id, completed FROM tasks WHERE text = 'Acceptance task'"
+).fetchone()
+assert created == (4294967301, 0), created
+database.close()
+PY
 
 trap - EXIT
 kill -TERM "$atspi_pid" "$weston_pid" 2>/dev/null || true
