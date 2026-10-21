@@ -86,6 +86,8 @@ final class AppModel {
     var expandedTaskID: Int64?
     var searchText = ""
     var quickAddText = ""
+    /// Prevent duplicate Enter/click submissions while an add is in flight.
+    private var quickAddInFlight = false
     /// Live quick-add schedule preview (canonical parse via parse_due RPC).
     var quickAddPreview: String?
     /// Incremented by View menu → New Task; TaskPaneView focuses the
@@ -671,7 +673,7 @@ final class AppModel {
     /// the backend `parse_due` RPC — one grammar on every platform
     /// (pure-date intent clears the time).
     func quickAdd(_ rawText: String) {
-        guard isConnected, let api else { return }
+        guard isConnected, let api, !quickAddInFlight else { return }
         let trimmed = rawText.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
 
@@ -685,7 +687,9 @@ final class AppModel {
             return
         }
 
+        quickAddInFlight = true
         _Concurrency.Task {
+            defer { quickAddInFlight = false }
             do {
                 // One quick-add grammar on every platform: the backend
                 // splits text + due (parse_quick_add), we just store it.
@@ -697,8 +701,12 @@ final class AppModel {
                     due_time: parsed.due_time,
                     notes: nil)
                 await MainActor.run {
-                    quickAddText = ""
-                    quickAddPreview = nil
+                    // The user may have begun their next task while the old
+                    // parse/save RPC was in flight. Never wipe a newer draft.
+                    if quickAddText == rawText {
+                        quickAddText = ""
+                        quickAddPreview = nil
+                    }
                     flashStatus(i18n.t("statusTaskAdded"))
                     reload()
                 }
