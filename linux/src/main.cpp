@@ -394,6 +394,10 @@ struct AppState {
   GtkLabel* quick_add_preview{nullptr};
   GtkButton* quick_plus{nullptr};
   GtkListBox* task_list{nullptr};
+  GtkBox* bulk_bar{nullptr};
+  GtkLabel* bulk_count{nullptr};
+  GtkButton* bulk_complete{nullptr};
+  GtkButton* bulk_move{nullptr};
   GtkStack* list_stack{nullptr};
   GtkLabel* empty_icon{nullptr};
   GtkLabel* empty_text{nullptr};
@@ -417,6 +421,7 @@ struct AppState {
   rivet_app::SmartCounts current_counts;
   std::vector<rivet_app::TodoList> lists;
   std::vector<rivet_app::Task> tasks;
+  std::vector<rivet_app::Task> search_results;
   std::string current_search;
   std::string language{"zh"};
   std::uint64_t preview_sequence{0};
@@ -444,6 +449,8 @@ Palette const* g_state_palette = &kLight;
 GtkWidget* make_task_row(rivet_app::Task const& task);
 void rebuild_sidebar();
 void rebuild_task_list();
+void refresh_bulk_bar();
+std::vector<std::int64_t> selected_task_ids();
 void reload_snapshot();
 void save_setting(char const* key, std::string const& value);
 void apply_language();
@@ -920,6 +927,66 @@ void save_task_edits(rivet_app::Task updated) {
       });
 }
 
+std::vector<std::int64_t> selected_task_ids() {
+  std::vector<std::int64_t> ids;
+  if (g_state.task_list == nullptr) return ids;
+  auto* selected = gtk_list_box_get_selected_rows(g_state.task_list);
+  for (auto* node = selected; node != nullptr; node = node->next) {
+    auto* row = GTK_LIST_BOX_ROW(node->data);
+    auto const pointer = g_object_get_data(G_OBJECT(row), "task-id");
+    if (pointer != nullptr) {
+      ids.push_back(static_cast<std::int64_t>(GPOINTER_TO_INT(pointer)));
+    }
+  }
+  g_list_free(selected);
+  return ids;
+}
+
+rivet_app::Task const* find_selected_task(std::int64_t id) {
+  // The global search result set is independent of the active list view.
+  if (!g_state.current_search.empty()) {
+    if (auto const* task = find_by_id(g_state.search_results, id)) return task;
+  }
+  return find_by_id(g_state.tasks, id);
+}
+
+void refresh_bulk_bar() {
+  if (g_state.bulk_bar == nullptr) return;
+  auto const count = selected_task_ids().size();
+  gtk_widget_set_visible(GTK_WIDGET(g_state.bulk_bar), count > 1);
+  if (count > 1) {
+    gtk_label_set_text(g_state.bulk_count, std::to_string(count).c_str());
+    gtk_widget_set_sensitive(GTK_WIDGET(g_state.bulk_move),
+                             g_state.lists.size() > 1);
+  }
+}
+
+void batch_complete_selected() {
+  // Capture IDs before the first changed-event callback re-renders rows.
+  for (auto const id : selected_task_ids()) {
+    if (auto const* task = find_selected_task(id)) {
+      if (!task->completed) toggle_task(id, true);
+    }
+  }
+}
+
+struct BatchMoveCommand {
+  std::vector<std::int64_t> ids;
+  std::int64_t target;
+};
+
+void batch_move_selected(BatchMoveCommand const& command) {
+  for (auto const id : command.ids) {
+    auto const target = command.target;
+    if (auto const* task = find_selected_task(id)) {
+      if (task->list_id == target) continue;
+      auto updated = *task;  // Preserve all other fields.
+      updated.list_id = target;
+      save_task_edits(std::move(updated));
+    }
+  }
+}
+
 void run_search(std::string const& keyword) {
   if (g_state.api == nullptr) return;
   g_state.api->search_tasks_async(
@@ -930,11 +997,18 @@ void run_search(std::string const& keyword) {
             [keyword](std::vector<rivet_app::Task> const& results) {
               // Drop stale completions: only the newest keyword renders.
               if (g_state.current_search != keyword) return;
+              std::unordered_set<std::int64_t> selected_ids;
+              for (auto id : selected_task_ids()) selected_ids.insert(id);
+              g_state.search_results = results;
               gtk_list_box_remove_all(g_state.task_list);
               for (auto const& task : results) {
-                gtk_list_box_insert(g_state.task_list, make_task_row(task),
-                                    -1);
+                auto* row = make_task_row(task);
+                gtk_list_box_insert(g_state.task_list, row, -1);
+                if (selected_ids.find(task.id) != selected_ids.end()) {
+                  gtk_list_box_select_row(g_state.task_list, GTK_LIST_BOX_ROW(row));
+                }
               }
+              refresh_bulk_bar();
             });
       });
 }
@@ -1817,7 +1891,7 @@ struct TaskEditor {
 
 void on_editor_save_clicked(GtkButton*, gpointer user_data) {
   auto* editor = static_cast<TaskEditor*>(user_data);
-  auto const* stored = find_by_id(g_state.tasks, editor->task_id);
+  auto const* stored = find_selected_task(editor->task_id);
   if (stored == nullptr) return;
   auto updated = *stored;
   updated.text = gtk_editable_get_text(GTK_EDITABLE(editor->text));
@@ -1863,7 +1937,7 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
   if (revealer == nullptr) {
     auto* editor = new TaskEditor();
     editor->task_id = id;
-    auto const* task = find_by_id(g_state.tasks, id);
+    auto const* task = find_selected_task(id);
 
     editor->text = GTK_ENTRY(gtk_entry_new());
     editor->notes = GTK_ENTRY(gtk_entry_new());
@@ -2137,7 +2211,10 @@ GtkWidget* make_task_row(rivet_app::Task const& task) {
 
   // Meta line: owning list in multi-list views + due chip + notes preview.
   std::string meta;
-  if (g_state.view != ViewKind::List && task.list_name.has_value()) {
+  // Search is global even when a named list is selected. Always show
+  // actual ownership so a result from 工作 is never mistaken for 生活.
+  if ((g_state.view != ViewKind::List || !g_state.current_search.empty()) &&
+      task.list_name.has_value()) {
     meta = *task.list_name;
   }
   auto const due = due_chip_text(task);
@@ -2631,7 +2708,7 @@ std::int64_t action_id(GVariant* parameter) {
 
 void on_action_task_due_today(GSimpleAction*, GVariant* parameter, gpointer) {
   auto const id = action_id(parameter);
-  if (auto const* task = find_by_id(g_state.tasks, id)) {
+  if (auto const* task = find_selected_task(id)) {
     auto updated = *task;
     updated.due_date = date_string(0);
     save_task_edits(updated);
@@ -2641,7 +2718,7 @@ void on_action_task_due_today(GSimpleAction*, GVariant* parameter, gpointer) {
 void on_action_task_due_tomorrow(GSimpleAction*, GVariant* parameter,
                                  gpointer) {
   auto const id = action_id(parameter);
-  if (auto const* task = find_by_id(g_state.tasks, id)) {
+  if (auto const* task = find_selected_task(id)) {
     auto updated = *task;
     updated.due_date = date_string(1);
     save_task_edits(updated);
@@ -2650,7 +2727,7 @@ void on_action_task_due_tomorrow(GSimpleAction*, GVariant* parameter,
 
 void on_action_task_due_clear(GSimpleAction*, GVariant* parameter, gpointer) {
   auto const id = action_id(parameter);
-  if (auto const* task = find_by_id(g_state.tasks, id)) {
+  if (auto const* task = find_selected_task(id)) {
     auto updated = *task;
     updated.due_date = std::nullopt;
     updated.due_time = std::nullopt;
@@ -2669,7 +2746,7 @@ void on_action_task_edit(GSimpleAction*, GVariant* parameter, gpointer) {
 
 void on_action_task_delete(GSimpleAction*, GVariant* parameter, gpointer) {
   auto const id = action_id(parameter);
-  auto const* task = find_by_id(g_state.tasks, id);
+  auto const* task = find_selected_task(id);
   if (task == nullptr) return;
   show_undo_banner(*task);
   flash_status(tr("statusTaskDeleted"));
@@ -2869,6 +2946,10 @@ void apply_language() {
   gtk_accessible_update_property(
       GTK_ACCESSIBLE(g_state.quick_add), GTK_ACCESSIBLE_PROPERTY_LABEL,
       tr("taskListInputHint").c_str(), -1);
+  if (g_state.bulk_complete != nullptr) {
+    gtk_button_set_label(g_state.bulk_complete, tr("navCompleted").c_str());
+    gtk_button_set_label(g_state.bulk_move, tr("menuMoveToList").c_str());
+  }
   gtk_button_set_label(
       GTK_BUTTON(g_state.show_completed_toggle),
       (g_state.show_completed ? tr("hideCompletedToggle")
@@ -3046,6 +3127,7 @@ void on_search_changed(GtkSearchEntry* entry, gpointer) {
       std::string(gtk_editable_get_text(GTK_EDITABLE(entry)));
   if (keyword.empty()) {
     g_state.current_search.clear();
+    g_state.search_results.clear();
     rebuild_task_list();
     return;
   }
@@ -3471,6 +3553,65 @@ void on_activate(GtkApplication* app, gpointer) {
   gtk_widget_add_css_class(quick_divider, "taskly-divider");
   gtk_box_append(GTK_BOX(pane), quick_divider);
 
+  // Shared batch actions for the list and global-search results. Keep the
+  // toolbar completely hidden until two or more tasks are selected.
+  auto* bulk_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+  gtk_widget_set_margin_start(bulk_bar, 16);
+  gtk_widget_set_margin_end(bulk_bar, 16);
+  gtk_widget_set_margin_top(bulk_bar, 4);
+  gtk_widget_set_margin_bottom(bulk_bar, 4);
+  gtk_widget_set_visible(bulk_bar, FALSE);
+  auto* bulk_count = gtk_label_new("");
+  gtk_widget_add_css_class(bulk_count, "pane-subtitle");
+  gtk_box_append(GTK_BOX(bulk_bar), bulk_count);
+  auto* bulk_complete = gtk_button_new_with_label(tr("navCompleted").c_str());
+  g_signal_connect(
+      bulk_complete, "clicked",
+      G_CALLBACK(+[](GtkButton*, gpointer) { batch_complete_selected(); }),
+      nullptr);
+  gtk_box_append(GTK_BOX(bulk_bar), bulk_complete);
+  auto* bulk_move = gtk_button_new_with_label(tr("menuMoveToList").c_str());
+  g_signal_connect(
+      bulk_move, "clicked",
+      G_CALLBACK((+[](GtkButton* button, gpointer) {
+        auto* old = static_cast<GtkWidget*>(
+            g_object_get_data(G_OBJECT(button), "batch-popover"));
+        if (old != nullptr) gtk_widget_unparent(old);
+        auto* popover = gtk_popover_new();
+        auto* options = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+        auto const ids = selected_task_ids();
+        for (auto const& list : g_state.lists) {
+          auto* option = gtk_button_new_with_label(
+              (list.icon.value_or("") + " " + list.name).c_str());
+          gtk_widget_add_css_class(option, "flat");
+          // Capture the original selected IDs and full 64-bit list ID.
+          // Reading the current selection after the popover opens can
+          // accidentally move a different task after a snapshot refresh.
+          auto* command = new BatchMoveCommand{ids, list.id};
+          g_object_set_data_full(
+              G_OBJECT(option), "batch-move-command", command,
+              +[](gpointer data) { delete static_cast<BatchMoveCommand*>(data); });
+          g_signal_connect(
+              option, "clicked",
+              G_CALLBACK(+[](GtkButton* pressed, gpointer) {
+                auto* command = static_cast<BatchMoveCommand*>(
+                    g_object_get_data(G_OBJECT(pressed), "batch-move-command"));
+                if (command != nullptr) batch_move_selected(*command);
+                auto* popover = static_cast<GtkWidget*>(
+                    g_object_get_data(G_OBJECT(g_state.bulk_move), "batch-popover"));
+                if (popover) gtk_popover_popdown(GTK_POPOVER(popover));
+              }), nullptr);
+          gtk_box_append(GTK_BOX(options), option);
+        }
+        gtk_popover_set_child(GTK_POPOVER(popover), options);
+        gtk_widget_set_parent(popover, GTK_WIDGET(button));
+        g_object_set_data(G_OBJECT(button), "batch-popover", popover);
+        gtk_popover_popup(GTK_POPOVER(popover));
+      })),
+      nullptr);
+  gtk_box_append(GTK_BOX(bulk_bar), bulk_move);
+  gtk_box_append(GTK_BOX(pane), bulk_bar);
+
   auto* task_scroll = gtk_scrolled_window_new();
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(task_scroll),
                                  GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
@@ -3481,6 +3622,10 @@ void on_activate(GtkApplication* app, gpointer) {
   gtk_list_box_set_selection_mode(GTK_LIST_BOX(task_list),
                                   GTK_SELECTION_MULTIPLE);
   gtk_list_box_set_activate_on_single_click(GTK_LIST_BOX(task_list), FALSE);
+  g_signal_connect(
+      task_list, "selected-rows-changed",
+      G_CALLBACK(+[](GtkListBox*, gpointer) { refresh_bulk_bar(); }),
+      nullptr);
   g_signal_connect(
       task_list, "row-activated",
       G_CALLBACK(+[](GtkListBox*, GtkListBoxRow* row, gpointer) {
@@ -3558,6 +3703,10 @@ void on_activate(GtkApplication* app, gpointer) {
   g_state.quick_add_preview = GTK_LABEL(preview);
   g_state.quick_plus = GTK_BUTTON(quick_plus);
   g_state.task_list = GTK_LIST_BOX(task_list);
+  g_state.bulk_bar = GTK_BOX(bulk_bar);
+  g_state.bulk_count = GTK_LABEL(bulk_count);
+  g_state.bulk_complete = GTK_BUTTON(bulk_complete);
+  g_state.bulk_move = GTK_BUTTON(bulk_move);
   g_state.list_stack = GTK_STACK(list_stack);
   g_state.empty_icon = GTK_LABEL(empty_icon);
   g_state.empty_text = GTK_LABEL(empty_text);
