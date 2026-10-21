@@ -1963,12 +1963,13 @@ winrt::fire_and_forget MainWindow::SaveSettingAsync(std::string const& key,
         key, value,
         [dispatcher, weak](rivet_app::Result<rivet_app::Settings> result) {
           try {
-            auto const settings = result.get();
-            dispatcher.TryEnqueue([weak, settings] {
-              if (auto window = weak.get()) {
-                window->settings_ = settings;
-              }
-            });
+            // SaveSettingAsync is a persistence acknowledgement, not a fresh
+            // snapshot of the UI's current intent. Each caller already
+            // updates its own language/theme/selected-list state before the
+            // RPC, and another setting may change while this call is running.
+            // Applying the whole returned struct here can roll those newer
+            // values back when callbacks arrive out of order.
+            (void)result.get();
           } catch (std::exception const& e) {
             auto message = std::string(e.what());
             dispatcher.TryEnqueue([weak, message = std::move(message)] {
