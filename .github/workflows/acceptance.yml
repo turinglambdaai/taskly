@@ -77,6 +77,10 @@ jobs:
         run: |
           raco pkg install --auto --no-docs "https://github.com/turinglambdaai/keel.git#${KEEL_PIN}"
           raco pkg install --auto --no-docs "https://github.com/turinglambdaai/rivet.git#${RIVET_PIN}"
+      - name: Render DMG artwork from SVG
+        run: |
+          brew install librsvg
+          bash scripts/render-dmg-background.sh
       - name: Run executable acceptance contract
         shell: bash
         run: |
