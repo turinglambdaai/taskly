@@ -238,6 +238,7 @@
                                 Foreground="{ThemeResource TasklySecondaryTextBrush}" />
                             <Button
                                 x:Name="NewListButton"
+                                AutomationProperties.AutomationId="create-list"
                                 Grid.Column="1"
                                 Padding="6,2"
                                 Background="Transparent"
@@ -303,6 +304,7 @@
                         Margin="10,0,12,0">
                         <TextBlock
                             x:Name="PaneTitle"
+                            AutomationProperties.AutomationId="current-view-title"
                             FontSize="22"
                             FontWeight="SemiBold"
                             TextTrimming="CharacterEllipsis" />

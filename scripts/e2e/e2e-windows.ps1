@@ -106,6 +106,92 @@ try {
         return $false
     })
 
+    # Regression: a task entered in 生活 must stay in 生活, not the
+    # database's first/default list 工作. These are the shipped default
+    # list names, from racket/taskly/model.rkt. The disposable acceptance
+    # profile guarantees default-list id 1 and the new 生活 list id 2.
+    $createList = Wait-Until 'create-list control' { Find-ById $window 'create-list' }
+    $createList.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    $nameInput = Wait-Until 'new-list input' { Find-ById $window 'prompt-input' }
+    $nameInput.GetCurrentPattern(
+        [System.Windows.Automation.ValuePattern]::Pattern).SetValue('生活')
+    $confirm = Wait-Until 'new-list confirmation' { Find-ByName $window 'OK' }
+    $confirm.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+
+    function Select-TaskList {
+        param([int]$ListId, [string]$Name)
+        # WinUI's inner Grid is not a ControlView automation peer (verified
+        # against the failing packaged Windows screenshot). Resolve the
+        # displayed TextBlock instead, then select its ListViewItem parent.
+        $label = Wait-Until ("visible list: {0}" -f $Name) {
+            $found = Find-ById $window ("list-name-{0}" -f $ListId)
+            if ($null -eq $found) { $found = Find-ByName $window $Name }
+            return $found
+        }
+        $item = $label
+        $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
+        while ($null -ne $item -and
+               $item.Current.ControlType -ne [System.Windows.Automation.ControlType]::ListItem) {
+            $item = $walker.GetParent($item)
+        }
+        if ($null -eq $item) { throw ("no selectable list item for {0}" -f $Name) }
+        $item.GetCurrentPattern(
+            [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+    }
+
+    $paneTitle = Wait-Until 'active view label' {
+        Find-ById $window 'current-view-title'
+    }
+    Select-TaskList 2 '生活'
+    [void](Wait-Until '生活 view selected' {
+        if ($paneTitle.Current.Name -eq '生活') { return $true }
+        return $false
+    })
+    $plainTask = 'Life-only task without due date or notes'
+    $quickAdd.GetCurrentPattern(
+        [System.Windows.Automation.ValuePattern]::Pattern).SetValue($plainTask)
+    $quickAdd.SetFocus()
+    # Exercise the actual Enter key, not only the plus-button click.
+    [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+
+    $titleText = Wait-Until 'task saved under 生活' {
+        Find-ByName $window $plainTask
+    }
+    # Layout assertions use the text and native checkbox peers: a Grid
+    # itself is not reliably exposed in WinUI UIA's ControlView.
+    $plainCheck = Wait-Until 'new task checkbox' {
+        Find-ById $window 'task-complete-2'
+    }
+    # Both elements share the row's first Grid row; the title must
+    # visually align with the native checkbox for a metadata-free task.
+    $checkBoxBounds = $plainCheck.Current.BoundingRectangle
+    $titleBounds = $titleText.Current.BoundingRectangle
+    $centerDiff = [Math]::Abs(
+        ($checkBoxBounds.Top + $checkBoxBounds.Height / 2) -
+        ($titleBounds.Top + $titleBounds.Height / 2))
+    $limit = [Math]::Max(8.0, $checkBoxBounds.Height / 4)
+    if ($centerDiff -gt $limit) {
+        throw ("plain task title and checkbox are misaligned by {0:N1}px" -f $centerDiff)
+    }
+
+    Select-TaskList 1 '工作'
+    [void](Wait-Until '工作 view selected' {
+        if ($paneTitle.Current.Name -eq '工作') { return $true }
+        return $false
+    })
+    [void](Wait-Until '生活 task absent from 工作' {
+        if ($null -eq (Find-ByName $window $plainTask)) { return $true }
+        return $false
+    })
+    Select-TaskList 2 '生活'
+    [void](Wait-Until '生活 task remains in 生活' {
+        if ($paneTitle.Current.Name -eq '生活' -and
+            $null -ne (Find-ByName $window $plainTask)) { return $true }
+        return $false
+    })
+
     $nodes = $window.FindAll(
         [System.Windows.Automation.TreeScope]::Descendants,
         [System.Windows.Automation.Condition]::TrueCondition)
@@ -132,12 +218,15 @@ try {
     [ordered]@{
         platform = 'windows'
         artifact = $executable.FullName
-        actions = @('set:quick-add', 'invoke:quick-add-submit', 'toggle:task-complete-1')
+        actions = @('set:quick-add', 'invoke:quick-add-submit', 'toggle:task-complete-1', 'create-list:生活', 'select-list:2', 'enter:quick-add', 'select-list:1', 'select-list:2')
         assertions = @(
             'packaged WinUI window activated',
             'stable UI Automation identifiers exposed',
             'RPC-created task appeared',
             'changed Event removed the completed task from the active view',
+            'new task submitted by Enter is owned by 生活, not 工作',
+            'task checkbox and plain-text title are vertically aligned',
+            'view switches preserve task list ownership',
             'native window close stopped the process'
         )
     } | ConvertTo-Json -Depth 5 |

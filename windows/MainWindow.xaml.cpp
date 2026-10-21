@@ -918,6 +918,10 @@ void MainWindow::RenderSidebar() {
 
     auto text = mxc::TextBlock{};
     text.Text(wide(list.name));
+    // WinUI exposes TextBlock peers to UIA; the surrounding Grid is not
+    // reliably in ControlView. Test/assistive clients can find this label.
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+        text, L"list-name-" + std::to_wstring(list.id));
     text.TextTrimming(mx::TextTrimming::CharacterEllipsis);
     text.VerticalAlignment(mx::VerticalAlignment::Center);
     mxc::Grid::SetColumn(text, 1);
@@ -946,6 +950,8 @@ void MainWindow::RenderSidebar() {
     row.ContextFlyout(menu);
 
     row.Tag(winrt::box_value<std::int64_t>(list.id));
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+        row, L"list-" + std::to_wstring(list.id));
     UserList().Items().Append(row);
     if (view_ == ViewKind::List && view_list_id_ == list.id) {
       UserList().SelectedIndex(UserList().Items().Size() - 1);
@@ -993,36 +999,48 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
   row.ColumnDefinitions().GetAt(0).Width(mx::GridLength{0, mx::GridUnitType::Auto});
   row.ColumnDefinitions().GetAt(1).Width(
       mx::GridLength{1, mx::GridUnitType::Star});
+  // The checkbox and title must be centered in the SAME first row. Metadata
+  // and notes (when present) occupy a second row under the title only.
+  row.RowDefinitions().Append(mxc::RowDefinition{});
+  row.RowDefinitions().Append(mxc::RowDefinition{});
   row.Padding(mx::ThicknessHelper::FromLengths(4, 4, 4, 4));
   row.Tag(winrt::box_value<std::int64_t>(task.id));
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+      row, L"task-row-" + std::to_wstring(task.id));
 
   auto check = mxc::CheckBox{};
   winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
       check, L"task-complete-" + std::to_wstring(task.id));
   check.IsChecked(task.completed);
   check.MinWidth(0);
+  check.VerticalAlignment(mx::VerticalAlignment::Center);
   check.Checked({this, &MainWindow::OnTaskCheckChanged});
   check.Unchecked({this, &MainWindow::OnTaskCheckChanged});
   check.Tag(winrt::box_value<std::int64_t>(task.id));
   mxc::Grid::SetColumn(check, 0);
+  mxc::Grid::SetRow(check, 0);
   row.Children().Append(check);
-
-  auto content = mxc::StackPanel{};
-  content.Margin(mx::ThicknessHelper::FromLengths(8, 0, 0, 0));
-  content.Spacing(2);
-  mxc::Grid::SetColumn(content, 1);
-  row.Children().Append(content);
 
   auto text = mxc::TextBlock{};
   text.Text(wide(task.text));
   text.FontSize(14);
   text.TextTrimming(mx::TextTrimming::CharacterEllipsis);
+  text.Margin(mx::ThicknessHelper::FromLengths(8, 0, 0, 0));
+  text.VerticalAlignment(mx::VerticalAlignment::Center);
+  mxc::Grid::SetColumn(text, 1);
+  mxc::Grid::SetRow(text, 0);
   if (task.completed) {
     text.Foreground(ThemeBrush(L"TasklyMutedTextBrush"));
     text.TextDecorations(
         winrt::Windows::UI::Text::TextDecorations::Strikethrough);
   }
-  content.Children().Append(text);
+  row.Children().Append(text);
+
+  auto details = mxc::StackPanel{};
+  details.Margin(mx::ThicknessHelper::FromLengths(8, 0, 0, 0));
+  details.Spacing(2);
+  mxc::Grid::SetColumn(details, 1);
+  mxc::Grid::SetRow(details, 1);
 
   // Meta line (PRODUCT-SPEC §5, DESIGN-TOKENS task row): owning list name
   // with its color dot in the smart views, then the due chip; the notes
@@ -1079,7 +1097,7 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
     meta.Children().Append(chip_text);
   }
   if (meta.Children().Size() > 0) {
-    content.Children().Append(meta);
+    details.Children().Append(meta);
   }
 
   // Notes preview: single line, ellipsized, muted (PRODUCT-SPEC §5).
@@ -1089,7 +1107,11 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
     notes_line.FontSize(12);
     notes_line.TextTrimming(mx::TextTrimming::CharacterEllipsis);
     notes_line.Foreground(ThemeBrush(L"TasklyMutedTextBrush"));
-    content.Children().Append(notes_line);
+    details.Children().Append(notes_line);
+  }
+
+  if (details.Children().Size() > 0) {
+    row.Children().Append(details);
   }
 
   auto menu = mxc::MenuFlyout{};
@@ -1236,6 +1258,8 @@ winrt::fire_and_forget MainWindow::PromptAsync(
     std::wstring const& initial,
     std::function<void(std::wstring const&)> on_ok) {
   auto input = mxc::TextBox{};
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+      input, L"prompt-input");
   input.PlaceholderText(placeholder);
   input.Text(initial);
   // The system focus indicator (blue outline + white inner frame) clashes
@@ -1380,7 +1404,8 @@ winrt::fire_and_forget MainWindow::ReloadTasksAsync() {
             ? std::optional<std::int64_t>(list_id)
             : std::nullopt,
         include_completed,
-        [dispatcher, weak](rivet_app::Result<rivet_app::Snapshot> result) {
+        [dispatcher, weak, view_kind, list_id, include_completed](
+            rivet_app::Result<rivet_app::Snapshot> result) {
           // Release the reload gate on every terminal path so later
           // polls and `changed` events are not swallowed.
           dispatcher.TryEnqueue([weak] {
@@ -1391,8 +1416,17 @@ winrt::fire_and_forget MainWindow::ReloadTasksAsync() {
           });
           try {
             auto const snapshot = result.get();
-            dispatcher.TryEnqueue([weak, snapshot] {
+            dispatcher.TryEnqueue(
+                [weak, snapshot, view_kind, list_id, include_completed] {
               if (auto window = weak.get()) {
+                // The user may switch lists while this RPC is in flight:
+                // never paint a Work snapshot under the Life heading.
+                if (window->view_ != view_kind ||
+                    window->view_list_id_ != list_id ||
+                    window->show_completed_ != include_completed) {
+                  window->ReloadTasksAsync();
+                  return;
+                }
                 window->ApplySnapshot(snapshot, /*force=*/false);
                 // An in-flight download owns the status line.
                 if (!window->update_downloading_) {
@@ -1474,10 +1508,25 @@ winrt::fire_and_forget MainWindow::OpenDatabaseAsync(std::wstring const& path) {
                     find_by_id(snapshot.lists, restored) != nullptr) {
                   window->view_ = MainWindow::ViewKind::List;
                   window->view_list_id_ = restored;
+                } else {
+                  window->view_ = MainWindow::ViewKind::All;
+                  window->view_list_id_ = 0;
                 }
-                // A different database was just opened: always render, even
-                // if its content matches the previous one byte for byte.
-                window->ApplySnapshot(snapshot, /*force=*/true);
+                // open_database returns an ALL-view snapshot. Never show
+                // those rows under a restored named-list heading: wait for
+                // the filtered list snapshot instead.
+                if (window->view_ == MainWindow::ViewKind::List) {
+                  window->has_applied_snapshot_ = false;
+                  window->current_counts_ = snapshot.counts;
+                  window->lists_ = snapshot.lists;
+                  window->tasks_.clear();
+                  window->RenderSidebar();
+                  window->RenderTasks();
+                  window->ReloadTasksAsync();
+                } else {
+                  // Opening another DB invalidates the previous fingerprint.
+                  window->ApplySnapshot(snapshot, /*force=*/true);
+                }
                 // An in-flight download owns the status line.
                 if (!window->update_downloading_) {
                   window->SetStatus(t("statusDatabaseConnected"));
@@ -1498,7 +1547,8 @@ winrt::fire_and_forget MainWindow::OpenDatabaseAsync(std::wstring const& path) {
   }
 }
 
-winrt::fire_and_forget MainWindow::AddTaskAsync(std::wstring const& text) {
+winrt::fire_and_forget MainWindow::AddTaskAsync(std::wstring const& text,
+                                               std::int64_t target_list_id) {
   if (backend_ == nullptr || !backend_->running() || text.empty()) {
     co_return;
   }
@@ -1511,15 +1561,15 @@ winrt::fire_and_forget MainWindow::AddTaskAsync(std::wstring const& text) {
     // due (parse_quick_add); this host only forwards the result.
     (void)api.parse_quick_add_async(
         winrt::to_string(text),
-        [dispatcher, weak, backend, text](rivet_app::Result<rivet_app::QuickAddParse> parsed) {
+        [dispatcher, weak, backend, text, target_list_id](rivet_app::Result<rivet_app::QuickAddParse> parsed) {
           try {
             auto const parse = parsed.get();
             rivet_app::API api(*backend);
             // `changed` triggers the authoritative reload; the completion
             // only surfaces failures.
             (void)api.add_task_async(
-                parse.text, std::nullopt, parse.due_date, parse.due_time,
-                std::nullopt,
+                parse.text, std::optional<std::int64_t>(target_list_id),
+                parse.due_date, parse.due_time, std::nullopt,
                 [dispatcher, weak, text](rivet_app::Result<rivet_app::Task> result) {
                   try {
                     result.get();
@@ -2141,8 +2191,23 @@ void MainWindow::CommitQuickAdd() {
       backend_ == nullptr || !backend_->running()) {
     return;
   }
+  // Match macOS/Linux: a named list owns new tasks; smart views use the
+  // first list only as an explicit fallback. Capture the target BEFORE the
+  // async parser runs, so switching views cannot redirect an in-flight add.
+  std::optional<std::int64_t> target_list_id;
+  if (view_ == ViewKind::List) {
+    if (find_by_id(lists_, view_list_id_) != nullptr) {
+      target_list_id = view_list_id_;
+    }
+  } else if (!lists_.empty()) {
+    target_list_id = lists_.front().id;
+  }
+  if (!target_list_id.has_value()) {
+    SetStatus(t("taskCreateListFirst"));
+    return;  // Keep the user's draft until a valid destination exists.
+  }
   NewTaskBox().Text(L"");
-  AddTaskAsync(text);
+  AddTaskAsync(text, *target_list_id);
 }
 
 void MainWindow::OnQuickAddCommit(

@@ -52,6 +52,13 @@ README's honest gaps).
   text first runs through ExtractTimeCommand (trailing `@10am`, `+1d`…),
   target list = selected list else first list (none → error
   `taskCreateListFirst`); new task lands at top; counts refresh.
+  The host captures the **concrete list ID at submission**, before any
+  asynchronous parsing or persistence. Switching lists while the request
+  is running must never change the destination. No list / invalid selected
+  list must keep the unsent text rather than silently using another list.
+  The Windows packaged acceptance must create a second list, submit a
+  task via Enter, verify that it remains in the selected list, and verify
+  that it never appears in the first/default list.
 - Empty states: not connected → 📂 + `taskListEmptyHint`; connected and
   empty → ✓ + `taskListEmpty`.
 - Row order per view (SQL in DATA-FORMAT/CLI-SPEC §list): All & list views
@@ -64,6 +71,10 @@ README's honest gaps).
 
 - 20px circular checkbox: incomplete = hollow ring; complete = ring +
   check in accent; completed text gets strikethrough + tertiary color.
+  The checkbox and task title share the **same first-row vertical center**
+  on every platform. Due date, time and notes (only when actually present)
+  sit beneath the title, not beside or vertically above the checkbox.
+  A task with no metadata renders as one clean centered checkbox/title row.
 - Meta line under the text when present: the localized due date
   (today/tomorrow/yesterday/`Aug 31`/`8月31日`, plus the time when set) in
   its semantic color (overdue incomplete `#FF3B30`, due today accent,
