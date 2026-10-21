@@ -317,6 +317,7 @@
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                         <TextBox
                             x:Name="SearchBox"
+                            AutomationProperties.AutomationId="task-search"
                             Width="200"
                             Height="28"
                             CornerRadius="10"

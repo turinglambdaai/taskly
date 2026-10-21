@@ -98,7 +98,9 @@ private:
   winrt::Microsoft::UI::Xaml::Media::Brush ListBrush(
       rivet_app::TodoList const& list);
   winrt::Microsoft::UI::Xaml::Controls::Grid MakeTaskRow(
-      rivet_app::Task const& task);
+      rivet_app::Task const& task, bool search_result = false);
+  rivet_app::Task const* FindTaskForAction(std::int64_t id) const;
+  void RefreshSearchIfActive();
   winrt::hstring DueLabel(std::string const& due_date) const;
   std::wstring view_title() const;
   winrt::hstring view_subtitle() const;
