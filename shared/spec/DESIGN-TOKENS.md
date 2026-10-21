@@ -110,13 +110,3 @@ White rounded square (macOS-squircle radius ≈ 22.5%) with a quiet checklist
 mark: one system-blue rounded bar over two neutral (`#CECED3`) bars, staggered
 widths. Monochrome, no gradients — must read on light and dark docks alike.
 
-## macOS DMG artwork contract
-
-- The editable source is `assets/dmg-background.svg`; the shipping installer
-  embeds `assets/dmg-background.png`, regenerated before macOS release and
-  packaged acceptance by `scripts/render-dmg-background.sh` (`librsvg`).
-- Finder's branded installer is 660×400 points at 2× scale, requiring a
-  1320×800 background. The Taskly and Applications icon slots are controlled
-  by pinned Rivet (positions 130,160 and 450,160 at 80pt icons). Keep the
-  straight drag arrow centered in the clear space between those slots and
-  do not draw art over the icon/label areas.
