@@ -376,7 +376,16 @@
                                     KeyDown="OnNewTaskKeyDown"
                                     TextChanged="OnNewTaskTextChanged"
                                     GotFocus="OnNewTaskFocusChanged"
-                                    LostFocus="OnNewTaskFocusChanged" />
+                                    LostFocus="OnNewTaskFocusChanged">
+                                    <!-- The surrounding QuickAddCard owns the input border.
+                                         WinUI's stock TextBox focused underline must not
+                                         draw a second blue rule along this card's bottom. -->
+                                    <TextBox.Resources>
+                                        <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
+                                        <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
+                                        <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
+                                    </TextBox.Resources>
+                                </TextBox>
                                 <Border
                                     x:Name="QuickAddPreview"
                                     Grid.Column="2"
