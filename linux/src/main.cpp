@@ -398,6 +398,7 @@ struct AppState {
   GtkLabel* bulk_count{nullptr};
   GtkButton* bulk_complete{nullptr};
   GtkButton* bulk_move{nullptr};
+  GtkButton* bulk_delete{nullptr};
   GtkButton* bulk_schedule{nullptr};
   GtkStack* list_stack{nullptr};
   GtkLabel* empty_icon{nullptr};
@@ -3024,6 +3025,10 @@ void apply_language() {
   if (g_state.bulk_complete != nullptr) {
     gtk_button_set_label(g_state.bulk_complete, tr("navCompleted").c_str());
     gtk_button_set_label(g_state.bulk_move, tr("menuMoveToList").c_str());
+    gtk_button_set_label(g_state.bulk_delete, tr("taskDelete").c_str());
+    gtk_accessible_update_property(
+        GTK_ACCESSIBLE(g_state.bulk_delete), GTK_ACCESSIBLE_PROPERTY_LABEL,
+        tr("taskDelete").c_str(), -1);
     gtk_button_set_label(g_state.bulk_schedule, tr("bulkSchedule").c_str());
   }
   gtk_button_set_label(
@@ -3849,6 +3854,7 @@ void on_activate(GtkApplication* app, gpointer) {
   g_state.bulk_count = GTK_LABEL(bulk_count);
   g_state.bulk_complete = GTK_BUTTON(bulk_complete);
   g_state.bulk_move = GTK_BUTTON(bulk_move);
+  g_state.bulk_delete = GTK_BUTTON(bulk_delete);
   g_state.bulk_schedule = GTK_BUTTON(bulk_schedule);
   g_state.list_stack = GTK_STACK(list_stack);
   g_state.empty_icon = GTK_LABEL(empty_icon);

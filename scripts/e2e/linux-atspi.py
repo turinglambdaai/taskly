@@ -194,6 +194,9 @@ def main():
         "batch schedule button",
         lambda: find_named(window, "Schedule Selected", "push button"),
     )
+    (args.output / "bulk-toolbar-debug.json").write_text(
+        json.dumps(snapshot(window), ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     delete = wait_for(
         "batch delete button", lambda: find_named(window, "Delete", "push button")
     )
