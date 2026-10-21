@@ -6,7 +6,7 @@ public enum RivetGeneratedError: Error { case typeMismatch(String); case unknown
 public enum RivetGeneratedConfig {
     public static let moduleName = "backend"
     public static let entryName = "start"
-    public static let displayName = "taskly"
+    public static let displayName = "Taskly"
     public static let version = "0.2.3"
     public static let build: Int64 = 1
     public static let identifier = "app.taskly.Taskly"
