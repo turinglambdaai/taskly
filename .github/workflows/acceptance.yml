@@ -36,6 +36,9 @@ jobs:
         run: |
           raco pkg install --auto --no-docs "https://github.com/turinglambdaai/keel.git#$env:KEEL_PIN"
           raco pkg install --auto --no-docs "https://github.com/turinglambdaai/rivet.git#$env:RIVET_PIN"
+      - name: Verify Windows installer artwork
+        shell: pwsh
+        run: python scripts/check-windows-installer-bitmaps.py
       - name: Run executable acceptance contract
         shell: pwsh
         run: |

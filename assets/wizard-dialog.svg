@@ -11,4 +11,10 @@
   <path d="M 96 118 q 42 -34 84 0 q 42 34 84 0" fill="none" stroke="#c15f3c" stroke-width="10" stroke-linecap="round" stroke-opacity="0.85"/>
   <path d="M 96 156 q 42 -34 84 0 q 42 34 84 0" fill="none" stroke="#c15f3c" stroke-width="10" stroke-linecap="round" stroke-opacity="0.55"/>
   <text x="76" y="238" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="42" font-weight="600" fill="#2b211b">taskly</text>
+  <!-- WiX v5 ExitDialog optional checkbox: native Win32 controls are
+       opaque. x=135..355 and y=190..230 in 370x234 installer units
+       maps to x=180..473 and y=253..307 pixels on this bitmap.
+       Keep this footer solid #F0F0F0 to blend with COLOR_BTNFACE. -->
+  <rect x="0" y="247" width="493" height="1" fill="#D6D2CE"/>
+  <rect x="0" y="248" width="493" height="64" fill="#F0F0F0"/>
 </svg>

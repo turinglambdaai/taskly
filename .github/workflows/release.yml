@@ -102,6 +102,9 @@ jobs:
       - name: Version preflight (VERSION == rivet.rktd == updater == tag)
         shell: bash
         run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
+      - name: Verify Windows installer checkbox surface
+        shell: pwsh
+        run: python scripts/check-windows-installer-bitmaps.py
       - name: Release (MSI + portable zip)
         shell: pwsh
         run: raco rivet release --without-updates --development
