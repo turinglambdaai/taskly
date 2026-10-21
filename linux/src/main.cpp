@@ -752,6 +752,7 @@ void apply_css(Palette const& p) {
   css += "listbox.task-row-list { background: " + std::string(p.background) + "; }\n";
   css += "listbox.task-row-list > row { min-height: 44px; padding: 9px 16px; background: " + std::string(p.background) + "; }\n";
   css += "listbox.task-row-list > row:hover { background: " + std::string(p.hover) + "; }\n";
+  css += "listbox.task-row-list > row:selected { background: " + std::string(p.selected) + "; color: " + std::string(p.text) + "; }\n";
   css += "listbox.sidebar-list { background: transparent; }\n";
   css += "listbox.sidebar-list > row { min-height: 34px; border-radius: 8px; margin: 1px 4px; padding: 5px 8px; background: " + std::string(p.surface) + "; border: 1px solid " + std::string(p.divider) + "; box-shadow: none; }\n";
   css += "listbox.sidebar-list > row:hover { background: " + std::string(p.hover) + "; }\n";
@@ -2066,19 +2067,14 @@ void on_row_gesture_pressed(GtkGestureClick* gesture, gint n_press,
   auto const is_user_list = user_data != nullptr;
   if (button == 3 && n_press == 1) {
     show_task_menu(row, x, y, is_user_list);
-  } else if (button == 1 && n_press == 2) {
-    if (is_user_list) {
-      // Double-click on a list row jumps to the edit dialog (macOS M4).
-      auto const id = static_cast<std::int64_t>(GPOINTER_TO_INT(
-          g_object_get_data(G_OBJECT(row), "list-id")));
-      auto* parameter = g_variant_new_string(std::to_string(id).c_str());
-      g_action_group_activate_action(
-          G_ACTION_GROUP(g_state.window), "list-edit", parameter);
-    } else {
-      auto const id = static_cast<std::int64_t>(GPOINTER_TO_INT(
-          g_object_get_data(G_OBJECT(row), "task-id")));
-      toggle_task_editor(GTK_LIST_BOX_ROW(row), id, false);
-    }
+  } else if (button == 1 && n_press == 2 && is_user_list) {
+    // Task rows use GtkListBox's native row-activated signal instead:
+    // handling both double-click gestures would toggle the editor twice.
+    auto const id = static_cast<std::int64_t>(GPOINTER_TO_INT(
+        g_object_get_data(G_OBJECT(row), "list-id")));
+    auto* parameter = g_variant_new_string(std::to_string(id).c_str());
+    g_action_group_activate_action(
+        G_ACTION_GROUP(g_state.window), "list-edit", parameter);
   }
 }
 
@@ -2419,6 +2415,19 @@ void rebuild_task_list() {
     }
   }
 
+  // The regular snapshot poll rebuilds every row. Preserve keyboard/shift
+  // selections by stable task id so the focus model does not reset on poll.
+  std::unordered_set<std::int64_t> selected_task_ids;
+  auto* selected_rows = gtk_list_box_get_selected_rows(g_state.task_list);
+  for (auto* node = selected_rows; node != nullptr; node = node->next) {
+    auto* selected = GTK_LIST_BOX_ROW(node->data);
+    auto const value = g_object_get_data(G_OBJECT(selected), "task-id");
+    if (value != nullptr) {
+      selected_task_ids.insert(
+          static_cast<std::int64_t>(GPOINTER_TO_INT(value)));
+    }
+  }
+  g_list_free(selected_rows);
   gtk_list_box_remove_all(g_state.task_list);
 
   // Empty states (PRODUCT-SPEC §4): disconnected → hint; connected and
@@ -2451,6 +2460,9 @@ void rebuild_task_list() {
   auto insert_row = [&](rivet_app::Task const& task) {
     auto* row = make_task_row(task);
     gtk_list_box_insert(g_state.task_list, row, -1);
+    if (selected_task_ids.find(task.id) != selected_task_ids.end()) {
+      gtk_list_box_select_row(g_state.task_list, GTK_LIST_BOX_ROW(row));
+    }
     if (editor_carry && task.id == g_state.open_editor_id) {
       set_task_editor_expanded(GTK_LIST_BOX_ROW(row), task.id, true,
                                false, &editor_snapshot);
@@ -3027,6 +3039,14 @@ gboolean on_window_key_pressed(GtkEventControllerKey*, guint keyval,
     gtk_editable_set_text(GTK_EDITABLE(g_state.search_box), "");
     return TRUE;
   }
+  // Esc after collapsing an editor clears the task selection. Avoid
+  // eating Esc when no task is selected, so focused fields keep GTK defaults.
+  auto* selected = gtk_list_box_get_selected_rows(g_state.task_list);
+  if (selected != nullptr) {
+    g_list_free(selected);
+    gtk_list_box_unselect_all(g_state.task_list);
+    return TRUE;
+  }
   return FALSE;
 }
 
@@ -3421,8 +3441,19 @@ void on_activate(GtkApplication* app, gpointer) {
                                  GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
   gtk_widget_set_vexpand(task_scroll, TRUE);
   auto* task_list = gtk_list_box_new();
+  // GTK provides Ctrl-click, Shift-click and keyboard range selection,
+  // plus Up/Down traversal, without reimplementing platform focus rules.
   gtk_list_box_set_selection_mode(GTK_LIST_BOX(task_list),
-                                  GTK_SELECTION_NONE);
+                                  GTK_SELECTION_MULTIPLE);
+  gtk_list_box_set_activate_on_single_click(GTK_LIST_BOX(task_list), FALSE);
+  g_signal_connect(
+      task_list, "row-activated",
+      G_CALLBACK(+[](GtkListBox*, GtkListBoxRow* row, gpointer) {
+        auto const data = g_object_get_data(G_OBJECT(row), "task-id");
+        if (data == nullptr) return;  // completed-section header
+        auto const id = static_cast<std::int64_t>(GPOINTER_TO_INT(data));
+        toggle_task_editor(row, id, false);
+      }), nullptr);
   gtk_widget_add_css_class(task_list, "task-row-list");
   gtk_widget_set_valign(GTK_WIDGET(task_list), GTK_ALIGN_START);
   gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(task_scroll), task_list);
