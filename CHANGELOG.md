@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Windows: native Ctrl/Shift task multi-selection, batch completion/move/date
+  scheduling, and an inline editor for task details (#41, #42, #45, #50).
+- Linux: native multi-selection and keyboard activation, batch completion/move/
+  scheduling, and identity-preserving six-second undo for single and batch
+  deletion (#33, #43, #46, #48).
+- Windows: six-second reversible deletion for individual and selected tasks
+  (#47).
+
 ### Changed
 - Add an executable cross-platform product acceptance contract. Windows,
   macOS arm64/x64, and Linux now run shared Racket contracts, a real RVT1
@@ -14,7 +23,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accessibility-driven critical UI flow against a disposable user profile.
   The gate archives fresh interaction, accessibility, and platform diagnostic
   evidence; fixed-sleep boot smoke and CLI substitutions no longer count as
-  proof of native product behavior.
+  proof of native product behavior (#15).
+- Improve macOS DMG drag-to-install guidance, use the formal Taskly display
+  name, and polish Windows installer and startup visuals (#27–#30, #26).
+- Permit cancellation of Windows and Linux update downloads, and guard
+  dependency pins across workflows (#24, #16).
+
+### Fixed
+- Linux: preserve full 64-bit SQLite IDs in GTK task/list selection, editing,
+  completion and navigation; exercise large IDs in the native acceptance
+  suite (#49).
+- Preserve quick-add drafts until asynchronous saves succeed on Windows,
+  macOS and Linux (#32, #37, #38).
+- Windows: honor the selected task list on creation, allow correction of
+  misfiled tasks, and make cross-list search results editable with their
+  true list identity (#35, #36, #39).
+- Ignore stale asynchronous responses that could revert the Windows selected
+  list or show Linux tasks under the wrong list (#40, #44).
+- Preserve local wall-clock semantics for relative dates across daylight
+  saving time transitions (#20).
+- Correct Linux theme divider colors and Windows quick-add focus styling
+  (#34, #31).
+
+### Security
+- Verify Windows MSI and Linux AppImage update payloads against artifacts
+  authenticated by the signed update manifest (#21).
 
 ## [0.2.3] - 2026-10-17
 
