@@ -10,7 +10,11 @@ import pyatspi
 def children(node):
     for index in range(node.childCount):
         try:
-            yield node.getChildAtIndex(index)
+            child = node.getChildAtIndex(index)
+            # GTK can remove and rebuild a row between childCount and the
+            # D-Bus lookup while async task snapshots arrive.
+            if child is not None:
+                yield child
         except Exception:
             continue
 
