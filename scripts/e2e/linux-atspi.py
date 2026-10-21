@@ -8,7 +8,11 @@ import pyatspi
 
 
 def children(node):
-    for index in range(node.childCount):
+    try:
+        count = node.childCount
+    except Exception:
+        return
+    for index in range(count):
         try:
             child = node.getChildAtIndex(index)
             # GTK can remove and rebuild a row between childCount and the
@@ -65,24 +69,6 @@ def find_named(root, name, expected_role=None):
     for node in walk(root):
         if (node.name or "") == name and (expected_role is None or role(node) == expected_role):
             return node
-    return None
-
-
-def preceding_action_sibling(node):
-    """Return the nearest actionable sibling before a stable toolbar action."""
-    try:
-        parent = node.parent
-        index = node.getIndexInParent()
-    except Exception:
-        return None
-    for sibling_index in range(index - 1, -1, -1):
-        try:
-            sibling = parent.getChildAtIndex(sibling_index)
-            actions = sibling.queryAction()
-            if actions.nActions > 0:
-                return sibling
-        except Exception:
-            continue
     return None
 
 
@@ -208,12 +194,9 @@ def main():
         "batch schedule button",
         lambda: find_named(window, "Schedule Selected", "push button"),
     )
-    # GTK exposes the adjacent Delete button without a reliably searchable
-    # accessible name on the headless runner. Its structural position is
-    # stable: it is the nearest actionable sibling before Schedule Selected.
-    delete = preceding_action_sibling(schedule)
-    if delete is None:
-        raise AssertionError("batch delete action is missing before schedule action")
+    delete = wait_for(
+        "batch delete button", lambda: find_named(window, "Delete", "push button")
+    )
     press(schedule)
     tomorrow = wait_for(
         "Tomorrow schedule option", lambda: find_named(window, "Tomorrow", "push button")

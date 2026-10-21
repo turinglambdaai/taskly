@@ -94,7 +94,7 @@ try {
         [System.Windows.Automation.ValuePattern]::Pattern).SetValue('Acceptance task')
     $submit.GetCurrentPattern(
         [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-    [void](Wait-Until 'RPC-created task row' { Find-ByName $window 'Acceptance task' })
+    [void](Wait-Until 'RPC-created task row' { Find-ById $window 'task-title-1' })
 
     $checkbox = Wait-Until 'task completion control' {
         Find-ById $window 'task-complete-1'

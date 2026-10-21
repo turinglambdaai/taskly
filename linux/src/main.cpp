@@ -3698,6 +3698,9 @@ void on_activate(GtkApplication* app, gpointer) {
       nullptr);
   gtk_box_append(GTK_BOX(bulk_bar), bulk_move);
   auto* bulk_delete = gtk_button_new_with_label(tr("taskDelete").c_str());
+  gtk_accessible_update_property(
+      GTK_ACCESSIBLE(bulk_delete), GTK_ACCESSIBLE_PROPERTY_LABEL,
+      tr("taskDelete").c_str(), -1);
   g_signal_connect(
       bulk_delete, "clicked",
       G_CALLBACK(+[](GtkButton*, gpointer) {
