@@ -241,38 +241,43 @@ jobs:
           for a in macos-arm64 macos-x64 windows linux-x64 linux-arm64; do
             cp -R "artifacts/$a/." dist/
           done
-          # The portable zips are the update feed (macOS/Windows hosts swap
-          # them in place; Linux updates through the tar.gz). Missing
-          # secret → warn and publish without a manifest.
-          if [[ -n "${UPDATE_ED25519_PRIVATE_KEY:-}" ]]; then
-            KEY_PEM="$RUNNER_TEMP/update-signing-key.pem"
-            printf '%s\n' "$UPDATE_ED25519_PRIVATE_KEY" > "$KEY_PEM"
-            scripts/make-update-manifest.sh "$GITHUB_REF_NAME" dist "$KEY_PEM"
-          else
-            echo "::warning::UPDATE_ED25519_PRIVATE_KEY not set — release ships without an update manifest"
+          # All supported hosts require the signed release feed for
+          # in-app updates. Never publish an un-updatable release if the
+          # signing secret is missing, malformed, or signing fails.
+          if [[ -z "${UPDATE_ED25519_PRIVATE_KEY:-}" ]]; then
+            echo "::error::UPDATE_ED25519_PRIVATE_KEY is missing; refusing to publish without a signed update manifest"
+            exit 1
           fi
+          KEY_PEM="$RUNNER_TEMP/update-signing-key.pem"
+          printf '%s\n' "$UPDATE_ED25519_PRIVATE_KEY" > "$KEY_PEM"
+          chmod 600 "$KEY_PEM"
+          scripts/make-update-manifest.sh "$GITHUB_REF_NAME" dist "$KEY_PEM"
+          test -s dist/update-manifest.json || {
+            echo "::error::Signed update manifest was not generated"
+            exit 1
+          }
           awk -v header="## [${VERSION}]" '
             index($0, header) == 1 {on=1; next}
             on && /^## / {exit}
             on {print}
           ' CHANGELOG.md > /tmp/notes.md
+          if [[ ! -s /tmp/notes.md ]]; then
+            echo "::error::CHANGELOG.md lacks release notes for ${VERSION}"
+            exit 1
+          fi
           cd dist
           for f in *.sha256; do [ -s "$f" ] || rm -f "$f"; done
           # Normalize: the Windows runner's sha256sum emits binary-mode
           # "HASH *name" lines; keep SHA256SUMS uniform in the two-space
           # text form (the msi row was the lone starred line in 0.2.0).
           cat *.sha256 | sed 's/ \*/  /' > SHA256SUMS
-          # The manifest only exists when the signing key was present.
-          # Assemble the upload list per-glob so a missing file can never
-          # kill the create midway with a half-published release.
+          # The signed manifest is mandatory. Assemble the remaining
+          # uploads per-glob to avoid shell failures on absent optional formats.
           uploads=( )
           for pattern in *.zip *.tar.gz *.dmg *.msi *.deb *.rpm *.AppImage *.sha256; do
             uploads+=( "$pattern" )
           done
-          uploads+=( SHA256SUMS )
-          if [[ -f update-manifest.json ]]; then
-            uploads+=( update-manifest.json )
-          fi
+          uploads+=( SHA256SUMS update-manifest.json )
           # Idempotent publish: a failed run leaves the release (and some
           # assets) behind; re-runs edit + re-upload over it instead of
           # colliding with "release already exists".
