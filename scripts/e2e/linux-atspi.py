@@ -208,12 +208,13 @@ def main():
         lambda: count_text_fragment(window, "Tomorrow") >= 2,
     )
 
-    wait_for(
-        "two 64-bit task rows selected for deletion",
-        lambda: select_named_children(window, ["64-bit task A", "64-bit task B"]),
-    )
     delete = wait_for(
-        "batch delete button", lambda: find_named(window, "Delete List", "push button")
+        "two selected 64-bit task rows and batch delete button",
+        lambda: (
+            find_named(window, "Delete List", "push button")
+            if select_named_children(window, ["64-bit task A", "64-bit task B"])
+            else None
+        ),
     )
     press(delete)
     wait_for(

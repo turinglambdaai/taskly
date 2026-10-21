@@ -1024,9 +1024,10 @@ void batch_schedule_selected(BulkScheduleCommand const& command) {
     if (auto const* task = find_selected_task(id)) {
       auto updated = *task;
       updated.due_date = command.due_date;
-      // Clearing the date also clears the time. Keeping an invisible
-      // due_time is inconsistent with the single-task Clear action.
-      if (!command.due_date.has_value()) updated.due_time = std::nullopt;
+      // Batch scheduling is deliberately date-only. Replace the complete
+      // schedule so an old or inconsistent hidden time cannot leak into the
+      // newly selected Today/Tomorrow date.
+      updated.due_time = std::nullopt;
       save_task_edits(std::move(updated));
     }
   }
