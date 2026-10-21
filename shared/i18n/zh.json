@@ -11,6 +11,7 @@
   "menuLangEn": "English",
   "menuLangZh": "简体中文",
   "bulkSelectedCount": "已选择 {0} 项",
+  "bulkSchedule": "批量排期",
   "bulkComplete": "全部完成",
   "menuMoveToList": "移动到列表",
   "menuToggleCompleted": "标记完成/未完成",

@@ -11,6 +11,7 @@
   "menuLangEn": "English",
   "menuLangZh": "Simplified Chinese",
   "bulkSelectedCount": "{0} selected",
+  "bulkSchedule": "Schedule Selected",
   "bulkComplete": "Complete Selected",
   "menuMoveToList": "Move to List",
   "menuToggleCompleted": "Mark Completed / Uncompleted",
