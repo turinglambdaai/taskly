@@ -27,7 +27,7 @@ last-update-check = $epoch
 "@ | Set-Content -LiteralPath (Join-Path $tasklyHome 'config.ini') -Encoding utf8
 
 function Wait-Until {
-    param([string]$Description, [scriptblock]$Probe, [int]$TimeoutSeconds = 30)
+    param([string]$Description, [scriptblock]$Probe, [int]$TimeoutSeconds = 60)
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     while ([DateTime]::UtcNow -lt $deadline) {
         $value = & $Probe
