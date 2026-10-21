@@ -68,25 +68,21 @@ def find_named(root, name, expected_role=None):
     return None
 
 
-def find_action_named(root, name):
-    """Find a named action, accepting GTK's label-child accessibility shape."""
-    for node in walk(root):
-        if (node.name or "") != name and text(node) != name:
+def preceding_action_sibling(node):
+    """Return the nearest actionable sibling before a stable toolbar action."""
+    try:
+        parent = node.parent
+        index = node.getIndexInParent()
+    except Exception:
+        return None
+    for sibling_index in range(index - 1, -1, -1):
+        try:
+            sibling = parent.getChildAtIndex(sibling_index)
+            actions = sibling.queryAction()
+            if actions.nActions > 0:
+                return sibling
+        except Exception:
             continue
-        candidate = node
-        for _ in range(3):
-            if candidate is None:
-                break
-            try:
-                actions = candidate.queryAction()
-                if actions.nActions > 0:
-                    return candidate
-            except Exception:
-                pass
-            try:
-                candidate = candidate.parent
-            except Exception:
-                candidate = None
     return None
 
 
@@ -212,12 +208,12 @@ def main():
         "batch schedule button",
         lambda: find_named(window, "Schedule Selected", "push button"),
     )
-    # The bulk toolbar is stable for the lifetime of the window. Keep the
-    # delete action now, while the toolbar is known to be exposed, because an
-    # asynchronous row rebuild can briefly hide the toolbar after scheduling.
-    delete = wait_for(
-        "batch delete button", lambda: find_action_named(window, "Delete")
-    )
+    # GTK exposes the adjacent Delete button without a reliably searchable
+    # accessible name on the headless runner. Its structural position is
+    # stable: it is the nearest actionable sibling before Schedule Selected.
+    delete = preceding_action_sibling(schedule)
+    if delete is None:
+        raise AssertionError("batch delete action is missing before schedule action")
     press(schedule)
     tomorrow = wait_for(
         "Tomorrow schedule option", lambda: find_named(window, "Tomorrow", "push button")
