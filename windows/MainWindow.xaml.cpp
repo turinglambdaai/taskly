@@ -1511,7 +1511,7 @@ winrt::fire_and_forget MainWindow::AddTaskAsync(std::wstring const& text) {
     // due (parse_quick_add); this host only forwards the result.
     (void)api.parse_quick_add_async(
         winrt::to_string(text),
-        [dispatcher, weak, backend](rivet_app::Result<rivet_app::QuickAddParse> parsed) {
+        [dispatcher, weak, backend, text](rivet_app::Result<rivet_app::QuickAddParse> parsed) {
           try {
             auto const parse = parsed.get();
             rivet_app::API api(*backend);
@@ -1520,13 +1520,17 @@ winrt::fire_and_forget MainWindow::AddTaskAsync(std::wstring const& text) {
             (void)api.add_task_async(
                 parse.text, std::nullopt, parse.due_date, parse.due_time,
                 std::nullopt,
-                [dispatcher, weak](rivet_app::Result<rivet_app::Task> result) {
+                [dispatcher, weak, text](rivet_app::Result<rivet_app::Task> result) {
                   try {
                     result.get();
                   } catch (std::exception const& e) {
                     auto message = std::string(e.what());
-                    dispatcher.TryEnqueue([weak, message = std::move(message)] {
+                    dispatcher.TryEnqueue([weak, text, message = std::move(message)] {
                       if (auto window = weak.get()) {
+                        // Never replace a newer draft typed while the RPC ran.
+                        if (window->NewTaskBox().Text().empty()) {
+                          window->NewTaskBox().Text(text);
+                        }
                         window->SetError(message);
                       }
                     });
@@ -1534,14 +1538,20 @@ winrt::fire_and_forget MainWindow::AddTaskAsync(std::wstring const& text) {
                 });
           } catch (std::exception const& e) {
             auto message = std::string(e.what());
-            dispatcher.TryEnqueue([weak, message = std::move(message)] {
+            dispatcher.TryEnqueue([weak, text, message = std::move(message)] {
               if (auto window = weak.get()) {
+                if (window->NewTaskBox().Text().empty()) {
+                  window->NewTaskBox().Text(text);
+                }
                 window->SetError(message);
               }
             });
           }
         });
   } catch (std::exception const& e) {
+    if (NewTaskBox().Text().empty()) {
+      NewTaskBox().Text(text);
+    }
     SetError(e.what());
   }
 }
@@ -2125,6 +2135,12 @@ void MainWindow::OnNewTaskKeyDown(
 
 void MainWindow::CommitQuickAdd() {
   auto const text = std::wstring(NewTaskBox().Text());
+  // Keep unsent input when the backend is unavailable; otherwise the
+  // user loses their draft before AddTaskAsync can reject the request.
+  if (text.find_first_not_of(L" \t\r\n") == std::wstring::npos ||
+      backend_ == nullptr || !backend_->running()) {
+    return;
+  }
   NewTaskBox().Text(L"");
   AddTaskAsync(text);
 }
