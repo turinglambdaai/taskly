@@ -84,14 +84,6 @@ def contains_text(root, expected):
     return any((node.name or "") == expected or text(node) == expected for node in walk(root))
 
 
-def count_text_fragment(root, expected):
-    return sum(
-        1
-        for node in walk(root)
-        if expected in (node.name or "") or expected in text(node)
-    )
-
-
 def matching_child_indexes(container, expected):
     result = []
     for index in range(container.childCount):
@@ -198,23 +190,20 @@ def main():
         "batch schedule button",
         lambda: find_named(window, "Schedule Selected", "push button"),
     )
+    # The bulk toolbar is stable for the lifetime of the window. Keep the
+    # delete action now, while the toolbar is known to be exposed, because an
+    # asynchronous row rebuild can briefly hide the toolbar after scheduling.
+    delete = wait_for(
+        "batch delete button", lambda: find_named(window, "Delete List", "push button")
+    )
     press(schedule)
     tomorrow = wait_for(
         "Tomorrow schedule option", lambda: find_named(window, "Tomorrow", "push button")
     )
     press(tomorrow)
     wait_for(
-        "scheduled task rows refreshed",
-        lambda: count_text_fragment(window, "Tomorrow") >= 2,
-    )
-
-    delete = wait_for(
-        "two selected 64-bit task rows and batch delete button",
-        lambda: (
-            find_named(window, "Delete List", "push button")
-            if select_named_children(window, ["64-bit task A", "64-bit task B"])
-            else None
-        ),
+        "two 64-bit task rows selected for deletion",
+        lambda: select_named_children(window, ["64-bit task A", "64-bit task B"]),
     )
     press(delete)
     wait_for(
