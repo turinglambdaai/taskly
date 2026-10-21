@@ -69,6 +69,8 @@ watch architecture.
 
 Grab your build from
 [Releases](https://github.com/turinglambdaai/taskly/releases/latest):
+The installed app is branded **Taskly**; lowercase `taskly` remains the
+CLI/package filename slug and does not change download URLs or data paths.
 
 | Platform | Portable zip (in-app updates) | Installer |
 |---|---|---|
