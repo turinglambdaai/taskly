@@ -109,4 +109,3 @@ accent-filled white-text rounded button. No chrome field borders anywhere.
 White rounded square (macOS-squircle radius ≈ 22.5%) with a quiet checklist
 mark: one system-blue rounded bar over two neutral (`#CECED3`) bars, staggered
 widths. Monochrome, no gradients — must read on light and dark docks alike.
-
