@@ -20,6 +20,8 @@ def children(node):
 
 
 def walk(node):
+    if node is None:
+        return
     yield node
     for child in children(node):
         yield from walk(child)
