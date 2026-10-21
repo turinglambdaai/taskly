@@ -68,6 +68,28 @@ def find_named(root, name, expected_role=None):
     return None
 
 
+def find_action_named(root, name):
+    """Find a named action, accepting GTK's label-child accessibility shape."""
+    for node in walk(root):
+        if (node.name or "") != name and text(node) != name:
+            continue
+        candidate = node
+        for _ in range(3):
+            if candidate is None:
+                break
+            try:
+                actions = candidate.queryAction()
+                if actions.nActions > 0:
+                    return candidate
+            except Exception:
+                pass
+            try:
+                candidate = candidate.parent
+            except Exception:
+                candidate = None
+    return None
+
+
 def find_editable_named(root, name):
     for node in walk(root):
         if (node.name or "") != name:
@@ -194,7 +216,7 @@ def main():
     # delete action now, while the toolbar is known to be exposed, because an
     # asynchronous row rebuild can briefly hide the toolbar after scheduling.
     delete = wait_for(
-        "batch delete button", lambda: find_named(window, "Delete List", "push button")
+        "batch delete button", lambda: find_action_named(window, "Delete")
     )
     press(schedule)
     tomorrow = wait_for(
