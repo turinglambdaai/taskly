@@ -398,6 +398,7 @@ struct AppState {
   GtkLabel* bulk_count{nullptr};
   GtkButton* bulk_complete{nullptr};
   GtkButton* bulk_move{nullptr};
+  GtkButton* bulk_schedule{nullptr};
   GtkStack* list_stack{nullptr};
   GtkLabel* empty_icon{nullptr};
   GtkLabel* empty_text{nullptr};
@@ -982,6 +983,27 @@ void batch_move_selected(BatchMoveCommand const& command) {
       if (task->list_id == target) continue;
       auto updated = *task;  // Preserve all other fields.
       updated.list_id = target;
+      save_task_edits(std::move(updated));
+    }
+  }
+}
+
+// Date changes act on task IDs captured at popover creation. Re-resolve
+// every task at command activation so items that have disappeared from the
+// active view cannot be accidentally overwritten with stale whole records.
+struct BulkScheduleCommand {
+  std::vector<std::int64_t> ids;
+  std::optional<std::string> due_date;
+};
+
+void batch_schedule_selected(BulkScheduleCommand const& command) {
+  for (auto const id : command.ids) {
+    if (auto const* task = find_selected_task(id)) {
+      auto updated = *task;
+      updated.due_date = command.due_date;
+      // Clearing the date also clears the time. Keeping an invisible
+      // due_time is inconsistent with the single-task Clear action.
+      if (!command.due_date.has_value()) updated.due_time = std::nullopt;
       save_task_edits(std::move(updated));
     }
   }
@@ -2960,6 +2982,7 @@ void apply_language() {
   if (g_state.bulk_complete != nullptr) {
     gtk_button_set_label(g_state.bulk_complete, tr("navCompleted").c_str());
     gtk_button_set_label(g_state.bulk_move, tr("menuMoveToList").c_str());
+    gtk_button_set_label(g_state.bulk_schedule, tr("bulkSchedule").c_str());
   }
   gtk_button_set_label(
       GTK_BUTTON(g_state.show_completed_toggle),
@@ -3630,6 +3653,51 @@ void on_activate(GtkApplication* app, gpointer) {
       })),
       nullptr);
   gtk_box_append(GTK_BOX(bulk_bar), bulk_move);
+  auto* bulk_schedule = gtk_button_new_with_label(tr("bulkSchedule").c_str());
+  g_signal_connect(
+      bulk_schedule, "clicked",
+      G_CALLBACK((+[](GtkButton* button, gpointer) {
+        auto* previous = static_cast<GtkWidget*>(
+            g_object_get_data(G_OBJECT(button), "batch-date-popover"));
+        if (previous != nullptr) {
+          g_object_set_data(G_OBJECT(button), "batch-date-popover", nullptr);
+          gtk_widget_unparent(previous);
+        }
+        auto const ids = selected_task_ids();
+        if (ids.size() < 2) return;
+        auto* popover = gtk_popover_new();
+        auto* options = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+        auto add_option = [&](std::string const& title,
+                              std::optional<std::string> due_date) {
+          auto* option = gtk_button_new_with_label(title.c_str());
+          gtk_widget_add_css_class(option, "flat");
+          auto* command = new BulkScheduleCommand{ids, std::move(due_date)};
+          g_object_set_data_full(
+              G_OBJECT(option), "batch-schedule-command", command,
+              +[](gpointer data) {
+                delete static_cast<BulkScheduleCommand*>(data);
+              });
+          g_signal_connect(
+              option, "clicked",
+              G_CALLBACK(+[](GtkButton* pressed, gpointer) {
+                auto* command = static_cast<BulkScheduleCommand*>(
+                    g_object_get_data(G_OBJECT(pressed), "batch-schedule-command"));
+                if (command != nullptr) batch_schedule_selected(*command);
+                auto* p = static_cast<GtkWidget*>(g_object_get_data(
+                    G_OBJECT(g_state.bulk_schedule), "batch-date-popover"));
+                if (p != nullptr) gtk_popover_popdown(GTK_POPOVER(p));
+              }), nullptr);
+          gtk_box_append(GTK_BOX(options), option);
+        };
+        add_option(tr("navToday"), date_string(0));
+        add_option(tr("dateTomorrow"), date_string(1));
+        add_option(tr("dialogClear"), std::nullopt);
+        gtk_popover_set_child(GTK_POPOVER(popover), options);
+        gtk_widget_set_parent(popover, GTK_WIDGET(button));
+        g_object_set_data(G_OBJECT(button), "batch-date-popover", popover);
+        gtk_popover_popup(GTK_POPOVER(popover));
+      })), nullptr);
+  gtk_box_append(GTK_BOX(bulk_bar), bulk_schedule);
   gtk_box_append(GTK_BOX(pane), bulk_bar);
 
   auto* task_scroll = gtk_scrolled_window_new();
@@ -3727,6 +3795,7 @@ void on_activate(GtkApplication* app, gpointer) {
   g_state.bulk_count = GTK_LABEL(bulk_count);
   g_state.bulk_complete = GTK_BUTTON(bulk_complete);
   g_state.bulk_move = GTK_BUTTON(bulk_move);
+  g_state.bulk_schedule = GTK_BUTTON(bulk_schedule);
   g_state.list_stack = GTK_STACK(list_stack);
   g_state.empty_icon = GTK_LABEL(empty_icon);
   g_state.empty_text = GTK_LABEL(empty_text);
