@@ -194,6 +194,13 @@ std::wstring due_tail(std::string const& due) {
   return wide(due.substr(5, 5));
 }
 
+std::wstring trim_wide(std::wstring text) {
+  auto const first = text.find_first_not_of(L" \t\r\n");
+  if (first == std::wstring::npos) return {};
+  auto const last = text.find_last_not_of(L" \t\r\n");
+  return text.substr(first, last - first + 1);
+}
+
 template <typename T>
 T const* find_by_id(std::vector<T> const& items, std::int64_t id) {
   for (auto const& item : items) {
@@ -966,6 +973,18 @@ void MainWindow::RenderSidebar() {
 }
 
 void MainWindow::RenderTasks() {
+  if (inline_task_id_.has_value() && !inline_task_in_search_) {
+    CaptureInlineTaskDraft();
+    inline_title_box_ = nullptr;
+    inline_notes_box_ = nullptr;
+    inline_date_box_ = nullptr;
+    inline_time_box_ = nullptr;
+  }
+  rebuilding_task_rows_ = true;
+  struct TaskRowRestore {
+    MainWindow* window;
+    ~TaskRowRestore() { window->rebuilding_task_rows_ = false; }
+  } restore{this};
   PaneTitle().Text(view_title());
   PaneSubtitle().Text(view_subtitle());
 
@@ -1006,6 +1025,18 @@ void MainWindow::RenderTasks() {
 }
 
 void MainWindow::RenderSearchResults() {
+  if (inline_task_id_.has_value() && inline_task_in_search_) {
+    CaptureInlineTaskDraft();
+    inline_title_box_ = nullptr;
+    inline_notes_box_ = nullptr;
+    inline_date_box_ = nullptr;
+    inline_time_box_ = nullptr;
+  }
+  rebuilding_task_rows_ = true;
+  struct SearchRowRestore {
+    MainWindow* window;
+    ~SearchRowRestore() { window->rebuilding_task_rows_ = false; }
+  } restore{this};
   std::set<std::int64_t> selected_ids;
   for (auto const& selected : SearchResults().SelectedItems()) {
     if (auto row = selected.try_as<mxc::Grid>()) {
@@ -1026,14 +1057,21 @@ void MainWindow::RenderSearchResults() {
 
 mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task,
                                    bool search_result) {
+  auto const expanded_here =
+      inline_task_id_.has_value() && *inline_task_id_ == task.id &&
+      inline_task_in_search_ == search_result;
   auto row = mxc::Grid{};
+  row.ColumnDefinitions().Append(mxc::ColumnDefinition{});
   row.ColumnDefinitions().Append(mxc::ColumnDefinition{});
   row.ColumnDefinitions().Append(mxc::ColumnDefinition{});
   row.ColumnDefinitions().GetAt(0).Width(mx::GridLength{0, mx::GridUnitType::Auto});
   row.ColumnDefinitions().GetAt(1).Width(
       mx::GridLength{1, mx::GridUnitType::Star});
+  row.ColumnDefinitions().GetAt(2).Width(
+      mx::GridLength{0, mx::GridUnitType::Auto});
   // The checkbox and title must be centered in the SAME first row. Metadata
   // and notes (when present) occupy a second row under the title only.
+  row.RowDefinitions().Append(mxc::RowDefinition{});
   row.RowDefinitions().Append(mxc::RowDefinition{});
   row.RowDefinitions().Append(mxc::RowDefinition{});
   row.Padding(mx::ThicknessHelper::FromLengths(4, 4, 4, 4));
@@ -1067,13 +1105,31 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task,
     text.TextDecorations(
         winrt::Windows::UI::Text::TextDecorations::Strikethrough);
   }
-  row.Children().Append(text);
+  if (!expanded_here) row.Children().Append(text);
+
+  auto info = mxc::Button{};
+  info.Content(winrt::box_value(L"\u24D8"));
+  info.Padding(mx::ThicknessHelper::FromLengths(6, 2, 6, 2));
+  info.MinWidth(28);
+  info.VerticalAlignment(mx::VerticalAlignment::Center);
+  info.Tag(winrt::box_value<std::int64_t>(task.id));
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+      info, L"task-info-" + std::to_wstring(task.id));
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+      info, t("contextMenuDetails"));
+  info.Click([weak = get_weak(), id = task.id](auto const&, auto const&) {
+    if (auto window = weak.get()) window->OpenInlineTaskEditor(id);
+  });
+  mxc::Grid::SetColumn(info, 2);
+  mxc::Grid::SetRow(info, 0);
+  row.Children().Append(info);
 
   auto details = mxc::StackPanel{};
   details.Margin(mx::ThicknessHelper::FromLengths(8, 0, 0, 0));
   details.Spacing(2);
   mxc::Grid::SetColumn(details, 1);
   mxc::Grid::SetRow(details, 1);
+  mxc::Grid::SetColumnSpan(details, 2);
 
   // Meta line (PRODUCT-SPEC §5, DESIGN-TOKENS task row): owning list name
   // with its color dot in the smart views, then the due chip; the notes
@@ -1144,14 +1200,124 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task,
   if (task.notes.has_value() && !task.notes->empty()) {
     auto notes_line = mxc::TextBlock{};
     notes_line.Text(wide(*task.notes));
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+        notes_line, L"task-notes-" + std::to_wstring(task.id));
     notes_line.FontSize(12);
     notes_line.TextTrimming(mx::TextTrimming::CharacterEllipsis);
     notes_line.Foreground(ThemeBrush(L"TasklyMutedTextBrush"));
     details.Children().Append(notes_line);
   }
 
-  if (details.Children().Size() > 0) {
+  if (!expanded_here && details.Children().Size() > 0) {
     row.Children().Append(details);
+  }
+
+  if (expanded_here) {
+    if (!inline_task_draft_.has_value() ||
+        inline_task_draft_->id != task.id) {
+      inline_task_draft_ = task;
+    }
+    auto const& draft = *inline_task_draft_;
+    auto editor = mxc::StackPanel{};
+    editor.Spacing(8);
+    editor.Margin(mx::ThicknessHelper::FromLengths(8, 0, 8, 4));
+    mxc::Grid::SetColumn(editor, 1);
+    mxc::Grid::SetRow(editor, 0);
+    mxc::Grid::SetRowSpan(editor, 3);
+
+    inline_title_box_ = mxc::TextBox{};
+    inline_title_box_.Text(wide(draft.text));
+    inline_title_box_.FontSize(15);
+    inline_title_box_.AcceptsReturn(false);
+    inline_title_box_.UseSystemFocusVisuals(false);
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+        inline_title_box_, L"inline-task-title-" + std::to_wstring(task.id));
+    inline_title_box_.KeyDown(
+        [weak = get_weak()](auto const&, auto const& args) {
+          if (auto window = weak.get()) {
+            if (args.Key() == Windows::System::VirtualKey::Enter) {
+              args.Handled(true);
+              window->CommitInlineTaskEditor();
+            } else if (args.Key() == Windows::System::VirtualKey::Escape) {
+              args.Handled(true);
+              window->CancelInlineTaskEditor();
+            }
+          }
+        });
+    editor.Children().Append(inline_title_box_);
+
+    auto schedule = mxc::StackPanel{};
+    schedule.Orientation(mxc::Orientation::Horizontal);
+    schedule.Spacing(8);
+
+    inline_date_box_ = mxc::TextBox{};
+    inline_date_box_.Width(128);
+    inline_date_box_.PlaceholderText(L"yyyy-MM-dd");
+    inline_date_box_.Text(draft.due_date.has_value()
+                              ? wide(*draft.due_date).substr(0, 10)
+                              : L"");
+    inline_date_box_.UseSystemFocusVisuals(false);
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+        inline_date_box_, L"inline-task-date-" + std::to_wstring(task.id));
+    schedule.Children().Append(inline_date_box_);
+
+    inline_time_box_ = mxc::TextBox{};
+    inline_time_box_.Width(88);
+    inline_time_box_.PlaceholderText(L"HH:mm");
+    inline_time_box_.Text(draft.due_time.has_value()
+                              ? wide(*draft.due_time).substr(0, 5)
+                              : L"");
+    inline_time_box_.UseSystemFocusVisuals(false);
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+        inline_time_box_, L"inline-task-time-" + std::to_wstring(task.id));
+    schedule.Children().Append(inline_time_box_);
+
+    auto today = mxc::Button{};
+    today.Content(winrt::box_value(t("navToday")));
+    today.Click([weak = get_weak()](auto const&, auto const&) {
+      if (auto window = weak.get()) {
+        window->inline_date_box_.Text(date_string(0));
+      }
+    });
+    schedule.Children().Append(today);
+    auto tomorrow = mxc::Button{};
+    tomorrow.Content(winrt::box_value(t("dateTomorrow")));
+    tomorrow.Click([weak = get_weak()](auto const&, auto const&) {
+      if (auto window = weak.get()) {
+        window->inline_date_box_.Text(date_string(1));
+      }
+    });
+    schedule.Children().Append(tomorrow);
+    auto clear = mxc::Button{};
+    clear.Content(winrt::box_value(t("dialogClear")));
+    clear.Click([weak = get_weak()](auto const&, auto const&) {
+      if (auto window = weak.get()) {
+        window->inline_date_box_.Text(L"");
+        window->inline_time_box_.Text(L"");
+      }
+    });
+    schedule.Children().Append(clear);
+    editor.Children().Append(schedule);
+
+    inline_notes_box_ = mxc::TextBox{};
+    inline_notes_box_.Text(
+        draft.notes.has_value() ? wide(*draft.notes) : L"");
+    inline_notes_box_.PlaceholderText(t("hintAddNotes"));
+    inline_notes_box_.AcceptsReturn(true);
+    inline_notes_box_.TextWrapping(mx::TextWrapping::Wrap);
+    inline_notes_box_.MinHeight(62);
+    inline_notes_box_.UseSystemFocusVisuals(false);
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+        inline_notes_box_, L"inline-task-notes-" + std::to_wstring(task.id));
+    inline_notes_box_.KeyDown(
+        [weak = get_weak()](auto const&, auto const& args) {
+          if (args.Key() == Windows::System::VirtualKey::Escape) {
+            args.Handled(true);
+            if (auto window = weak.get()) window->CancelInlineTaskEditor();
+          }
+        });
+    editor.Children().Append(inline_notes_box_);
+    row.Children().Append(editor);
   }
 
   auto menu = mxc::MenuFlyout{};
@@ -1225,6 +1391,78 @@ rivet_app::Task const* MainWindow::FindTaskForAction(
     if (auto const* task = find_by_id(search_results_, id)) return task;
   }
   return find_by_id(tasks_, id);
+}
+
+void MainWindow::CaptureInlineTaskDraft() {
+  if (!inline_task_draft_.has_value() || !inline_title_box_) return;
+  auto& draft = *inline_task_draft_;
+  draft.text = winrt::to_string(trim_wide(std::wstring(inline_title_box_.Text())));
+  auto const notes = trim_wide(std::wstring(inline_notes_box_.Text()));
+  draft.notes = notes.empty()
+                    ? std::nullopt
+                    : std::optional<std::string>(winrt::to_string(notes));
+  auto const date = trim_wide(std::wstring(inline_date_box_.Text()));
+  auto const time = trim_wide(std::wstring(inline_time_box_.Text()));
+  draft.due_date = date.empty()
+                       ? std::nullopt
+                       : std::optional<std::string>(winrt::to_string(date));
+  draft.due_time = date.empty() || time.empty()
+                       ? std::nullopt
+                       : std::optional<std::string>(winrt::to_string(time));
+}
+
+void MainWindow::ResetInlineTaskEditor() {
+  inline_task_id_.reset();
+  inline_task_draft_.reset();
+  inline_task_in_search_ = false;
+  inline_title_box_ = nullptr;
+  inline_notes_box_ = nullptr;
+  inline_date_box_ = nullptr;
+  inline_time_box_ = nullptr;
+}
+
+void MainWindow::OpenInlineTaskEditor(std::int64_t id) {
+  if (inline_task_id_.has_value() && *inline_task_id_ == id) {
+    CommitInlineTaskEditor();
+    return;
+  }
+  if (inline_task_id_.has_value()) CommitInlineTaskEditor();
+  auto const* task = FindTaskForAction(id);
+  if (task == nullptr) return;
+  inline_task_id_ = id;
+  inline_task_draft_ = *task;
+  inline_task_in_search_ = !current_search_.empty();
+  RenderTasks();
+  RenderSearchResults();
+  if (inline_title_box_) {
+    inline_title_box_.Focus(mx::FocusState::Programmatic);
+    inline_title_box_.SelectAll();
+  }
+}
+
+void MainWindow::CommitInlineTaskEditor() {
+  if (!inline_task_id_.has_value() || !inline_task_draft_.has_value()) return;
+  CaptureInlineTaskDraft();
+  auto updated = *inline_task_draft_;
+  auto const* stored = FindTaskForAction(updated.id);
+  if (trim_wide(wide(updated.text)).empty() && stored != nullptr) {
+    updated.text = stored->text;
+  }
+  auto const changed =
+      stored == nullptr || updated.text != stored->text ||
+      updated.notes != stored->notes || updated.due_date != stored->due_date ||
+      updated.due_time != stored->due_time;
+  ResetInlineTaskEditor();
+  RenderTasks();
+  RenderSearchResults();
+  if (changed) UpdateTaskAsync(std::move(updated));
+}
+
+void MainWindow::CancelInlineTaskEditor() {
+  if (!inline_task_id_.has_value()) return;
+  ResetInlineTaskEditor();
+  RenderTasks();
+  RenderSearchResults();
 }
 
 winrt::hstring MainWindow::DueLabel(std::string const& due_date) const {
@@ -1796,6 +2034,33 @@ winrt::fire_and_forget MainWindow::SetTaskDueAsync(std::int64_t id,
   }
 }
 
+winrt::fire_and_forget MainWindow::UpdateTaskAsync(rivet_app::Task task) {
+  if (backend_ == nullptr || !backend_->running()) co_return;
+  auto const dispatcher = DispatcherQueue();
+  auto const weak = get_weak();
+  auto backend = backend_;
+  try {
+    rivet_app::API api(*backend);
+    (void)api.update_task_async(
+        std::move(task),
+        [dispatcher, weak](rivet_app::Result<rivet_app::Task> result) {
+          try {
+            result.get();
+            dispatcher.TryEnqueue([weak] {
+              if (auto window = weak.get()) window->RefreshSearchIfActive();
+            });
+          } catch (std::exception const& e) {
+            auto message = std::string(e.what());
+            dispatcher.TryEnqueue([weak, message = std::move(message)] {
+              if (auto window = weak.get()) window->SetError(message);
+            });
+          }
+        });
+  } catch (std::exception const& e) {
+    SetError(e.what());
+  }
+}
+
 winrt::fire_and_forget MainWindow::MoveTaskToListAsync(
     std::int64_t id, std::int64_t target_list_id) {
   if (backend_ == nullptr || !backend_->running()) {
@@ -2202,6 +2467,9 @@ void MainWindow::OnSearchTextChanged(
     winrt::Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&) {
   auto const keyword = std::wstring(SearchBox().Text());
+  if (inline_task_id_.has_value() && keyword != current_search_) {
+    CommitInlineTaskEditor();
+  }
   if (keyword.empty()) {
     current_search_.clear();
     SearchPane().Visibility(mx::Visibility::Collapsed);
@@ -2223,6 +2491,7 @@ void MainWindow::OnSmartTileClick(
   if (view_ == kind) {
     return;
   }
+  if (inline_task_id_.has_value()) CommitInlineTaskEditor();
   view_ = kind;
   suppress_selection_ = true;
   UserList().SelectedIndex(-1);
@@ -2238,6 +2507,7 @@ void MainWindow::OnUserListSelectionChanged(
   if (suppress_selection_ || UserList().SelectedIndex() < 0) {
     return;
   }
+  if (inline_task_id_.has_value()) CommitInlineTaskEditor();
   auto const tag =
       UserList()
           .Items()
@@ -2355,7 +2625,19 @@ void MainWindow::RefreshBulkActionBar() {
 
 void MainWindow::OnTaskSelectionChanged(
     winrt::Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&) {
+    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const& args) {
+  if (rebuilding_task_rows_) return;
+  if (inline_task_id_.has_value()) {
+    for (auto const& added : args.AddedItems()) {
+      if (auto row = added.try_as<mxc::Grid>()) {
+        auto const id = winrt::unbox_value<std::int64_t>(row.Tag());
+        if (id != *inline_task_id_) {
+          CommitInlineTaskEditor();
+          break;
+        }
+      }
+    }
+  }
   RefreshBulkActionBar();
 }
 
@@ -2518,6 +2800,11 @@ void MainWindow::OnTaskListKeyDown(
   auto list = sender.try_as<mxc::ListView>();
   if (!list) return;
   if (args.Key() == Windows::System::VirtualKey::Escape) {
+    if (inline_task_id_.has_value()) {
+      CancelInlineTaskEditor();
+      args.Handled(true);
+      return;
+    }
     if (!list.SelectedItems().Size()) return;
     list.SelectedItems().Clear();
     args.Handled(true);
@@ -2533,16 +2820,8 @@ void MainWindow::OnTaskListKeyDown(
   auto row = list.SelectedItems().GetAt(0).try_as<mxc::Grid>();
   if (!row) return;
   auto const id = winrt::unbox_value<std::int64_t>(row.Tag());
-  auto const* task = FindTaskForAction(id);
-  if (!task) return;
   args.Handled(true);
-  auto const weak = get_weak();
-  PromptAsync(t("dialogTaskDetail"), L"", wide(task->text),
-              [weak, id](std::wstring const& updated) {
-                if (auto window = weak.get()) {
-                  window->RenameTaskAsync(id, updated);
-                }
-              });
+  OpenInlineTaskEditor(id);
 }
 
 void MainWindow::OnNewTaskKeyDown(
@@ -2738,17 +3017,7 @@ void MainWindow::OnEditTask(
   } else {
     return;
   }
-  auto const* task = FindTaskForAction(id);
-  if (task == nullptr) {
-    return;
-  }
-  auto const weak = get_weak();
-  PromptAsync(t("dialogTaskDetail"), L"", wide(task->text),
-              [weak, id](std::wstring const& text) {
-                if (auto window = weak.get()) {
-                  window->RenameTaskAsync(id, text);
-                }
-              });
+  OpenInlineTaskEditor(id);
 }
 
 void MainWindow::OnDeleteTask(

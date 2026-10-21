@@ -132,6 +132,11 @@ private:
   void StageTaskDeletion(std::vector<std::int64_t> const& ids);
   void CommitPendingDeletion();
   void UndoPendingDeletion();
+  void OpenInlineTaskEditor(std::int64_t id);
+  void CaptureInlineTaskDraft();
+  void CommitInlineTaskEditor();
+  void CancelInlineTaskEditor();
+  void ResetInlineTaskEditor();
   void RefreshQuickAddPreview();
   void ApplyTitleBarTheme();
   void OnEffectiveThemeChanged();
@@ -150,6 +155,7 @@ private:
   winrt::fire_and_forget ToggleTaskAsync(std::int64_t id, bool completed);
   winrt::fire_and_forget RenameTaskAsync(std::int64_t id, std::wstring const& text);
   winrt::fire_and_forget SetTaskDueAsync(std::int64_t id, std::wstring const& due_date);
+  winrt::fire_and_forget UpdateTaskAsync(rivet_app::Task task);
   winrt::fire_and_forget DeleteTaskAsync(std::int64_t id);
   winrt::fire_and_forget MoveTaskToListAsync(
       std::int64_t id, std::int64_t target_list_id);
@@ -215,6 +221,16 @@ private:
   std::set<std::int64_t> suppressed_deleted_task_ids_;
   std::vector<std::int64_t> pending_delete_ids_;
   Microsoft::UI::Dispatching::DispatcherQueueTimer delete_undo_timer_{nullptr};
+  // Exactly one task can be expanded inline. Draft values live outside the
+  // visual tree so a changed-event rebuild cannot discard in-progress edits.
+  std::optional<std::int64_t> inline_task_id_;
+  std::optional<rivet_app::Task> inline_task_draft_;
+  bool inline_task_in_search_{false};
+  bool rebuilding_task_rows_{false};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox inline_title_box_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox inline_notes_box_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox inline_date_box_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox inline_time_box_{nullptr};
   std::wstring current_search_;
   ViewKind view_{ViewKind::All};
   std::int64_t view_list_id_{0};

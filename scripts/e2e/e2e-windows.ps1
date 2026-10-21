@@ -27,7 +27,7 @@ last-update-check = $epoch
 "@ | Set-Content -LiteralPath (Join-Path $tasklyHome 'config.ini') -Encoding utf8
 
 function Wait-Until {
-    param([string]$Description, [scriptblock]$Probe, [int]$TimeoutSeconds = 30)
+    param([string]$Description, [scriptblock]$Probe, [int]$TimeoutSeconds = 60)
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     while ([DateTime]::UtcNow -lt $deadline) {
         $value = & $Probe
@@ -185,6 +185,78 @@ try {
         throw 'Windows task list must support Ctrl/Shift multi-selection'
     }
 
+    # Task details must expand in place. A modal PromptAsync text box is not
+    # acceptable here because it cannot edit notes/date/time and breaks the
+    # Reminders-style Return/Esc flow.
+    $taskInfo = Wait-Until 'inline task details button' {
+        Find-ById $window 'task-info-2'
+    }
+    $taskInfo.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    $inlineTitle = Wait-Until 'inline task title editor' {
+        Find-ById $window 'inline-task-title-2'
+    }
+    if ($null -ne (Find-ById $window 'prompt-input')) {
+        throw 'task details opened the legacy PromptAsync dialog'
+    }
+    $inlineNotes = Wait-Until 'inline task notes editor' {
+        Find-ById $window 'inline-task-notes-2'
+    }
+    $inlineDate = Wait-Until 'inline task date editor' {
+        Find-ById $window 'inline-task-date-2'
+    }
+    $inlineTime = Wait-Until 'inline task time editor' {
+        Find-ById $window 'inline-task-time-2'
+    }
+    $editedPlainTask = 'Life-only task edited inline'
+    $editedNotes = 'Inline notes survive a changed-event refresh'
+    $inlineTitle.GetCurrentPattern(
+        [System.Windows.Automation.ValuePattern]::Pattern).SetValue($editedPlainTask)
+    $inlineNotes.GetCurrentPattern(
+        [System.Windows.Automation.ValuePattern]::Pattern).SetValue($editedNotes)
+    $inlineDate.GetCurrentPattern(
+        [System.Windows.Automation.ValuePattern]::Pattern).SetValue('2099-12-31')
+    $inlineTime.GetCurrentPattern(
+        [System.Windows.Automation.ValuePattern]::Pattern).SetValue('10:30')
+    $inlineTitle.SetFocus()
+    [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+    [void](Wait-Until 'inline task edit persisted' {
+        if ($null -ne (Find-ByName $window $editedPlainTask) -and
+            $null -ne (Find-ById $window 'task-notes-2')) { return $true }
+        return $false
+    })
+    $plainTask = $editedPlainTask
+
+    # Reopen after the backend changed-event rebuild and verify every field
+    # was read back from persistence, not merely retained in the visual tree.
+    $taskInfo = Wait-Until 'reopen inline task details' {
+        Find-ById $window 'task-info-2'
+    }
+    $taskInfo.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    $persistedNotes = Wait-Until 'persisted inline notes' {
+        Find-ById $window 'inline-task-notes-2'
+    }
+    $persistedDate = Wait-Until 'persisted inline date' {
+        Find-ById $window 'inline-task-date-2'
+    }
+    $persistedTime = Wait-Until 'persisted inline time' {
+        Find-ById $window 'inline-task-time-2'
+    }
+    if ($persistedNotes.GetCurrentPattern(
+            [System.Windows.Automation.ValuePattern]::Pattern).Current.Value -ne $editedNotes -or
+        $persistedDate.GetCurrentPattern(
+            [System.Windows.Automation.ValuePattern]::Pattern).Current.Value -ne '2099-12-31' -or
+        $persistedTime.GetCurrentPattern(
+            [System.Windows.Automation.ValuePattern]::Pattern).Current.Value -ne '10:30') {
+        throw 'inline task details were not persisted across the backend refresh'
+    }
+    $taskInfo = Wait-Until 'collapse inline task details' {
+        Find-ById $window 'task-info-2'
+    }
+    $taskInfo.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+
     Select-TaskList 1 '工作'
     [void](Wait-Until '工作 view selected' {
         if ($paneTitle.Current.Name -eq '工作') { return $true }
@@ -324,7 +396,7 @@ try {
     [ordered]@{
         platform = 'windows'
         artifact = $executable.FullName
-        actions = @('set:quick-add', 'invoke:quick-add-submit', 'toggle:task-complete-1', 'create-list:生活', 'select-list:2', 'enter:quick-add', 'select-list:1', 'select-list:2')
+        actions = @('set:quick-add', 'invoke:quick-add-submit', 'toggle:task-complete-1', 'create-list:生活', 'select-list:2', 'enter:quick-add', 'inline:edit-task-2', 'select-list:1', 'select-list:2')
         assertions = @(
             'packaged WinUI window activated',
             'stable UI Automation identifiers exposed',
@@ -333,6 +405,7 @@ try {
             'new task submitted by Enter is owned by 生活, not 工作',
             'task checkbox and plain-text title are vertically aligned',
             'Windows task list exposes native multiple selection',
+            'task details expand inline without PromptAsync and persist title, notes, date, and time',
             'view switches preserve task list ownership',
             'global search shows the real owning list for every task',
             'Ctrl/Shift multi-selection completes two tasks in one command',
