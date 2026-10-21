@@ -73,6 +73,8 @@ struct MainWindow : MainWindowT<MainWindow> {
                               Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnNewTaskKeyDown(winrt::Windows::Foundation::IInspectable const&,
                         Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&);
+  void OnTaskListKeyDown(winrt::Windows::Foundation::IInspectable const&,
+                         Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&);
 
   // Update download action wired from XAML; event handlers must be public
   // because generated Connect() binds them through MainWindowT.

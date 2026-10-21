@@ -9,6 +9,7 @@
 #include <functional>
 #include <iterator>
 #include <map>
+#include <set>
 #include <shobjidl_core.h>
 #include <stdexcept>
 
@@ -963,9 +964,21 @@ void MainWindow::RenderTasks() {
   PaneTitle().Text(view_title());
   PaneSubtitle().Text(view_subtitle());
 
+  // Preserve selection across changed-event and poll snapshot rebuilds.
+  // Selection is by task identity, never by its list index (order can shift).
+  std::set<std::int64_t> selected_ids;
+  for (auto const& selected : TaskList().SelectedItems()) {
+    if (auto row = selected.try_as<mxc::Grid>()) {
+      selected_ids.insert(winrt::unbox_value<std::int64_t>(row.Tag()));
+    }
+  }
   TaskList().Items().Clear();
   for (auto const& task : tasks_) {
-    TaskList().Items().Append(MakeTaskRow(task));
+    auto row = MakeTaskRow(task);
+    TaskList().Items().Append(row);
+    if (selected_ids.count(task.id) != 0) {
+      TaskList().SelectedItems().Append(row);
+    }
   }
 
   // While a search is live its pane replaces the normal one; otherwise the
@@ -986,9 +999,19 @@ void MainWindow::RenderTasks() {
 }
 
 void MainWindow::RenderSearchResults() {
+  std::set<std::int64_t> selected_ids;
+  for (auto const& selected : SearchResults().SelectedItems()) {
+    if (auto row = selected.try_as<mxc::Grid>()) {
+      selected_ids.insert(winrt::unbox_value<std::int64_t>(row.Tag()));
+    }
+  }
   SearchResults().Items().Clear();
   for (auto const& task : search_results_) {
-    SearchResults().Items().Append(MakeTaskRow(task, /*search_result=*/true));
+    auto row = MakeTaskRow(task, /*search_result=*/true);
+    SearchResults().Items().Append(row);
+    if (selected_ids.count(task.id) != 0) {
+      SearchResults().SelectedItems().Append(row);
+    }
   }
 }
 
@@ -2277,6 +2300,42 @@ void MainWindow::OnShowCompletedChanged(
   auto const checked = ShowCompletedCheck().IsChecked();
   show_completed_ = checked != nullptr && checked.Value();
   ReloadTasksAsync();
+}
+
+void MainWindow::OnTaskListKeyDown(
+    winrt::Windows::Foundation::IInspectable const& sender,
+    Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args) {
+  // Text fields and editable task controls retain their normal shortcuts.
+  if (args.OriginalSource().try_as<mxc::TextBox>()) return;
+
+  auto list = sender.try_as<mxc::ListView>();
+  if (!list) return;
+  if (args.Key() == Windows::System::VirtualKey::Escape) {
+    if (!list.SelectedItems().Size()) return;
+    list.SelectedItems().Clear();
+    args.Handled(true);
+    return;
+  }
+  if (args.Key() != Windows::System::VirtualKey::Enter ||
+      list.SelectedItems().Size() != 1) {
+    // WinUI natively handles Up/Down, Ctrl-click and Shift-click/ranges
+    // in Extended mode. Do not swallow its keyboard navigation.
+    return;
+  }
+
+  auto row = list.SelectedItems().GetAt(0).try_as<mxc::Grid>();
+  if (!row) return;
+  auto const id = winrt::unbox_value<std::int64_t>(row.Tag());
+  auto const* task = FindTaskForAction(id);
+  if (!task) return;
+  args.Handled(true);
+  auto const weak = get_weak();
+  PromptAsync(t("dialogTaskDetail"), L"", wide(task->text),
+              [weak, id](std::wstring const& updated) {
+                if (auto window = weak.get()) {
+                  window->RenameTaskAsync(id, updated);
+                }
+              });
 }
 
 void MainWindow::OnNewTaskKeyDown(

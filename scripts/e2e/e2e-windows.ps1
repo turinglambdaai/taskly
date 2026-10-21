@@ -176,6 +176,15 @@ try {
         throw ("plain task title and checkbox are misaligned by {0:N1}px" -f $centerDiff)
     }
 
+    $taskList = Wait-Until 'extended task list' {
+        Find-ById $window 'task-list'
+    }
+    $selection = $taskList.GetCurrentPattern(
+        [System.Windows.Automation.SelectionPattern]::Pattern)
+    if (-not $selection.Current.CanSelectMultiple) {
+        throw 'Windows task list must support Ctrl/Shift multi-selection'
+    }
+
     Select-TaskList 1 '工作'
     [void](Wait-Until '工作 view selected' {
         if ($paneTitle.Current.Name -eq '工作') { return $true }
@@ -244,6 +253,7 @@ try {
             'changed Event removed the completed task from the active view',
             'new task submitted by Enter is owned by 生活, not 工作',
             'task checkbox and plain-text title are vertically aligned',
+            'Windows task list exposes native multiple selection',
             'view switches preserve task list ownership',
             'global search shows the real owning list for every task',
             'native window close stopped the process'
