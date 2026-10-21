@@ -59,6 +59,12 @@ README's honest gaps).
   The Windows packaged acceptance must create a second list, submit a
   task via Enter, verify that it remains in the selected list, and verify
   that it never appears in the first/default list.
+  Snapshot rendering is equally view-scoped: responses must be checked
+  against the currently selected view/list and completed-visibility flag.
+  Results from a previous selection must never appear under the newly
+  selected list title. When a database is opened with a restored named
+  list, its initial ALL snapshot must not populate that named list; query
+  the selected list first.
 - Empty states: not connected → 📂 + `taskListEmptyHint`; connected and
   empty → ✓ + `taskListEmpty`.
 - Row order per view (SQL in DATA-FORMAT/CLI-SPEC §list): All & list views
