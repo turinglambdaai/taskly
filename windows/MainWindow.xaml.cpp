@@ -755,6 +755,8 @@ void MainWindow::ApplyLanguage() {
   BulkCompleteButton().Content(winrt::box_value(t("bulkComplete")));
   BulkMoveButton().Content(winrt::box_value(t("menuMoveToList")));
   BulkScheduleButton().Content(winrt::box_value(t("bulkSchedule")));
+  BulkDeleteButton().Content(winrt::box_value(t("listDelete")));
+  UndoDeleteButton().Content(winrt::box_value(t("bannerUndo")));
   RenderSidebar();
   RenderTasks();
 }
@@ -977,6 +979,7 @@ void MainWindow::RenderTasks() {
   }
   TaskList().Items().Clear();
   for (auto const& task : tasks_) {
+    if (suppressed_deleted_task_ids_.count(task.id) != 0) continue;
     auto row = MakeTaskRow(task);
     TaskList().Items().Append(row);
     if (selected_ids.count(task.id) != 0) {
@@ -1011,6 +1014,7 @@ void MainWindow::RenderSearchResults() {
   }
   SearchResults().Items().Clear();
   for (auto const& task : search_results_) {
+    if (suppressed_deleted_task_ids_.count(task.id) != 0) continue;
     auto row = MakeTaskRow(task, /*search_result=*/true);
     SearchResults().Items().Append(row);
     if (selected_ids.count(task.id) != 0) {
@@ -1563,6 +1567,9 @@ winrt::fire_and_forget MainWindow::OpenDatabaseAsync(std::wstring const& path) {
   if (backend_ == nullptr || !backend_->running() || path.empty()) {
     co_return;
   }
+  // Pending deletions must never commit against another database that
+  // happens to contain the same numeric task IDs.
+  if (!pending_delete_ids_.empty()) UndoPendingDeletion();
   auto const dispatcher = DispatcherQueue();
   auto const weak = get_weak();
   auto backend = backend_;
@@ -1575,6 +1582,7 @@ winrt::fire_and_forget MainWindow::OpenDatabaseAsync(std::wstring const& path) {
             auto const snapshot = result.get();
             dispatcher.TryEnqueue([weak, snapshot] {
               if (auto window = weak.get()) {
+                window->suppressed_deleted_task_ids_.clear();
                 // Restore the last-selected list when it still exists —
                 // checked against the incoming snapshot because ApplySnapshot
                 // owns the render pass.
@@ -1843,22 +1851,30 @@ winrt::fire_and_forget MainWindow::DeleteTaskAsync(std::int64_t id) {
   try {
     rivet_app::API api(*backend);
     (void)api.delete_task_async(
-        id, [dispatcher, weak](rivet_app::Result<bool> result) {
+        id, [dispatcher, weak, id](rivet_app::Result<bool> result) {
           try {
-            result.get();
+            if (!result.get()) {
+              throw std::runtime_error("task deletion was not acknowledged");
+            }
             dispatcher.TryEnqueue([weak] {
               if (auto window = weak.get()) window->RefreshSearchIfActive();
             });
           } catch (std::exception const& e) {
             auto message = std::string(e.what());
-            dispatcher.TryEnqueue([weak, message = std::move(message)] {
+            dispatcher.TryEnqueue([weak, id, message = std::move(message)] {
               if (auto window = weak.get()) {
+                window->suppressed_deleted_task_ids_.erase(id);
+                window->RenderTasks();
+                window->RenderSearchResults();
                 window->SetError(message);
               }
             });
           }
         });
   } catch (std::exception const& e) {
+    suppressed_deleted_task_ids_.erase(id);
+    RenderTasks();
+    RenderSearchResults();
     SetError(e.what());
   }
 }
@@ -2068,6 +2084,7 @@ void MainWindow::OnCloseDatabase(
   if (backend_ == nullptr || !backend_->running()) {
     return;
   }
+  if (!pending_delete_ids_.empty()) UndoPendingDeletion();
   auto const dispatcher = DispatcherQueue();
   auto const weak = get_weak();
   auto backend = backend_;
@@ -2080,6 +2097,7 @@ void MainWindow::OnCloseDatabase(
             if (auto window = weak.get()) {
               window->lists_.clear();
               window->tasks_.clear();
+              window->suppressed_deleted_task_ids_.clear();
               window->current_counts_ = {};
               // The next snapshot must render even if it matches the one the
               // closed database ended with.
@@ -2419,6 +2437,78 @@ void MainWindow::OnBulkScheduleClicked(
   menu.ShowAt(BulkScheduleButton());
 }
 
+void MainWindow::StageTaskDeletion(
+    std::vector<std::int64_t> const& ids) {
+  if (backend_ == nullptr || !backend_->running()) return;
+  // Only one undo batch at a time. Starting another deletion commits
+  // the previous one and opens a fresh six-second window.
+  if (!pending_delete_ids_.empty()) CommitPendingDeletion();
+  for (auto const id : ids) {
+    if (FindTaskForAction(id) == nullptr) continue;
+    if (suppressed_deleted_task_ids_.insert(id).second) {
+      pending_delete_ids_.push_back(id);
+    }
+  }
+  if (pending_delete_ids_.empty()) return;
+  if (!delete_undo_timer_) {
+    delete_undo_timer_ = DispatcherQueue().CreateTimer();
+    delete_undo_timer_.Interval(std::chrono::seconds{6});
+    delete_undo_timer_.IsRepeating(false);
+    delete_undo_timer_.Tick([weak = get_weak()](auto&&, auto&&) {
+      if (auto window = weak.get()) window->CommitPendingDeletion();
+    });
+  }
+  delete_undo_timer_.Stop();
+  delete_undo_timer_.Start();
+  UndoDeleteButton().Visibility(mx::Visibility::Visible);
+  SetStatus(tf("bannerTasksDeleted",
+               std::to_wstring(pending_delete_ids_.size())));
+  RenderTasks();
+  RenderSearchResults();
+}
+
+void MainWindow::CommitPendingDeletion() {
+  if (delete_undo_timer_) delete_undo_timer_.Stop();
+  if (backend_ == nullptr || !backend_->running()) {
+    // Deletion has not been persisted, so restore every staged row.
+    UndoPendingDeletion();
+    SetStatus(t("taskListEmptyHint"));
+    return;
+  }
+  auto const ids = std::move(pending_delete_ids_);
+  pending_delete_ids_.clear();
+  UndoDeleteButton().Visibility(mx::Visibility::Collapsed);
+  for (auto const id : ids) {
+    // Keep rows visually hidden while their deletion RPCs complete.
+    // A failure removes suppression and makes the task visible again.
+    DeleteTaskAsync(id);
+  }
+}
+
+void MainWindow::UndoPendingDeletion() {
+  if (delete_undo_timer_) delete_undo_timer_.Stop();
+  for (auto const id : pending_delete_ids_) {
+    suppressed_deleted_task_ids_.erase(id);
+  }
+  pending_delete_ids_.clear();
+  UndoDeleteButton().Visibility(mx::Visibility::Collapsed);
+  SetStatus(t("bannerUndo"));
+  RenderTasks();
+  RenderSearchResults();
+}
+
+void MainWindow::OnUndoDeleteClicked(
+    winrt::Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) {
+  UndoPendingDeletion();
+}
+
+void MainWindow::OnBulkDeleteClicked(
+    winrt::Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) {
+  StageTaskDeletion(SelectedTaskIds());
+}
+
 void MainWindow::OnTaskListKeyDown(
     winrt::Windows::Foundation::IInspectable const& sender,
     Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args) {
@@ -2666,7 +2756,7 @@ void MainWindow::OnDeleteTask(
     Microsoft::UI::Xaml::RoutedEventArgs const&) {
   auto const id = winrt::unbox_value<std::int64_t>(
       sender.as<mxc::MenuFlyoutItem>().Tag());
-  DeleteTaskAsync(id);
+  StageTaskDeletion({id});
 }
 
 }  // namespace winrt::RivetHost::implementation
