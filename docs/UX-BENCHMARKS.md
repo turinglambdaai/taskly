@@ -113,3 +113,15 @@ Scheduled（有日期的）。
   https://digitoolbook.com/en/blog/things3-minimalist-task-management-gtd
 - 2Do 官方功能页：https://www.2doapp.com/page-section/main-features
 - 2Do Focus Lists：https://www.2doapp.com/docs/ios/focus-lists
+
+### Windows task ownership recovery
+
+- ✅ Task rows expose a right-click **Move to List / 移动到列表** submenu for
+  other lists. It calls `update_task` with the target list ID, preserving
+  title, due date/time, completion state and notes.
+- This is the **explicit** recovery path for tasks already saved into the
+  wrong list by older Windows versions. Do not auto-migrate existing rows:
+  the original intended list cannot be inferred reliably.
+- Manual acceptance: move a task from 工作 to 生活, confirm it disappears from
+  工作, appears in 生活 and keeps all other fields; then restart and verify
+  ownership persists. Exercise both languages and all smart-list views.

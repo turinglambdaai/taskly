@@ -1136,6 +1136,31 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task) {
   edit.Tag(winrt::box_value<std::int64_t>(task.id));
   edit.Click({this, &MainWindow::OnEditTask});
   menu.Items().Append(edit);
+
+  // The same Move to List operation is available on macOS. It also lets
+  // users correct tasks created by older Windows builds that incorrectly
+  // defaulted every quick add to the first list.
+  if (lists_.size() > 1) {
+    auto move_to = mxc::MenuFlyoutSubItem{};
+    move_to.Text(t("menuMoveToList"));
+    for (auto const& list : lists_) {
+      if (list.id == task.list_id) continue;
+      auto target = mxc::MenuFlyoutItem{};
+      target.Text(wide(list.icon.value_or("")) + L" " + wide(list.name));
+      auto const task_id = task.id;
+      auto const target_id = list.id;
+      target.Click(
+          [weak = get_weak(), task_id, target_id](
+              winrt::Windows::Foundation::IInspectable const&,
+              Microsoft::UI::Xaml::RoutedEventArgs const&) {
+            if (auto window = weak.get()) {
+              window->MoveTaskToListAsync(task_id, target_id);
+            }
+          });
+      move_to.Items().Append(target);
+    }
+    menu.Items().Append(move_to);
+  }
   auto remove = mxc::MenuFlyoutItem{};
   remove.Text(t("taskDelete"));
   remove.Tag(winrt::box_value<std::int64_t>(task.id));
@@ -1687,6 +1712,50 @@ winrt::fire_and_forget MainWindow::SetTaskDueAsync(std::int64_t id,
         updated, [dispatcher, weak](rivet_app::Result<rivet_app::Task> result) {
           try {
             result.get();
+          } catch (std::exception const& e) {
+            auto message = std::string(e.what());
+            dispatcher.TryEnqueue([weak, message = std::move(message)] {
+              if (auto window = weak.get()) {
+                window->SetError(message);
+              }
+            });
+          }
+        });
+  } catch (std::exception const& e) {
+    SetError(e.what());
+  }
+}
+
+winrt::fire_and_forget MainWindow::MoveTaskToListAsync(
+    std::int64_t id, std::int64_t target_list_id) {
+  if (backend_ == nullptr || !backend_->running()) {
+    co_return;
+  }
+  auto const* stored = find_by_id(tasks_, id);
+  auto const* destination = find_by_id(lists_, target_list_id);
+  if (stored == nullptr || destination == nullptr ||
+      stored->list_id == target_list_id) {
+    co_return;
+  }
+  // Keep title, due date, time, completed state and notes unchanged.
+  auto updated = *stored;
+  updated.list_id = target_list_id;
+  auto const list_name = wide(destination->name);
+  auto const dispatcher = DispatcherQueue();
+  auto const weak = get_weak();
+  auto backend = backend_;
+  try {
+    rivet_app::API api(*backend);
+    (void)api.update_task_async(
+        updated, [dispatcher, weak, list_name](
+                     rivet_app::Result<rivet_app::Task> result) {
+          try {
+            result.get();
+            dispatcher.TryEnqueue([weak, list_name] {
+              if (auto window = weak.get()) {
+                window->SetStatus(tf("statusTaskMoved", list_name));
+              }
+            });
           } catch (std::exception const& e) {
             auto message = std::string(e.what());
             dispatcher.TryEnqueue([weak, message = std::move(message)] {
