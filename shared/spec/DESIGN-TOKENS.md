@@ -124,3 +124,14 @@ checkbox remains native and accessible, while its backing now blends into the
 same surface. Keep SVG, PNG preview, and shipping BMP synchronized.
 `scripts/check-windows-installer-bitmaps.py` verifies pixel identity and
 native checkbox surface in CI, packaged acceptance and Windows release.
+
+## macOS DMG artwork contract
+
+- The editable source is `assets/dmg-background.svg`; the shipping installer
+  embeds `assets/dmg-background.png`, regenerated before macOS release and
+  packaged acceptance by `scripts/render-dmg-background.sh` (`librsvg`).
+- Finder's branded installer is 660×400 points at 2× scale, requiring a
+  1320×800 background. The Taskly and Applications icon slots are controlled
+  by pinned Rivet (positions 130,160 and 450,160 at 80pt icons). Keep the
+  straight drag arrow centered in the clear space between those slots and
+  do not draw art over the icon/label areas.
