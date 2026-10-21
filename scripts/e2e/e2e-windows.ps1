@@ -90,12 +90,18 @@ try {
     }
     $quickAdd = Wait-Until 'quick-add field' { Find-ById $window 'quick-add' }
     $submit = Wait-Until 'quick-add submit button' { Find-ById $window 'quick-add-submit' }
+    # The native window becomes automatable before the embedded backend has
+    # opened its database. Clicking during that interval intentionally keeps
+    # the draft unsent, so wait for the product's real readiness signal.
+    [void](Wait-Until 'database connection' { Find-ByName $window 'Database Connected' })
     $quickAdd.GetCurrentPattern(
         [System.Windows.Automation.ValuePattern]::Pattern).SetValue('Acceptance task')
     $submit.GetCurrentPattern(
         [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-    [void](Wait-Until 'RPC-created task row' { Find-ById $window 'task-title-1' })
-
+    [void](Wait-Until 'quick-add submission' {
+        $quickAdd.GetCurrentPattern(
+            [System.Windows.Automation.ValuePattern]::Pattern).Current.Value -eq ''
+    })
     $checkbox = Wait-Until 'task completion control' {
         Find-ById $window 'task-complete-1'
     }
