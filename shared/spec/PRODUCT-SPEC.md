@@ -136,7 +136,9 @@ pickers. Save (blank text silently ignored), Delete (confirm first), Cancel
 - Settings: Language (简体中文 / English, runtime switch, persisted in
   config `language`), Theme submenu — 跟随系统 (follow system) / 浅色
   (light) / 深色 (dark), persisted in config `theme`; follow-system tracks
-  OS personalization live. macOS follows the system appearance at launch
+  OS personalization live. Windows reads the persisted language and theme
+  before first window activation (no temporary English/light frame); the
+  backend settings RPC remains authoritative once connected. macOS follows the system appearance at launch
   and live; its Settings toggle is a per-session override. Plus 检查更新… /
   Check for Updates… (manual online-update check; auto-check runs at
   launch and every 4 h — contract: `UPDATE.md`).

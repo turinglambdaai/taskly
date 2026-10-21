@@ -72,6 +72,72 @@ std::wstring wide(std::string const& text) {
 
 namespace {
 
+// Bootstrap only the visual preferences before Window.Activate(), rather
+// than painting the default light theme while the Racket backend starts.
+// The backend remains the source of truth and refreshes these settings once
+// get_settings completes. Keep this parser consistent with DATA-FORMAT §7.
+struct StartupPreferences {
+  std::string language{"zh"};
+  std::string theme{"system"};
+};
+
+std::string ascii_trim(std::string value) {
+  auto const first = value.find_first_not_of(" \t\r\n");
+  if (first == std::string::npos) return {};
+  auto const last = value.find_last_not_of(" \t\r\n");
+  return value.substr(first, last - first + 1);
+}
+
+std::string ascii_lower(std::string value) {
+  for (auto& c : value) {
+    if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
+  }
+  return value;
+}
+
+StartupPreferences read_startup_preferences() {
+  StartupPreferences result;
+  std::wstring home;
+  // Same Windows home precedence as racket/taskly/paths.rkt.
+  for (auto const* variable : {L"USERPROFILE", L"HOME"}) {
+    auto const required = ::GetEnvironmentVariableW(variable, nullptr, 0);
+    if (required <= 1) continue;
+    std::wstring value(required, L'\0');
+    auto const length =
+        ::GetEnvironmentVariableW(variable, value.data(), required);
+    if (length == 0 || length >= required) continue;
+    value.resize(length);
+    home = std::move(value);
+    break;
+  }
+  if (home.empty()) return result;
+
+  try {
+    std::ifstream config(std::filesystem::path(home) / L".taskly" /
+                         L"config.ini", std::ios::binary);
+    std::string line;
+    while (std::getline(config, line)) {
+      line = ascii_trim(std::move(line));
+      if (line.empty() || line.front() == '#' || line.front() == ';') continue;
+      auto const separator = line.find('=');
+      if (separator == std::string::npos) continue;
+      auto const key = ascii_lower(ascii_trim(line.substr(0, separator)));
+      auto const value = ascii_lower(ascii_trim(line.substr(separator + 1)));
+      // Match config-language/config-theme: last occurrence wins, and an
+      // invalid value falls back to that setting's documented default.
+      if (key == "language") {
+        result.language = (value == "zh" || value == "en") ? value : "zh";
+      } else if (key == "theme") {
+        result.theme = (value == "system" || value == "light" ||
+                        value == "dark") ? value : "system";
+      }
+    }
+  } catch (std::exception const&) {
+    // Missing/unreadable config should never delay or prevent a GUI launch.
+  }
+  return result;
+}
+
 rivet::windows::RacketRuntimeConfig runtime_config() {
   auto const exe = executable_path();
   auto const root = exe.parent_path();
@@ -514,22 +580,34 @@ MainWindow::MainWindow() {
   } catch (...) {
     // The fallback tables stay usable even if the exe path fails.
   }
-  set_i18n_language("en");  // corrected once get_settings reports
+  // Read only language/theme synchronously: the window is not activated
+  // yet, so dark-mode users never see a white/English startup frame.
+  // Full settings still load via the backend's get_settings_async RPC.
+  auto const initial = read_startup_preferences();
+  settings_.language = initial.language;
+  settings_.theme = initial.theme;
+  set_i18n_language(settings_.language);
   SetStatus(t("statusDatabaseNotConnected"));
-  // ApplyLanguage is the single source for every built-in string: the first
-  // paint is uniformly English (no XAML-default or blank elements), and the
-  // get_settings landing (OnLangZh/OnLangEn too) re-runs it wholesale so the
-  // final state always matches the user's language — never a mix.
   ApplyLanguage();
   // Hand-built rows take their brushes from code at build time, so a theme
   // flip must re-render them; the title bar colors ride the same event.
+  // Apply the persisted theme before subscribing to theme-change events.
+  // RequestedTheme may synchronously trigger ActualThemeChanged; if the
+  // handler runs during construction, it re-renders rows before activation.
+  // The initial UI already has its XAML controls and language applied.
+  ApplyTheme(settings_.theme);
+  // Do not reference a resource defined in the same Grid's
+  // ThemeDictionaries from the Grid's own XAML attribute: on a cold
+  // WinUI launch the forward ThemeResource lookup can surface as an
+  // unhandled XAML load exception before the window is created.
+  // Resolve the brush only after InitializeComponent + RequestedTheme.
+  RootGrid().Background(ThemeBrush(L"TasklySurfaceBrush"));
   RootGrid().ActualThemeChanged(
       [weak = get_weak()](auto&&, auto&&) {
         if (auto window = weak.get()) {
           window->OnEffectiveThemeChanged();
         }
       });
-  ApplyTitleBarTheme();
   InitializeBackendAsync();
 }
 
@@ -726,6 +804,7 @@ void MainWindow::ApplyTitleBarTheme() {
 // time — XAML ThemeResource bindings update themselves, hand-built rows do
 // not.
 void MainWindow::OnEffectiveThemeChanged() {
+  RootGrid().Background(ThemeBrush(L"TasklySurfaceBrush"));
   ApplyTitleBarTheme();
   RenderSidebar();
   RenderTasks();
