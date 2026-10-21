@@ -219,6 +219,45 @@ try {
         return $false
     })
 
+    # Native multi-selection must drive real batch completion, not only
+    # report a selection capability through UI Automation.
+    $secondLife = 'Second Life batch task'
+    $quickAdd.GetCurrentPattern(
+        [System.Windows.Automation.ValuePattern]::Pattern).SetValue($secondLife)
+    $quickAdd.SetFocus()
+    [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+    [void](Wait-Until 'second task saved under 生活' {
+        Find-ByName $window $secondLife
+    })
+    function Select-TaskForBatch {
+        param([string]$Title, [bool]$Append)
+        $label = Wait-Until ("task label: {0}" -f $Title) {
+            Find-ByName $window $Title
+        }
+        $item = $label
+        $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
+        while ($null -ne $item -and
+               $item.Current.ControlType -ne [System.Windows.Automation.ControlType]::ListItem) {
+            $item = $walker.GetParent($item)
+        }
+        if ($null -eq $item) { throw ("missing task row for {0}" -f $Title) }
+        $pattern = $item.GetCurrentPattern(
+            [System.Windows.Automation.SelectionItemPattern]::Pattern)
+        if ($Append) { $pattern.AddToSelection() } else { $pattern.Select() }
+    }
+    Select-TaskForBatch $plainTask $false
+    Select-TaskForBatch $secondLife $true
+    $batchComplete = Wait-Until 'multi-selection action bar' {
+        Find-ById $window 'bulk-complete'
+    }
+    $batchComplete.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    [void](Wait-Until 'both selected tasks completed by a single command' {
+        if ($null -eq (Find-ByName $window $plainTask) -and
+            $null -eq (Find-ByName $window $secondLife)) { return $true }
+        return $false
+    })
+
     $nodes = $window.FindAll(
         [System.Windows.Automation.TreeScope]::Descendants,
         [System.Windows.Automation.Condition]::TrueCondition)
@@ -256,6 +295,7 @@ try {
             'Windows task list exposes native multiple selection',
             'view switches preserve task list ownership',
             'global search shows the real owning list for every task',
+            'Ctrl/Shift multi-selection completes two tasks in one command',
             'native window close stopped the process'
         )
     } | ConvertTo-Json -Depth 5 |

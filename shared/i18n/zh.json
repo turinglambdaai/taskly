@@ -10,6 +10,8 @@
   "menuAbout": "关于",
   "menuLangEn": "English",
   "menuLangZh": "简体中文",
+  "bulkSelectedCount": "已选择 {0} 项",
+  "bulkComplete": "全部完成",
   "menuMoveToList": "移动到列表",
   "menuToggleCompleted": "标记完成/未完成",
   "aboutContent": "一款专注高效的个人任务管理工具\n帮助您轻松规划、组织和完成各项任务",

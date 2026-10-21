@@ -274,6 +274,7 @@
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
@@ -332,7 +333,28 @@
                     </StackPanel>
                 </Grid>
 
-                <Grid Grid.Row="1">
+                <!-- Shown only for multi-selected task rows; a shared action
+                     bar works in both the normal and global-search panes. -->
+                <StackPanel x:Name="BulkActionBar"
+                            Grid.Row="1"
+                            AutomationProperties.AutomationId="bulk-actions"
+                            Visibility="Collapsed"
+                            Orientation="Horizontal"
+                            Margin="24,0,24,8"
+                            VerticalAlignment="Center"
+                            Spacing="8">
+                    <TextBlock x:Name="BulkSelectionCount"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource TasklySecondaryTextBrush}" />
+                    <Button x:Name="BulkCompleteButton"
+                            AutomationProperties.AutomationId="bulk-complete"
+                            Click="OnBulkCompleteClicked" />
+                    <Button x:Name="BulkMoveButton"
+                            AutomationProperties.AutomationId="bulk-move"
+                            Click="OnBulkMoveClicked" />
+                </StackPanel>
+
+                <Grid Grid.Row="2">
                     <!-- Normal view -->
                     <StackPanel x:Name="NormalPane">
                         <!-- Quick-add card: accent plus button + live parse
@@ -416,6 +438,7 @@
                                 AutomationProperties.AutomationId="task-list"
                                 Margin="16,0,16,16"
                                 SelectionMode="Extended"
+                                SelectionChanged="OnTaskSelectionChanged"
                                 KeyDown="OnTaskListKeyDown">
                                 <ListView.ItemContainerStyle>
                                     <Style TargetType="ListViewItem">
@@ -438,6 +461,7 @@
                             AutomationProperties.AutomationId="search-task-list"
                             Margin="24,8,24,16"
                             SelectionMode="Extended"
+                            SelectionChanged="OnTaskSelectionChanged"
                             KeyDown="OnTaskListKeyDown">
                             <ListView.ItemContainerStyle>
                                 <Style TargetType="ListViewItem">

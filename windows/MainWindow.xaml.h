@@ -75,6 +75,13 @@ struct MainWindow : MainWindowT<MainWindow> {
                         Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&);
   void OnTaskListKeyDown(winrt::Windows::Foundation::IInspectable const&,
                          Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&);
+  void OnTaskSelectionChanged(
+      winrt::Windows::Foundation::IInspectable const&,
+      Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
+  void OnBulkCompleteClicked(winrt::Windows::Foundation::IInspectable const&,
+                             Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnBulkMoveClicked(winrt::Windows::Foundation::IInspectable const&,
+                         Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   // Update download action wired from XAML; event handlers must be public
   // because generated Connect() binds them through MainWindowT.
@@ -108,6 +115,10 @@ private:
   winrt::hstring view_subtitle() const;
   std::wstring full_date_today() const;
   void CommitQuickAdd();
+  void RefreshBulkActionBar();
+  std::vector<std::int64_t> SelectedTaskIds();
+  void MoveSelectedTasks(std::vector<std::int64_t> const& ids,
+                         std::int64_t target_list_id);
   void RefreshQuickAddPreview();
   void ApplyTitleBarTheme();
   void OnEffectiveThemeChanged();
