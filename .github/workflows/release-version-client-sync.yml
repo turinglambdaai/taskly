@@ -22,6 +22,7 @@ env:
 
 jobs:
   regenerate:
+    if: github.event_name == 'push'
     name: Regenerate and validate versioned clients
     runs-on: ubuntu-latest
     steps:
