@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - 'release/version-*'
+  pull_request:
+    types: [closed]
+    branches: [main]
 
 permissions:
   contents: write
@@ -80,3 +83,134 @@ jobs:
           set -euo pipefail
           gh workflow run ci.yml --ref "${GITHUB_REF_NAME}"
           gh workflow run acceptance.yml --ref "${GITHUB_REF_NAME}"
+
+  publish-verified-release:
+    name: Tag and publish after merged version PR
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release/version-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+
+      - name: Verify version, release notes, and signing secret
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
+          UPDATE_ED25519_PRIVATE_KEY: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          TAG="v${VERSION}"
+          [[ "$RELEASE_BRANCH" == "release/version-$VERSION" ]] || {
+            echo "::error::Release branch $RELEASE_BRANCH does not match VERSION $VERSION"
+            exit 1
+          }
+          bash scripts/check-release-version.sh
+          NOTES="$(awk -v header="## [${VERSION}]" '
+            index($0, header) == 1 {on=1; next}
+            on && /^## / {exit}
+            on {print}
+          ' CHANGELOG.md)"
+          [[ -n "$(printf '%s' "$NOTES" | tr -d '[:space:]')" ]] || {
+            echo "::error::Missing release notes for $VERSION"
+            exit 1
+          }
+          [[ -n "${UPDATE_ED25519_PRIVATE_KEY:-}" ]] || {
+            echo "::error::UPDATE_ED25519_PRIVATE_KEY is not configured; no tag will be created"
+            exit 1
+          }
+          if [[ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]]; then
+            echo "::error::Tag $TAG already exists; refusing to move or replace it"
+            exit 1
+          fi
+          echo "Verified release candidate $TAG at $GITHUB_SHA"
+
+      - name: Wait for CI and product acceptance on the merge commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          set -euo pipefail
+          ci_ok=false
+          acceptance_ok=false
+          for attempt in $(seq 1 180); do
+            runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${MERGE_SHA}&per_page=100")"
+            ci="$(jq -c --arg sha "$MERGE_SHA" '[.workflow_runs[] | select(.name == "CI" and .event == "push" and .head_sha == $sha)] | sort_by(.created_at) | last // empty' <<< "$runs")"
+            acceptance="$(jq -c --arg sha "$MERGE_SHA" '[.workflow_runs[] | select(.name == "Product Acceptance" and .event == "push" and .head_sha == $sha)] | sort_by(.created_at) | last // empty' <<< "$runs")"
+            if [[ -n "$ci" ]]; then
+              status="$(jq -r '.status' <<< "$ci")"
+              conclusion="$(jq -r '.conclusion // ""' <<< "$ci")"
+              if [[ "$status" == "completed" && "$conclusion" != "success" ]]; then
+                echo "::error::CI did not pass for merge commit $MERGE_SHA: $conclusion"
+                exit 1
+              fi
+              [[ "$status" == "completed" && "$conclusion" == "success" ]] && ci_ok=true
+            fi
+            if [[ -n "$acceptance" ]]; then
+              status="$(jq -r '.status' <<< "$acceptance")"
+              conclusion="$(jq -r '.conclusion // ""' <<< "$acceptance")"
+              if [[ "$status" == "completed" && "$conclusion" != "success" ]]; then
+                echo "::error::Product Acceptance did not pass for merge commit $MERGE_SHA: $conclusion"
+                exit 1
+              fi
+              [[ "$status" == "completed" && "$conclusion" == "success" ]] && acceptance_ok=true
+            fi
+            if [[ "$ci_ok" == true && "$acceptance_ok" == true ]]; then
+              echo "CI and Product Acceptance passed for $MERGE_SHA"
+              break
+            fi
+            if [[ "$attempt" -eq 180 ]]; then
+              echo "::error::Timed out waiting for CI and Product Acceptance on $MERGE_SHA"
+              exit 1
+            fi
+            sleep 15
+          done
+
+      - name: Create immutable annotated tag and dispatch release build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          TAG="v${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Taskly $TAG"
+          git push origin "$TAG"
+          gh workflow run release.yml --ref "$TAG"
+
+      - name: Wait for the release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 360); do
+            runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${RELEASE_SHA}&per_page=100")"
+            release="$(jq -c --arg sha "$RELEASE_SHA" '[.workflow_runs[] | select(.name == "Release" and .event == "workflow_dispatch" and .head_sha == $sha)] | sort_by(.created_at) | last // empty' <<< "$runs")"
+            if [[ -n "$release" ]]; then
+              status="$(jq -r '.status' <<< "$release")"
+              conclusion="$(jq -r '.conclusion // ""' <<< "$release")"
+              url="$(jq -r '.html_url' <<< "$release")"
+              if [[ "$status" == "completed" ]]; then
+                if [[ "$conclusion" != "success" ]]; then
+                  echo "::error::Release workflow failed: $url"
+                  exit 1
+                fi
+                echo "Release completed successfully: $url"
+                exit 0
+              fi
+            fi
+            if [[ "$attempt" -eq 360 ]]; then
+              echo "::error::Timed out waiting for release workflow"
+              exit 1
+            fi
+            sleep 15
+          done
