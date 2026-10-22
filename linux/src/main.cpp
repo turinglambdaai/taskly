@@ -3027,8 +3027,8 @@ void apply_language() {
   build_menubar();
   gtk_label_set_text(g_state.my_lists_caption,
                      tr("sectionMyLists").c_str());
-  gtk_entry_set_placeholder_text(GTK_ENTRY(g_state.search_box),
-                                 tr("searchHint").c_str());
+  gtk_search_entry_set_placeholder_text(g_state.search_box,
+                                        tr("searchHint").c_str());
   gtk_entry_set_placeholder_text(g_state.quick_add,
                                  tr("taskListInputHint").c_str());
   gtk_accessible_update_property(
