@@ -98,6 +98,6 @@ taskly/
 
 ## 组合定位（Portfolio placement）
 
-- 轨道与授权：轨道 2 消费买断（第三梯队候选）；授权形态：AGPL-3.0；商业归属：现阶段永久免费；产品成熟并划出 Pro 边界后按 Things 式买断收费。
+- 轨道与授权：轨道 2 消费买断（消费主打）；授权形态：AGPL-3.0；商业归属：收费产品——本地 SQLite 单文件 + 三平台原生 + CLI 是真实差异，按 Things 式买断 + 更新窗收费；v0.2 还年轻，先补成熟度并按未来 Pro 边界（候选：自然语言输入、提醒/日历集成、主题）做每个功能决策。
 - 组合归属唯一权威：[PORTFOLIO.md](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/PORTFOLIO.md)（turinglambdaai.github.io 仓库）。改归属/授权先改权威档，再同步本节。
 - 纪律：价格只进本仓 `PRICING.md`，且收费开始时才发布；README 与产品站不做价格预告。
