@@ -2666,18 +2666,29 @@ void rebuild_task_list() {
 // ---------------------------------------------------------------------------
 
 guint banner_timeout() {
+  if (g_state.banner_box == nullptr) return 0;
   return GPOINTER_TO_UINT(
       g_object_get_data(G_OBJECT(g_state.banner_box), "banner-timeout"));
 }
 
 void hide_delete_banner() {
+  // banner_box is the persistent child of the revealer. Remove only the
+  // transient card; replacing the revealer's child would destroy banner_box
+  // while g_state.banner_box still points at it.
+  if (g_state.banner_box == nullptr) return;
   auto const timeout = banner_timeout();
   if (timeout != 0) g_source_remove(timeout);
   g_object_set_data(G_OBJECT(g_state.banner_box), "banner-timeout",
                     GUINT_TO_POINTER(0));
-  gtk_revealer_set_reveal_child(
-      GTK_REVEALER(g_object_get_data(G_OBJECT(g_state.banner_box),
-                                     "banner-revealer")), FALSE);
+  auto* revealer = GTK_REVEALER(
+      g_object_get_data(G_OBJECT(g_state.banner_box), "banner-revealer"));
+  if (revealer != nullptr) {
+    gtk_revealer_set_reveal_child(revealer, FALSE);
+  }
+  while (auto* child =
+             gtk_widget_get_first_child(GTK_WIDGET(g_state.banner_box))) {
+    gtk_box_remove(g_state.banner_box, child);
+  }
 }
 
 void refresh_after_staged_delete() {
@@ -2763,7 +2774,8 @@ void stage_delete_tasks(std::vector<std::int64_t> const& ids) {
                      commit_staged_delete();
                    }), nullptr);
   gtk_box_append(GTK_BOX(card), close);
-  gtk_revealer_set_child(revealer, card);
+  // Keep the persistent banner_box alive; only the card is transient.
+  gtk_box_append(GTK_BOX(g_state.banner_box), card);
   gtk_revealer_set_reveal_child(revealer, TRUE);
   auto const timeout = g_timeout_add_seconds(6, on_undo_timeout, nullptr);
   g_object_set_data(G_OBJECT(g_state.banner_box), "banner-timeout",
@@ -3015,8 +3027,8 @@ void apply_language() {
   build_menubar();
   gtk_label_set_text(g_state.my_lists_caption,
                      tr("sectionMyLists").c_str());
-  gtk_entry_set_placeholder_text(GTK_ENTRY(g_state.search_box),
-                                 tr("searchHint").c_str());
+  gtk_search_entry_set_placeholder_text(g_state.search_box,
+                                        tr("searchHint").c_str());
   gtk_entry_set_placeholder_text(g_state.quick_add,
                                  tr("taskListInputHint").c_str());
   gtk_accessible_update_property(

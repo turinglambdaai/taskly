@@ -136,14 +136,34 @@ jobs:
       - name: Build host
         run: raco rivet build
       - name: Boot smoke
+        shell: bash
         run: |
+          set -euo pipefail
           smoke_home="$RUNNER_TEMP/taskly-smoke-home"
+          smoke_log="$RUNNER_TEMP/taskly-smoke.log"
           mkdir -p "$smoke_home"
-          HOME="$smoke_home" ./.rivet/stage/RivetHost &
+          HOME="$smoke_home" ./.rivet/stage/RivetHost >"$smoke_log" 2>&1 &
           APP_PID=$!
+          cleanup() {
+            if kill -0 "$APP_PID" 2>/dev/null; then
+              kill -TERM "$APP_PID" 2>/dev/null || true
+              for _ in 1 2 3 4 5; do
+                kill -0 "$APP_PID" 2>/dev/null || break
+                sleep 1
+              done
+              kill -KILL "$APP_PID" 2>/dev/null || true
+            fi
+            wait "$APP_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
           sleep 8
-          kill -0 $APP_PID
-          kill $APP_PID
+          if ! kill -0 "$APP_PID" 2>/dev/null; then
+            cat "$smoke_log" || true
+            echo "::error::RivetHost exited before the 8-second smoke window"
+            exit 1
+          fi
+          cleanup
+          trap - EXIT
 
   windows-host:
     name: Windows host (WinRT build)
