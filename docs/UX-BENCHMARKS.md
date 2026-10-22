@@ -31,13 +31,15 @@ Things 的灵魂是把"什么时候做"压进四个默认视图，用 **start da
 Things 几乎一切操作无需鼠标：全局快速录入、⌘N 新任务、⌘F 搜索、↑↓ 遍历、
 ⌘1…4 切视图、Enter 展开、Esc 收起。
 
-- ✅ 已落地（Linux 宿主）：Ctrl+1…4 切视图、Ctrl+N 聚焦快速添加、Ctrl+F 聚焦
-  搜索、Ctrl+Shift+C 切换显示已完成（PRODUCT-SPEC §8 的加速器全量接线）；
-  Esc 阶梯（编辑器 → 搜索 → 放行）。
+- ✅ 已落地（三平台）：Ctrl+1…4 切视图、Ctrl+N 聚焦快速添加、Ctrl+F 聚焦
+  搜索、Ctrl+Shift+C 切换显示已完成——Linux 宿主全量接线并带 Esc 阶梯
+  （编辑器 → 搜索 → 放行）；macOS 同一组命令走 ⌘ 系快捷键（⌘1…4/⌘N/
+  ⌘F/⇧⌘C）；Windows 用 KeyboardAccelerator 全窗口挂载同一契约，菜单上
+  另标 Ctrl+Shift+N / Ctrl+O 数据库快捷键提示。
 - ✅ Linux 任务列表：GTK 原生多选支持 Ctrl/Shift 点选和方向键焦点移动；
   Enter（或双击）激活选中行的行内编辑，Esc 先关闭编辑、再清除任务选择。
   任务列表轮询重建时按任务 ID 恢复选中状态。
-- 🔜 下一步：批量移动/完成/删除和跨视图选中策略仍须单独实现并实机验收。
+- ✅ 批量移动/完成/删除与跨视图选中策略已在三平台落地（详见 §2.4）。
 
 ### 1.3 "安静"的哲学（quiet software)
 

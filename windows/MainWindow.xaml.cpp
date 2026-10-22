@@ -616,6 +616,7 @@ MainWindow::MainWindow() {
           window->OnEffectiveThemeChanged();
         }
       });
+  InstallAppAccelerators();
   InitializeBackendAsync();
 }
 
@@ -735,6 +736,11 @@ void MainWindow::ApplyLanguage() {
   MenuHelp().Title(t("menuHelp"));
   MenuNewDatabase().Text(t("menuNewDatabase"));
   MenuOpenDatabase().Text(t("menuOpenDatabase"));
+  // Hint-only: the actual accelerators are installed window-wide in
+  // InstallAppAccelerators (these two also have on-menu hints because
+  // the File menu rows exist to carry them).
+  MenuNewDatabase().KeyboardAcceleratorTextOverride(L"Ctrl+Shift+N");
+  MenuOpenDatabase().KeyboardAcceleratorTextOverride(L"Ctrl+O");
   MenuCloseDatabase().Text(t("menuCloseDatabase"));
   MenuExit().Text(t("menuExit"));
   MenuLangZh().Text(t("menuLangZh"));
@@ -2490,6 +2496,10 @@ void MainWindow::OnSmartTileClick(
   auto const tag = sender.as<mxc::Button>().Tag();
   auto const kind =
       static_cast<ViewKind>(winrt::unbox_value<std::int32_t>(tag));
+  SwitchSmartView(kind);
+}
+
+void MainWindow::SwitchSmartView(ViewKind kind) {
   if (view_ == kind) {
     return;
   }
@@ -2501,6 +2511,69 @@ void MainWindow::OnSmartTileClick(
   RefreshSmartTiles();
   RenderTasks();
   ReloadTasksAsync();
+}
+
+// Ctrl+Shift+C mirrors the checkbox without double-firing its handler:
+// a programmatic IsChecked change raises Checked/Unchecked in WinUI, so
+// the handler applies the state first and this only finishes the job if
+// the event never ran.
+void MainWindow::ToggleShowCompleted() {
+  auto const boxed = ShowCompletedCheck().IsChecked();
+  bool const on = !(boxed != nullptr && boxed.Value());
+  ShowCompletedCheck().IsChecked(on);
+  if (show_completed_ == on) return;
+  show_completed_ = on;
+  ReloadTasksAsync();
+}
+
+// PRODUCT-SPEC §8: the accelerators work window-wide without opening the
+// menu. KeyboardAccelerators are scoped to the attached element's
+// XamlRoot, so RootGrid covers the whole window; each accelerator calls
+// the same code path its on-screen control uses.
+void MainWindow::InstallAppAccelerators() {
+  using winrt::Microsoft::UI::Input::KeyboardAccelerator;
+  using winrt::Windows::System::VirtualKey;
+  auto const control = winrt::Windows::System::VirtualKeyModifiers::Control;
+  auto const control_shift =
+      control | winrt::Windows::System::VirtualKeyModifiers::Shift;
+  auto attach = [&](VirtualKey key,
+                    winrt::Windows::System::VirtualKeyModifiers mods,
+                    auto&& invoked) {
+    KeyboardAccelerator acc{};
+    acc.Modifiers(mods);
+    acc.Key(key);
+    acc.Invoked([invoked](auto const&,
+                          winrt::Microsoft::UI::Input::
+                              KeyboardAcceleratorInvokedEventArgs const&
+                                  args) {
+      args.Handled(true);
+      invoked();
+    });
+    RootGrid().KeyboardAccelerators().Append(acc);
+  };
+  attach(VirtualKey::Number1, control,
+         [this] { SwitchSmartView(ViewKind::Today); });
+  attach(VirtualKey::Number2, control,
+         [this] { SwitchSmartView(ViewKind::Planned); });
+  attach(VirtualKey::Number3, control,
+         [this] { SwitchSmartView(ViewKind::All); });
+  attach(VirtualKey::Number4, control,
+         [this] { SwitchSmartView(ViewKind::Completed); });
+  attach(VirtualKey::N, control, [this] {
+    if (inline_task_id_.has_value()) CommitInlineTaskEditor();
+    NewTaskBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Keyboard);
+  });
+  attach(VirtualKey::F, control,
+         [this] { SearchBox().Focus(winrt::Microsoft::UI::Xaml::FocusState::Keyboard); });
+  attach(VirtualKey::C, control_shift, [this] { ToggleShowCompleted(); });
+  attach(VirtualKey::N, control_shift, [this] {
+    Microsoft::UI::Xaml::RoutedEventArgs args;
+    OnNewDatabase(nullptr, args);
+  });
+  attach(VirtualKey::O, control, [this] {
+    Microsoft::UI::Xaml::RoutedEventArgs args;
+    OnOpenDatabase(nullptr, args);
+  });
 }
 
 void MainWindow::OnUserListSelectionChanged(
