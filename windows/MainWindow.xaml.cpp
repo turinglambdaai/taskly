@@ -2531,7 +2531,7 @@ void MainWindow::ToggleShowCompleted() {
 // XamlRoot, so RootGrid covers the whole window; each accelerator calls
 // the same code path its on-screen control uses.
 void MainWindow::InstallAppAccelerators() {
-  using winrt::Microsoft::UI::Input::KeyboardAccelerator;
+  using winrt::Microsoft::UI::Xaml::Input::KeyboardAccelerator;
   using winrt::Windows::System::VirtualKey;
   auto const control = winrt::Windows::System::VirtualKeyModifiers::Control;
   auto const control_shift =
@@ -2543,7 +2543,7 @@ void MainWindow::InstallAppAccelerators() {
     acc.Modifiers(mods);
     acc.Key(key);
     acc.Invoked([invoked](auto const&,
-                          winrt::Microsoft::UI::Input::
+                          winrt::Microsoft::UI::Xaml::Input::
                               KeyboardAcceleratorInvokedEventArgs const&
                                   args) {
       args.Handled(true);
