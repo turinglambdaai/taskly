@@ -1,0 +1,82 @@
+name: Regenerate versioned clients
+
+on:
+  push:
+    branches:
+      - 'release/version-*'
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: release-version-client-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RIVET_PIN: 1ebb3ac09ed2e23eeb0a91cbec6e689aac01ab1a
+  KEEL_PIN: 0740fdfbdab7bf5dab32232c82f07dd98aa6a196
+
+jobs:
+  regenerate:
+    name: Regenerate and validate versioned clients
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Set up Racket CS 9.3
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          distribution: full
+          variant: CS
+          version: '9.3'
+
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes cmake ninja-build pkg-config \
+            libgtk-4-dev libadwaita-1-dev libjson-glib-dev \
+            libsecret-1-dev libglib2.0-dev
+
+      - name: Set up embeddable Racket CS
+        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@1ebb3ac09ed2e23eeb0a91cbec6e689aac01ab1a
+
+      - name: Install pinned Racket dependencies
+        run: |
+          raco pkg install --auto --no-docs "https://github.com/turinglambdaai/keel.git#${KEEL_PIN}"
+          raco pkg install --auto --no-docs "https://github.com/turinglambdaai/rivet.git#${RIVET_PIN}"
+          raco pkg install --auto --no-docs db crypto
+
+      - name: Regenerate clients from the canonical RPC contract
+        run: |
+          set -euo pipefail
+          raco rivet build
+          bash scripts/check-release-version.sh
+
+      - name: Commit generated client version identities
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            macos-host/Sources/RivetHost/GeneratedBackend.swift \
+            windows/GeneratedBackend.hpp \
+            linux/GeneratedBackend.hpp
+          if git diff --cached --quiet; then
+            echo "Generated client files are already aligned."
+          else
+            git commit -m "chore(release): regenerate versioned clients"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+      - name: Dispatch full CI and product acceptance on generated commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run ci.yml --ref "${GITHUB_REF_NAME}"
+          gh workflow run acceptance.yml --ref "${GITHUB_REF_NAME}"
