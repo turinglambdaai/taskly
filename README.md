@@ -135,6 +135,16 @@ suite and byte-identical i18n on every push. The source-controlled
 verified package, and accessibility-driven product behavior on Windows,
 macOS arm64/x64, and Linux.
 
+## Feedback
+
+Taskly is offline-first and ships no telemetry —
+[GitHub issues](https://github.com/turinglambdaai/taskly/issues) are the
+feedback channel, with templates for both
+[bug reports](https://github.com/turinglambdaai/taskly/issues/new?template=bug_report.md)
+and
+[feature requests](https://github.com/turinglambdaai/taskly/issues/new?template=feature_request.md).
+The in-app About dialog links to the same tracker on every platform.
+
 ## License
 
 [AGPL-3.0](LICENSE).

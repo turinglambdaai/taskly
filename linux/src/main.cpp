@@ -1774,20 +1774,56 @@ void confirm_dialog(char const* title, char const* body,
   gtk_window_present(GTK_WINDOW(dialog));
 }
 
+// Same About content as the macOS and Windows hosts: tagline, license,
+// and two links — website plus the issue tracker. GtkAboutDialog cannot
+// carry a second link, so the family layout is built on a plain dialog;
+// GtkLinkButton opens the URI through the system browser itself.
 void show_about_dialog() {
-  auto* dialog = gtk_about_dialog_new();
-  gtk_about_dialog_set_program_name(GTK_ABOUT_DIALOG(dialog), "Taskly");
-  gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(dialog), rivet_app::kVersion);
-  gtk_about_dialog_set_comments(GTK_ABOUT_DIALOG(dialog),
-                                tr("aboutContent").c_str());
-  gtk_about_dialog_set_license(GTK_ABOUT_DIALOG(dialog),
-                               tr("aboutLicense").c_str());
-  gtk_about_dialog_set_website(GTK_ABOUT_DIALOG(dialog),
-                               "https://taskly.jrtx.site");
-  gtk_about_dialog_set_website_label(GTK_ABOUT_DIALOG(dialog),
-                                     tr("aboutWebsite").c_str());
-  gtk_window_set_transient_for(GTK_WINDOW(dialog), g_state.window);
-  gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
+  auto* dialog = gtk_dialog_new_with_buttons(
+      ("Taskly v" + std::string(rivet_app::kVersion)).c_str(),
+      g_state.window,
+      static_cast<GtkDialogFlags>(GTK_DIALOG_MODAL |
+                                  GTK_DIALOG_DESTROY_WITH_PARENT),
+      tr("dialogConfirm").c_str(), GTK_RESPONSE_CLOSE, nullptr);
+  auto* area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  auto* content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+  gtk_widget_set_margin_top(content, 12);
+  gtk_widget_set_margin_bottom(content, 6);
+  gtk_widget_set_margin_start(content, 12);
+  gtk_widget_set_margin_end(content, 12);
+  gtk_box_append(GTK_BOX(area), content);
+  auto* copyright = gtk_label_new("© 2026 Taskly Team");
+  gtk_widget_set_opacity(copyright, 0.75);
+  gtk_box_append(GTK_BOX(content), copyright);
+  auto* comments = gtk_label_new(tr("aboutContent").c_str());
+  gtk_label_set_wrap(GTK_LABEL(comments), TRUE);
+  gtk_label_set_justify(GTK_LABEL(comments), GTK_JUSTIFY_CENTER);
+  gtk_label_set_max_width_chars(GTK_LABEL(comments), 60);
+  gtk_box_append(GTK_BOX(content), comments);
+  auto* license = gtk_label_new(tr("aboutLicense").c_str());
+  gtk_label_set_wrap(GTK_LABEL(license), TRUE);
+  gtk_label_set_justify(GTK_LABEL(license), GTK_JUSTIFY_CENTER);
+  gtk_label_set_max_width_chars(GTK_LABEL(license), 60);
+  gtk_widget_set_opacity(license, 0.75);
+  gtk_box_append(GTK_BOX(content), license);
+  auto* links = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 24);
+  gtk_widget_set_halign(links, GTK_ALIGN_CENTER);
+  gtk_box_append(GTK_BOX(content), links);
+  auto* website = gtk_link_button_new("https://taskly.jrtx.site");
+  gtk_button_set_label(GTK_BUTTON(website), tr("aboutWebsite").c_str());
+  gtk_widget_set_hexpand(website, FALSE);
+  gtk_box_append(GTK_BOX(links), website);
+  auto* issue = gtk_link_button_new(
+      "https://github.com/turinglambdaai/taskly/issues");
+  gtk_button_set_label(GTK_BUTTON(issue), tr("aboutReportIssue").c_str());
+  gtk_widget_set_hexpand(issue, FALSE);
+  gtk_box_append(GTK_BOX(links), issue);
+  g_signal_connect(
+      dialog, "response",
+      G_CALLBACK(+[](GtkDialog* dialog, gint, gpointer) {
+        gtk_window_destroy(GTK_WINDOW(dialog));
+      }),
+      nullptr);
   gtk_window_present(GTK_WINDOW(dialog));
 }
 

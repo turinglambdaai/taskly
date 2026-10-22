@@ -2433,6 +2433,12 @@ winrt::fire_and_forget MainWindow::OnAbout(
     Microsoft::UI::Xaml::RoutedEventArgs const&) {
   auto panel = mxc::StackPanel{};
   panel.Spacing(4);
+  auto copyright = mxc::TextBlock{};
+  copyright.Text(L"© 2026 Taskly Team");
+  copyright.TextAlignment(mx::TextAlignment::Center);
+  copyright.FontSize(12);
+  copyright.Opacity(0.75);
+  panel.Children().Append(copyright);
   auto tagline = mxc::TextBlock{};
   tagline.Text(t("aboutContent"));
   tagline.TextAlignment(mx::TextAlignment::Center);
