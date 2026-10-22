@@ -234,6 +234,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
+          bash scripts/check-release-version.sh "$GITHUB_REF_NAME"
           mkdir -p dist
           # cp -R merges: rivet releases leave a dist/taskly-linux-<arch>/
           # staging bundle in the artifacts, and a plain mv dies on the
@@ -251,6 +252,19 @@ jobs:
           KEY_PEM="$RUNNER_TEMP/update-signing-key.pem"
           printf '%s\n' "$UPDATE_ED25519_PRIVATE_KEY" > "$KEY_PEM"
           chmod 600 "$KEY_PEM"
+          # Refuse to publish a feed signed by a key the shipped clients do not trust.
+          DER_PUBLIC="$(openssl pkey -in "$KEY_PEM" -pubout -outform DER 2>/dev/null | base64 -w0)"
+          RAW_PUBLIC="$(openssl pkey -in "$KEY_PEM" -pubout -outform DER 2>/dev/null | tail -c 32 | base64 -w0)"
+          EXPECTED_DER="$(sed -n '/(define update-public-key-b64/{n;s/^[[:space:]]*"\([^"]*\)".*/\1/p;}' racket/taskly/updater.rkt)"
+          EXPECTED_RAW="$(sed -n 's/.*public static let publicKeyBase64 = "\([^"]*\)".*/\1/p' macos-host/Sources/RivetHost/UpdateService.swift)"
+          [[ -n "$EXPECTED_DER" && "$DER_PUBLIC" == "$EXPECTED_DER" ]] || {
+            echo "::error::Signing secret does not match the backend Ed25519 public key"
+            exit 1
+          }
+          [[ -n "$EXPECTED_RAW" && "$RAW_PUBLIC" == "$EXPECTED_RAW" ]] || {
+            echo "::error::Signing secret does not match the macOS Ed25519 public key"
+            exit 1
+          }
           scripts/make-update-manifest.sh "$GITHUB_REF_NAME" dist "$KEY_PEM"
           test -s dist/update-manifest.json || {
             echo "::error::Signed update manifest was not generated"
