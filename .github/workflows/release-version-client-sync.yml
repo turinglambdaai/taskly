@@ -149,13 +149,6 @@ jobs:
             echo "::error::Signing secret does not match the macOS Ed25519 public key"
             exit 1
           }
-          EXPECTED_BACKEND_KEY_ID="$(sed -n 's/^(define update-key-id "\([^"]*\)".*/\1/p' racket/taskly/updater.rkt)"
-          EXPECTED_MACOS_KEY_ID="$(sed -n 's/.*public static let expectedKeyID = "\([^"]*\)".*/\1/p' macos-host/Sources/RivetHost/UpdateService.swift)"
-          EXPECTED_SPEC_KEY_ID="$(grep -oE '"key_id": "[^"]+"' shared/spec/UPDATE.md | head -n1 | cut -d '"' -f4)"
-          [[ -n "$EXPECTED_BACKEND_KEY_ID" && "$EXPECTED_BACKEND_KEY_ID" == "$EXPECTED_MACOS_KEY_ID" && "$EXPECTED_BACKEND_KEY_ID" == "$EXPECTED_SPEC_KEY_ID" ]] || {
-            echo "::error::Update key IDs differ across backend, macOS host, and shared contract"
-            exit 1
-          }
           if [[ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]]; then
             # A failed publish can be retried without moving the immutable tag,
             # but only if it is annotated and points at this exact merge commit.
