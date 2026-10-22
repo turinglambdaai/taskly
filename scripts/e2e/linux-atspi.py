@@ -80,9 +80,9 @@ def find_named(root, expected_name, expected_role=None):
     return None
 
 
-def find_editable_named(root, name):
+def find_editable_named(root, expected_name):
     for node in walk(root):
-        if name(node) != name:
+        if name(node) != expected_name:
             continue
         try:
             node.queryEditableText()
