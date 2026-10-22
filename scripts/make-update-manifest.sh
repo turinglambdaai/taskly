@@ -30,6 +30,14 @@ VERSION="${TAG#v}"
 [[ "$VERSION" == "$(tr -d '[:space:]' < "$ROOT/VERSION")" ]] || {
   echo "error: tag $TAG does not match VERSION '$(cat "$ROOT/VERSION")'" >&2; exit 1; }
 
+# The backend updater owns the pinned key id. Derive it here rather than
+# duplicating a literal that can drift during key rotation.
+KEY_ID="$(sed -n 's/^(define update-key-id "\([^"]*\)".*/\1/p' "$ROOT/racket/taskly/updater.rkt")"
+[[ "$KEY_ID" =~ ^[A-Za-z0-9._-]+$ ]] || {
+  echo "error: could not read a valid update-key-id from racket/taskly/updater.rkt" >&2
+  exit 1
+}
+
 for artifact in "$DIST/taskly-$VERSION-macos-arm64.zip" \
                 "$DIST/taskly-$VERSION-macos-x64.zip" \
                 "$DIST/taskly-$VERSION-windows-x64.zip" \
@@ -79,7 +87,7 @@ cat > "$SCRIPT" <<RKT
 (define base-url "$BASE_URL")
 (define dist (path->complete-path "$DIST"))
 (define key-path (path->complete-path "$KEY_DER"))
-(define key-id "taskly-2026-10")
+(define key-id "$KEY_ID")
 (define build (hash-ref (file->value (build-path (path->complete-path "$ROOT") "rivet.rktd")) 'build))
 
 (define (artifact platform architecture file installer)
