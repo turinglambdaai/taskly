@@ -126,7 +126,11 @@ def find_staged_delete_ready(root):
 
 def matching_child_indexes(container, expected):
     result = []
-    for index in range(container.childCount):
+    try:
+        count = container.childCount
+    except Exception:
+        return result
+    for index in range(count):
         try:
             child = container.getChildAtIndex(index)
         except Exception:
