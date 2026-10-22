@@ -38,8 +38,8 @@ watch architecture.
   actions and a one-step undo banner for deletes; ↑/↓ navigation,
   Return expands the row in place (title, date/time chips, notes),
   Esc collapses; completed tasks fold under a collapsible header.
-  Complete on macOS today; Linux ships the undo banner and the
-  keyboard flow, Windows is catching up
+  The full set — including the shared app accelerators (Ctrl/⌘+1…4,
+  N, F, ⇧C) — ships on all three platforms
   ([status](docs/UX-BENCHMARKS.md)).
 - **Due-task notifications** — a 60 s poll plus a startup check, deduped,
   capped at three separate banners (more → one summary).

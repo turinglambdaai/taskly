@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deletion (#33, #43, #46, #48).
 - Windows: six-second reversible deletion for individual and selected tasks
   (#47).
+- Windows: the shared app accelerators now work window-wide — Ctrl+1…4
+  switch smart views, Ctrl+N focuses quick add, Ctrl+F focuses search,
+  Ctrl+Shift+C toggles completed tasks, and Ctrl+Shift+N / Ctrl+O create
+  or open a database.
 - Linux: the About dialog now carries the same website and Report-an-Issue
   links as macOS and Windows (GtkAboutDialog cannot hold a second link,
   so the dialog is built on the plain family layout); Windows and Linux

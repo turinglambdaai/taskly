@@ -100,6 +100,14 @@ struct MainWindow : MainWindowT<MainWindow> {
 private:
   enum class ViewKind { Today, Planned, All, Completed, List };
 
+  // PRODUCT-SPEC §8 app accelerators (Ctrl+1…4 / Ctrl+N / Ctrl+F /
+  // Ctrl+Shift+C / Ctrl+Shift+N / Ctrl+O). They reuse the command paths
+  // of the tiles and menu items; Windows has no View menu, so the
+  // accelerators are installed on the root element in code.
+  void InstallAppAccelerators();
+  void SwitchSmartView(ViewKind kind);
+  void ToggleShowCompleted();
+
   static std::string ViewStringFor(ViewKind kind);
 
   winrt::fire_and_forget InitializeBackendAsync();
