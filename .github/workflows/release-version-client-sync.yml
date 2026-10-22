@@ -1,11 +1,8 @@
 name: Regenerate versioned clients
 
 on:
-  push:
-    branches:
-      - 'release/version-*'
   pull_request:
-    types: [closed]
+    types: [opened, synchronize, reopened, closed]
     branches: [main]
 
 permissions:
@@ -22,13 +19,17 @@ env:
 
 jobs:
   regenerate:
-    if: github.event_name == 'push'
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'release/version-')
     name: Regenerate and validate versioned clients
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
       - name: Set up Racket CS 9.3
@@ -74,16 +75,17 @@ jobs:
             echo "Generated client files are already aligned."
           else
             git commit -m "chore(release): regenerate versioned clients"
-            git push origin "HEAD:${GITHUB_REF_NAME}"
+            git push origin "HEAD:${RELEASE_BRANCH}"
           fi
 
       - name: Dispatch full CI and product acceptance on generated commit
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
-          gh workflow run ci.yml --ref "${GITHUB_REF_NAME}"
-          gh workflow run acceptance.yml --ref "${GITHUB_REF_NAME}"
+          gh workflow run ci.yml --ref "${RELEASE_BRANCH}"
+          gh workflow run acceptance.yml --ref "${RELEASE_BRANCH}"
 
   publish-verified-release:
     name: Tag and publish after merged version PR
@@ -91,6 +93,7 @@ jobs:
       github.event_name == 'pull_request' &&
       github.event.action == 'closed' &&
       github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
       startsWith(github.event.pull_request.head.ref, 'release/version-')
     runs-on: ubuntu-latest
     timeout-minutes: 180
