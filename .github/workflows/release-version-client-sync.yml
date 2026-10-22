@@ -63,6 +63,8 @@ jobs:
           bash scripts/check-release-version.sh
 
       - name: Commit generated client version identities
+        env:
+          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
