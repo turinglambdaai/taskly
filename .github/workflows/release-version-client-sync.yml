@@ -127,6 +127,23 @@ jobs:
             echo "::error::UPDATE_ED25519_PRIVATE_KEY is not configured; no tag will be created"
             exit 1
           }
+          # Confirm the configured private key matches both embedded public
+          # keys before creating an immutable tag. Never print the private key.
+          KEY_PEM="$(mktemp)"
+          trap 'rm -f "$KEY_PEM"' EXIT
+          printf '%s\n' "$UPDATE_ED25519_PRIVATE_KEY" > "$KEY_PEM"
+          DER_PUBLIC="$(openssl pkey -in "$KEY_PEM" -pubout -outform DER 2>/dev/null | base64 -w0)"
+          RAW_PUBLIC="$(openssl pkey -in "$KEY_PEM" -pubout -outform DER 2>/dev/null | tail -c 32 | base64 -w0)"
+          EXPECTED_DER="$(sed -n '/(define update-public-key-b64/{n;s/^[[:space:]]*"\([^"]*\)".*/\1/p;}' racket/taskly/updater.rkt)"
+          EXPECTED_RAW="$(sed -n 's/.*public static let publicKeyBase64 = "\([^"]*\)".*/\1/p' macos-host/Sources/RivetHost/UpdateService.swift)"
+          [[ -n "$EXPECTED_DER" && "$DER_PUBLIC" == "$EXPECTED_DER" ]] || {
+            echo "::error::Signing secret does not match the backend Ed25519 public key"
+            exit 1
+          }
+          [[ -n "$EXPECTED_RAW" && "$RAW_PUBLIC" == "$EXPECTED_RAW" ]] || {
+            echo "::error::Signing secret does not match the macOS Ed25519 public key"
+            exit 1
+          }
           if [[ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]]; then
             echo "::error::Tag $TAG already exists; refusing to move or replace it"
             exit 1
