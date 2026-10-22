@@ -11,5 +11,5 @@
                "rivet"))
 (define build-deps '("rackunit-lib"))
 (define pkg-desc "Taskly shared Racket application core")
-(define version "0.2.3")
+(define version "0.2.4")
 (define pkg-authors '("turinglambdaai"))
