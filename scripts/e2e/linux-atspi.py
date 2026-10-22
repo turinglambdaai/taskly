@@ -38,6 +38,14 @@ def role(node):
         return "unknown"
 
 
+def name(node):
+    try:
+        return node.name or ""
+    except Exception:
+        # A row can disappear between two AT-SPI calls while GTK rebuilds it.
+        return ""
+
+
 def text(node):
     try:
         value = node.queryText()
@@ -60,21 +68,21 @@ def find_application():
     desktop = pyatspi.Registry.getDesktop(0)
     for application in children(desktop):
         for node in children(application):
-            if role(node) == "frame" and "taskly" in (node.name or "").casefold():
+            if role(node) == "frame" and "taskly" in name(node).casefold():
                 return application
     return None
 
 
-def find_named(root, name, expected_role=None):
+def find_named(root, expected_name, expected_role=None):
     for node in walk(root):
-        if (node.name or "") == name and (expected_role is None or role(node) == expected_role):
+        if name(node) == expected_name and (expected_role is None or role(node) == expected_role):
             return node
     return None
 
 
 def find_editable_named(root, name):
     for node in walk(root):
-        if (node.name or "") != name:
+        if name(node) != name:
             continue
         try:
             node.queryEditableText()
@@ -85,7 +93,35 @@ def find_editable_named(root, name):
 
 
 def contains_text(root, expected):
-    return any((node.name or "") == expected or text(node) == expected for node in walk(root))
+    return any(name(node) == expected or text(node) == expected for node in walk(root))
+
+
+def find_staged_delete_ready(root):
+    """Find the Undo button and verify both staged task rows are already hidden in one tree walk."""
+    undo = None
+    found_a = False
+    found_b = False
+    for node in walk(root):
+        node_name = name(node)
+        node_text = ""
+        if node_name == "Undo" and role(node) == "push button":
+            undo = node
+        if node_name == "64-bit task A":
+            found_a = True
+        elif not found_a:
+            node_text = text(node)
+            if node_text == "64-bit task A":
+                found_a = True
+        if node_name == "64-bit task B":
+            found_b = True
+        elif not found_b:
+            if not node_text:
+                node_text = text(node)
+            if node_text == "64-bit task B":
+                found_b = True
+        if undo is not None and found_a and found_b:
+            return None
+    return undo if undo is not None and not found_a and not found_b else None
 
 
 def matching_child_indexes(container, expected):
@@ -142,7 +178,7 @@ def select_named_children(root, expected_names):
 
 
 def snapshot(node, depth=0):
-    result = {"name": node.name or "", "role": role(node)}
+    result = {"name": name(node), "role": role(node)}
     value = text(node)
     if value:
         result["text"] = value
@@ -210,12 +246,13 @@ def main():
         lambda: select_named_children(window, ["64-bit task A", "64-bit task B"]),
     )
     press(delete)
-    wait_for(
-        "staged tasks hidden",
-        lambda: not contains_text(window, "64-bit task A")
-        and not contains_text(window, "64-bit task B"),
+    # The product's undo window is six seconds. Find the banner and confirm
+    # both rows are hidden in one AT-SPI traversal, then undo immediately.
+    undo = wait_for(
+        "staged deletion hidden with undo banner",
+        lambda: find_staged_delete_ready(window),
+        timeout=4.0,
     )
-    undo = wait_for("undo banner", lambda: find_named(window, "Undo", "push button"))
     press(undo)
     wait_for(
         "identity-preserving undo",
