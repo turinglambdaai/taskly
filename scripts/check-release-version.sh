@@ -63,4 +63,13 @@ check_generated_version \
   "linux/GeneratedBackend.hpp" \
   'kVersion\[\] = "[^"]+"'
 
-echo "release preflight: version $VERSION is aligned (VERSION == rivet.rktd == version.rkt == generated clients)"
+# Keep the signing key identity aligned across the backend, macOS verifier,
+# and documented manifest contract. The manifest generator reads the backend
+# key id, so a mismatch here would make a correctly signed release unusable.
+BACKEND_KEY_ID="$(sed -n 's/^(define update-key-id "\([^"]*\)".*/\1/p' "$ROOT/racket/taskly/updater.rkt")"
+MACOS_KEY_ID="$(sed -n 's/.*public static let expectedKeyID = "\([^"]*\)".*/\1/p' "$ROOT/macos-host/Sources/RivetHost/UpdateService.swift")"
+SPEC_KEY_ID="$(grep -oE '"key_id": "[^"]+"' "$ROOT/shared/spec/UPDATE.md" | head -n1 | cut -d '"' -f4 || true)"
+[[ -n "$BACKEND_KEY_ID" && "$BACKEND_KEY_ID" == "$MACOS_KEY_ID" && "$BACKEND_KEY_ID" == "$SPEC_KEY_ID" ]] || \
+  fail "update key id differs across backend, macOS host, and shared UPDATE contract"
+
+echo "release preflight: version $VERSION and update key identity are aligned"
