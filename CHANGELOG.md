@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.4] - 2026-10-22
 
 ### Added
 - Windows: native Ctrl/Shift task multi-selection, batch completion/move/date
@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Linux: preserve full 64-bit SQLite IDs in GTK task/list selection, editing,
   completion and navigation; exercise large IDs in the native acceptance
   suite (#49).
+- Linux: keep the staged-delete undo card attached to its persistent GTK
+  container, avoiding a use-after-free during Undo/timeout; use the native
+  GtkSearchEntry placeholder API and harden AT-SPI scans during row rebuilds
+  (#54).
 - Preserve quick-add drafts until asynchronous saves succeed on Windows,
   macOS and Linux (#32, #37, #38).
 - Windows: honor the selected task list on creation, allow correction of
