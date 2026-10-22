@@ -114,7 +114,7 @@ jobs:
           set -euo pipefail
           VERSION="$(tr -d '[:space:]' < VERSION)"
           TAG="v${VERSION}"
-          [[ "$RELEASE_BRANCH" == "release/version-$VERSION" ]] || {
+          [[ "$RELEASE_BRANCH" == "release/version-v$VERSION" ]] || {
             echo "::error::Release branch $RELEASE_BRANCH does not match VERSION $VERSION"
             exit 1
           }
