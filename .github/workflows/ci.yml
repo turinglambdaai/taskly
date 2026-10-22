@@ -24,6 +24,8 @@ jobs:
         run: scripts/sync-i18n.sh --check
       - name: Verify release version alignment
         run: bash scripts/check-release-version.sh
+      - name: Check release script shell syntax
+        run: bash -n scripts/check-release-version.sh scripts/make-update-manifest.sh scripts/update-keys.sh
       - name: Verify dependency pins stay aligned
         run: bash scripts/check-dependency-pins.sh
       - name: Verify Windows installer bitmap and checkbox surface
