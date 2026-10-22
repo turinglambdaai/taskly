@@ -145,10 +145,20 @@ jobs:
             exit 1
           }
           if [[ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]]; then
-            echo "::error::Tag $TAG already exists; refusing to move or replace it"
-            exit 1
+            # A failed publish can be retried without moving the immutable tag,
+            # but only if it is annotated and points at this exact merge commit.
+            git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+            [[ "$(git cat-file -t "$TAG")" == "tag" ]] || {
+              echo "::error::Existing tag $TAG is lightweight; refusing to use it"
+              exit 1
+            }
+            [[ "$(git rev-parse "$TAG^{commit}")" == "$(git rev-parse HEAD)" ]] || {
+              echo "::error::Existing tag $TAG points at a different commit"
+              exit 1
+            }
+            echo "Reusing existing annotated tag $TAG for a safe release retry"
           fi
-          echo "Verified release candidate $TAG at $GITHUB_SHA"
+          echo "Verified release candidate $TAG at $(git rev-parse HEAD)"
 
       - name: Wait for CI and product acceptance on the merge commit
         env:
@@ -200,8 +210,12 @@ jobs:
           TAG="v${VERSION}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "Taskly $TAG"
-          git push origin "$TAG"
+          if git show-ref --verify --quiet "refs/tags/$TAG"; then
+            echo "Reusing immutable tag $TAG"
+          else
+            git tag -a "$TAG" -m "Taskly $TAG"
+            git push origin "$TAG"
+          fi
           gh workflow run release.yml --ref "$TAG"
 
       - name: Wait for the release workflow
