@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deletion (#33, #43, #46, #48).
 - Windows: six-second reversible deletion for individual and selected tasks
   (#47).
+- Linux: the About dialog now carries the same website and Report-an-Issue
+  links as macOS and Windows, and the README and product site name the
+  issue tracker as the feedback channel (#55).
 
 ### Changed
 - Add an executable cross-platform product acceptance contract. Windows,

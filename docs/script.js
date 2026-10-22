@@ -142,6 +142,7 @@ const i18n = {
         'cta.manual': 'Read the manual',
         'release.note': 'Every release carries SHA256SUMS plus a signed update manifest; macOS builds are ad-hoc signed \u2014 clear the Gatekeeper quarantine with `xattr -cr /Applications/Taskly.app` on first launch.',
         'footer.changelog': 'Changelog',
+        'footer.feedback': 'Feedback',
         'footer.license': 'AGPL-3.0 license.'
     },
     zh: {
@@ -196,6 +197,7 @@ const i18n = {
         'cta.manual': '阅读手册',
         'release.note': '每个版本都带 SHA256SUMS 与签名更新清单；macOS 包为 ad-hoc 签名——首次启动如被 Gatekeeper 拦截，执行 `xattr -cr /Applications/Taskly.app` 即可。',
         'footer.changelog': '更新日志',
+        'footer.feedback': '问题反馈',
         'footer.license': 'AGPL-3.0 协议。'
     }
 };
