@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows: six-second reversible deletion for individual and selected tasks
   (#47).
 - Linux: the About dialog now carries the same website and Report-an-Issue
-  links as macOS and Windows, and the README and product site name the
+  links as macOS and Windows (GtkAboutDialog cannot hold a second link,
+  so the dialog is built on the plain family layout); Windows and Linux
+  also gain the About © line, and the README and product site name the
   issue tracker as the feedback channel (#55).
 
 ### Changed

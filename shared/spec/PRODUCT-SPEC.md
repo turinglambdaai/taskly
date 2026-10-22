@@ -168,9 +168,10 @@ pickers. Save (blank text silently ignored), Delete (confirm first), Cancel
 - Help: About — `Taskly v<version>` + `© 2026 Taskly Team` +
   `aboutContent` + license line (`aboutLicense`) + two link buttons on
   every host: Website (`aboutWebsite` → taskly.jrtx.site) and Report an
-  Issue (`aboutReportIssue` → the GitHub issue tracker). Linux uses the
-  GTK about dialog's native version/license/website rows; macOS and
-  Windows render the same fields inside their sheet/dialog.
+  Issue (`aboutReportIssue` → the GitHub issue tracker). macOS and
+  Windows render the fields inside their sheet/dialog; Linux builds the
+  same layout on a plain GtkDialog — GtkAboutDialog cannot carry a
+  second link, so the native about dialog is not used.
 - All accelerators work window-wide without opening the menu.
 
 ## 9. Reminders (all platforms)

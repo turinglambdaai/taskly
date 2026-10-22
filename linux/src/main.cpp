@@ -1792,6 +1792,9 @@ void show_about_dialog() {
   gtk_widget_set_margin_start(content, 12);
   gtk_widget_set_margin_end(content, 12);
   gtk_box_append(GTK_BOX(area), content);
+  auto* copyright = gtk_label_new("© 2026 Taskly Team");
+  gtk_widget_set_opacity(copyright, 0.75);
+  gtk_box_append(GTK_BOX(content), copyright);
   auto* comments = gtk_label_new(tr("aboutContent").c_str());
   gtk_label_set_wrap(GTK_LABEL(comments), TRUE);
   gtk_label_set_justify(GTK_LABEL(comments), GTK_JUSTIFY_CENTER);
