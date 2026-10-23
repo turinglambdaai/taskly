@@ -148,3 +148,7 @@ The in-app About dialog links to the same tracker on every platform.
 ## License
 
 [AGPL-3.0](LICENSE).
+
+## Product & pricing
+
+The launch design is a complete official desktop purchase with a 14-day trial and optional update renewal. There are no actual users yet and the current development preview remains unchanged. See [PRICING.md](PRICING.md) for target prices, post-trial data access and release gates; this is not a live offer.

@@ -98,6 +98,6 @@ taskly/
 
 ## 组合定位（Portfolio placement）
 
-- 轨道与授权：轨道 2 消费买断（消费主打）；授权形态：AGPL-3.0；商业归属：收费产品——本地 SQLite 单文件 + 三平台原生 + CLI 是真实差异，按 Things 式买断 + 更新窗收费；v0.2 还年轻，先补成熟度并按未来 Pro 边界（候选：自然语言输入、提醒/日历集成、主题）做每个功能决策。
-- 组合归属唯一权威：[PORTFOLIO.md](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/PORTFOLIO.md)（turinglambdaai.github.io 仓库）。改归属/授权先改权威档，再同步本节。
-- 纪律：价格只进本仓 `PRICING.md`，且收费开始时才发布；README 与产品站不做价格预告。
+- 2026-10-v2：Taskly 是首个消费买断主力；完整官方桌面版，14 天试用，首购含 12 个月更新，续购可选。不把提醒、自然语言输入或 CLI 拆成多个收费项。
+- 具体价格、试用到期的数据出口与开卖门禁以 [PRICING.md](PRICING.md) 为唯一权威；此前 Pro 候选与价格发布限制均已被替代。组合策略见 [PORTFOLIO](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/PORTFOLIO.md)。
+- 当前开发中、没有实际用户；先完成 #58 与现有 acceptance，不因此给开发预览即时加收费墙。不售未交付手机平台，不修改 AGPL 源码权利。
