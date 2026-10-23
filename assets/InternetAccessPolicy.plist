@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>ApplicationDescription</key>
+    <string>Taskly is a local-first task manager: every task lives in one SQLite file on this Mac. It ships no telemetry and no account connections — its only network use is checking for and downloading application updates.</string>
+    <key>Connections</key>
+    <array>
+        <dict>
+            <key>Host</key>
+            <string>github.com, *.github.com, objects.githubusercontent.com, *.objects.githubusercontent.com</string>
+            <key>IsIncoming</key>
+            <false/>
+            <key>NetworkProtocol</key>
+            <string>TCP</string>
+            <key>Port</key>
+            <string>443</string>
+            <key>Purpose</key>
+            <string>Taskly checks for new versions and downloads application updates: the signed update manifest and the update package itself.</string>
+            <key>DenyConsequences</key>
+            <string>If you deny these connections, Taskly keeps working fully offline — it just cannot check for or install updates.</string>
+            <key>Relevance</key>
+            <string>Essential</string>
+        </dict>
+    </array>
+</dict>
+</plist>

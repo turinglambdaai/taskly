@@ -147,6 +147,16 @@ backend boundary every host shares:
   and packaged-acceptance jobs; rollback and manual-recovery notes per
   install shape live in the lifecycle section of this document.
 
+## Network transparency
+
+The update feed is the application's only network use: Taskly ships no
+telemetry, accounts, or any other connection. The macOS bundle carries
+an `InternetAccessPolicy.plist` (packaged via rivet's
+`macos-resource-files`) declaring the `github.com` feed hosts, their
+purpose, and the deny consequences — firewall apps such as Little
+Snitch surface that policy to the user verbatim. Denying the feed
+leaves every other feature fully functional offline.
+
 ## Ed25519 signature
 
 - Key type: Ed25519. Private key lives ONLY in the GitHub secret

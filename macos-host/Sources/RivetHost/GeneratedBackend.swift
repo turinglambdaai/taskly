@@ -187,9 +187,39 @@ public enum RivetEvent: Sendable {
     }
 }
 
+public protocol RivetGeneratedRPCClient: Sendable {
+    func call(_ name: String, arguments: [RivetValue]) async throws -> RivetValue
+}
+
+// Keep generated clients compatible with the last released SwiftPM runtime.
+// Authenticated network clients can use RivetAPI(call: deviceClient.call).
+public extension RivetGeneratedRPCClient {
+    func getState(_ name: String) async throws -> RivetValue {
+        try await call("$state/get", arguments: [.string(name)])
+    }
+
+    @discardableResult
+    func setState(_ name: String, value: RivetValue) async throws -> RivetValue {
+        try await call("$state/set", arguments: [.string(name), value])
+    }
+}
+
+extension RivetClient: RivetGeneratedRPCClient {}
+
+private struct RivetGeneratedClosureClient: RivetGeneratedRPCClient {
+    let invoke: @Sendable (String, [RivetValue]) async throws -> RivetValue
+
+    func call(_ name: String, arguments: [RivetValue]) async throws -> RivetValue {
+        try await invoke(name, arguments)
+    }
+}
+
 public struct RivetAPI: Sendable {
-    public let client: RivetClient
-    public init(client: RivetClient) { self.client = client }
+    public let client: any RivetGeneratedRPCClient
+    public init(client: any RivetGeneratedRPCClient) { self.client = client }
+    public init(call: @escaping @Sendable (String, [RivetValue]) async throws -> RivetValue) {
+        self.client = RivetGeneratedClosureClient(invoke: call)
+    }
 
     public func add_task(text: String, list_id: Int64?, due_date: String?, due_time: String?, notes: String?) async throws -> RivetTypes.Task {
         let rivetResult = try await client.call("add_task", arguments: [encode_String(text), encode__Optional_Int64_(list_id), encode__Optional_String_(due_date), encode__Optional_String_(due_time), encode__Optional_String_(notes)])
