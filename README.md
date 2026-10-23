@@ -151,4 +151,4 @@ The in-app About dialog links to the same tracker on every platform.
 
 ## Product & pricing
 
-The launch design is a complete official desktop purchase with a 14-day trial and optional update renewal. There are no actual users yet and the current development preview remains unchanged. See [PRICING.md](PRICING.md) for target prices, post-trial data access and release gates; this is not a live offer.
+Consumer flagship; one purchase for the complete official desktop product. Read the complete [English pricing and product policy](PRICING.md) or [简体中文](PRICING.zh-CN.md) for target prices, free/paid boundaries and launch gates. This is a launch design, not a live offer; this documentation does not add payment restrictions to current development builds.
