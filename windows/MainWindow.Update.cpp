@@ -765,7 +765,6 @@ winrt::fire_and_forget MainWindow::ShowUpdateDialog(
   }
 }
 
-}  // namespace winrt::RivetHost::implementation
 
 void MainWindow::LoadAutoCheckUpdatesSetting() {
   auto const weak = get_weak();
@@ -803,3 +802,5 @@ void MainWindow::OnAutoCheckUpdatesToggled(
   SaveSettingAsync("auto-check-updates",
                    auto_check_updates_ ? "1" : "0");
 }
+
+}  // namespace winrt::RivetHost::implementation
