@@ -1834,7 +1834,7 @@ void show_about_dialog() {
   // Diagnostics block (PRODUCT-SPEC §8): the release identity and the
   // ~/.taskly contract paths a bug report starts from. Labels are English
   // fixed strings — machine-oriented like the CLI's --json.
-  static const std::string diagnostics = [] {
+  static std::string diagnostics = [] {
     utsname names{};
     uname(&names);
     return std::string("Taskly v") + rivet_app::kVersion + " (" +
@@ -1847,7 +1847,7 @@ void show_about_dialog() {
   gtk_label_set_justify(GTK_LABEL(diagnostics_label), GTK_JUSTIFY_LEFT);
   PangoAttrList* mono = pango_attr_list_new();
   pango_attr_list_insert(mono, pango_attr_family_new("monospace"));
-  gtk_label_set_attributes(diagnostics_label, mono);
+  gtk_label_set_attributes(GTK_LABEL(diagnostics_label), mono);
   pango_attr_list_unref(mono);
   gtk_widget_set_halign(diagnostics_label, GTK_ALIGN_CENTER);
   gtk_box_append(GTK_BOX(content), diagnostics_label);
