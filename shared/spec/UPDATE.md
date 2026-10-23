@@ -118,6 +118,35 @@ Inner manifest (decoded `payload`) — rivet's manifest schema:
   integer 0–99) gates staged rollouts against the manifest's `rollout`
   percentage.
 
+## Release evidence (acceptance kind `release`)
+
+The update chain carries its own acceptance requirement in
+`rivet-acceptance.rktd` (`release-update` suite,
+`racket/tests/release-update-test.rkt`), and the release pipeline's
+publish job runs the suite on the exact tree being published — a release
+cannot ship without its update evidence. The suite proves, at the
+backend boundary every host shares:
+
+- a plain-http feed can never yield a candidate (the HTTPS-only fetch
+  gate fails closed), and a signed manifest whose artifact URLs are not
+  HTTPS is refused at sign/parse time;
+- a feed signed by another key, or under another key-id, fails
+  verification (the embedded production key is the only trust anchor);
+- semver refuses downgrades and `rollout: 0` gates the offer for every
+  bucket;
+- the N→N+1 lifecycle downloads through the real worker, verifies the
+  artifact SHA-256 against the signed manifest, renames the `.partial`
+  into place, and leaves `~/.taskly/tasks.db` byte-identical with the
+  seeded task intact (data preservation);
+- a sha-mismatched artifact never reaches the destination and permits
+  retry;
+- the Linux AppImage in-place swap replaces the running image
+  (exec bits kept) with the database untouched — the one install arm the
+  backend owns end to end. The host-side arms (macOS zip swap, Windows
+  cmd/MSI handoff) are exercised on every release by the platform build
+  and packaged-acceptance jobs; rollback and manual-recovery notes per
+  install shape live in the lifecycle section of this document.
+
 ## Ed25519 signature
 
 - Key type: Ed25519. Private key lives ONLY in the GitHub secret
