@@ -25,8 +25,11 @@
 (unless (system* raco "test" "racket/tests/release-update-test.rkt")
   (error 'taskly-acceptance "release-update suite failed"))
 
+;; The evidence path is the one declared in rivet-acceptance.rktd —
+;; each platform's acceptance run executes on its own runner, so the
+;; single path carries that run's record.
 (define evidence-directory
-  (build-path (current-directory) ".rivet" "acceptance" platform))
+  (build-path (current-directory) ".rivet" "acceptance"))
 (make-directory* evidence-directory)
 (call-with-output-file (build-path evidence-directory "release-update.json")
   #:exists 'truncate/replace
