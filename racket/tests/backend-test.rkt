@@ -39,6 +39,14 @@
      (set_setting "last-selected-list-id" "7")
      (check-equal? (get_setting "last-selected-list-id") "7")
 
+     ;; UPDATE.md auto-check toggle: round-trips as a string enum, rejects
+     ;; anything but "0"/"1", and survives the config writer's key list.
+     (set_setting "auto-check-updates" "0")
+     (check-equal? (get_setting "auto-check-updates") "0")
+     (check-equal? (config-ref (read-config) "auto-check-updates") "0")
+     (set_setting "auto-check-updates" "1")
+     (check-exn exn:fail? (lambda () (set_setting "auto-check-updates" "off")))
+
      ;; open_database remembers the opened file (DATA-FORMAT §7) so hosts
      ;; restart against it — the 0.2.1 OTA regression: manually opened DBs
      ;; were forgotten because nothing ever wrote last-db-path.

@@ -71,7 +71,7 @@
          (for ([key (in-list '("last-db-path" "last_db_path" "language"
                            "last-selected-list-id"
                            "theme" "close-to-tray" "last-update-check"
-                           "rollout-bucket"))])
+                           "rollout-bucket" "auto-check-updates"))])
        (define value (config-ref config key #f))
        (when value
          (fprintf out "~a = ~a\n" key value))))))

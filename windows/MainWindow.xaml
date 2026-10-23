@@ -70,6 +70,8 @@
                     <MenuFlyoutItem x:Name="MenuThemeLight" Click="OnThemeLight" />
                     <MenuFlyoutItem x:Name="MenuThemeDark" Click="OnThemeDark" />
                 </MenuFlyoutSubItem>
+                <MenuFlyoutSeparator />
+                <ToggleMenuFlyoutItem x:Name="MenuAutoCheckUpdates" Click="OnAutoCheckUpdatesToggled" />
             </MenuBarItem>
             <MenuBarItem Title="Help" x:Name="MenuHelp">
                 <!-- Family menu convention: Check for Updates… and About are

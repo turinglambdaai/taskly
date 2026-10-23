@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- An Automatically Check for Updates toggle in the Settings menu on every
+  platform (config `auto-check-updates`, default on): silent launch and
+  4-hour checks honor it, the manual Check for Updates… item always runs
+  (#58).
 - Network transparency: the macOS bundle ships an
   `InternetAccessPolicy.plist` declaring the update feed as the app's
   only network use — firewall apps (Little Snitch and friends) show the

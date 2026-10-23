@@ -98,6 +98,8 @@ final class AppModel {
     var searchFocusToken = 0
     var isSidebarVisible = true
     var statusMessage = ""
+    /// UPDATE.md auto-check toggle (config `auto-check-updates`, default on).
+    var autoCheckUpdates = true
     var languageChangedToken = 0
     /// Completed section collapsed (hidden rows are skipped by ↑/↓).
     var completedCollapsed = false
@@ -222,6 +224,9 @@ final class AppModel {
             refreshStatusPersistent()
             flashStatus(i18n.t("statusDatabaseConnected"))
             reminder?.start()
+            if let stored = try? await api.get_setting(key: "auto-check-updates") {
+                autoCheckUpdates = stored != "0"
+            }
             autoCheckForUpdates()
             UpdateService.sweepStaleWorkDirs()
         } catch {
@@ -284,9 +289,20 @@ final class AppModel {
     /// Silent launch check: once shortly after startup, throttled to one
     /// attempt per 4 h (config `last-update-check`); failures never nag.
     func autoCheckForUpdates() {
+        guard autoCheckUpdates else { return }
         _Concurrency.Task {
             try? await _Concurrency.Task.sleep(nanoseconds: 3_000_000_000)
             await runUpdateCheck(present: false)
+        }
+    }
+
+    /// §8: the toggle persists immediately; the manual check ignores it.
+    func setAutoCheckUpdates(_ on: Bool) {
+        autoCheckUpdates = on
+        guard let api else { return }
+        _Concurrency.Task {
+            _ = try? await api.set_setting(key: "auto-check-updates",
+                                           value: on ? "1" : "0")
         }
     }
 

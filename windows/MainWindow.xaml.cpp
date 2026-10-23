@@ -692,6 +692,7 @@ winrt::fire_and_forget MainWindow::InitializeBackendAsync() {
                       // the throttled silent check.
                       current->HandleInstallMarkers();
                       current->OpenDefaultDatabaseAsync();
+                      current->LoadAutoCheckUpdatesSetting();
                       current->AutoCheckUpdatesAsync();
                     }
                   });
@@ -749,6 +750,8 @@ void MainWindow::ApplyLanguage() {
   MenuThemeSystem().Text(t("themeFollowSystem"));
   MenuThemeLight().Text(t("themeLight"));
   MenuThemeDark().Text(t("themeDark"));
+  MenuAutoCheckUpdates().Text(t("settingsAutoCheckUpdates"));
+  MenuAutoCheckUpdates().IsChecked(auto_check_updates_);
   MenuCheckUpdates().Text(t("updateCheckNow"));
   MenuAbout().Text(t("menuAbout"));
   SearchBox().PlaceholderText(t("searchHint"));

@@ -108,6 +108,10 @@ struct TasklyCommands: Commands {
                     model.setTheme("dark")
                 }
             }
+            Divider()
+            Toggle(model.t("settingsAutoCheckUpdates"), isOn: Binding(
+                get: { model.autoCheckUpdates },
+                set: { model.setAutoCheckUpdates($0) }))
         }
     }
 

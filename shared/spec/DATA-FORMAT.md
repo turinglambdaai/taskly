@@ -113,6 +113,7 @@ sides trimmed; keys case-insensitive. Writer emits two fixed header lines:
 | `theme` | `system` / `light` / `dark`; Windows applies it before the first window paint | `system` |
 | `last-selected-list-id` | int as string; unparseable → 0 | `0` |
 | `last-update-check` | unix seconds of the last auto-update check (UPDATE.md throttle) | `0` |
+| `auto-check-updates` | `1`/`0` — whether the silent update checks run (UPDATE.md) | `1` |
 
 ## 8. Conformance
 

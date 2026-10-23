@@ -135,5 +135,6 @@
   "aboutChangelog": "Changelog",
   "aboutCopyDiagnostics": "Copy Diagnostics",
   "statusDiagnosticsCopied": "Diagnostics copied — paste it into your issue",
+  "settingsAutoCheckUpdates": "Automatically Check for Updates",
   "updateCopyError": "Copy error"
 }
