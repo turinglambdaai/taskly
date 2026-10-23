@@ -68,6 +68,6 @@
      #hasheq((id . release-update)
              (kind . release)
              (platforms . (windows macos linux))
-             (command . ("raco" "test"
-                         "racket/tests/release-update-test.rkt"))
-             (timeout-seconds . 900)))))
+             (command . ("racket" "scripts/acceptance/release-update.rkt"))
+             (timeout-seconds . 900)
+             (evidence . (".rivet/acceptance/release-update.json"))))))
