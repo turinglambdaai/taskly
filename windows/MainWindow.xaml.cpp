@@ -2476,8 +2476,11 @@ winrt::fire_and_forget MainWindow::OnAbout(
   // ~/.taskly contract paths a bug report starts from. Labels are English
   // fixed strings — machine-oriented like the CLI's --json.
   std::wstring profile;
-  if (const char* env = std::getenv("USERPROFILE")) {
-    profile = wide(env);
+  wchar_t profile_buf[MAX_PATH];
+  const DWORD profile_len = GetEnvironmentVariableW(
+      L"USERPROFILE", profile_buf, MAX_PATH);
+  if (profile_len > 0 && profile_len < MAX_PATH) {
+    profile.assign(profile_buf, profile_len);
   }
   const std::wstring diagnostics =
       std::wstring(L"Taskly v") + wide(rivet_app::kVersion) +
