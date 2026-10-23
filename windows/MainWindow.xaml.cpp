@@ -2454,16 +2454,80 @@ winrt::fire_and_forget MainWindow::OnAbout(
       L"https://taskly.jrtx.site"});
   website.HorizontalAlignment(mx::HorizontalAlignment::Center);
   website.Padding({0, 0, 0, 0});
+  auto manual = mxc::HyperlinkButton{};
+  manual.Content(winrt::box_value(t("aboutManual")));
+  manual.NavigateUri(winrt::Windows::Foundation::Uri{
+      L"https://taskly.jrtx.site/manual.html"});
+  manual.HorizontalAlignment(mx::HorizontalAlignment::Center);
+  manual.Padding({0, 0, 0, 0});
+  auto changelog = mxc::HyperlinkButton{};
+  changelog.Content(winrt::box_value(t("aboutChangelog")));
+  changelog.NavigateUri(winrt::Windows::Foundation::Uri{
+      L"https://github.com/turinglambdaai/taskly/blob/main/CHANGELOG.md"});
+  changelog.HorizontalAlignment(mx::HorizontalAlignment::Center);
+  changelog.Padding({0, 0, 0, 0});
   auto issue = mxc::HyperlinkButton{};
   issue.Content(winrt::box_value(t("aboutReportIssue")));
   issue.NavigateUri(winrt::Windows::Foundation::Uri{
       L"https://github.com/turinglambdaai/taskly/issues"});
   issue.HorizontalAlignment(mx::HorizontalAlignment::Center);
   issue.Padding({0, 0, 0, 0});
+  // Diagnostics block (PRODUCT-SPEC §8): the release identity and the
+  // ~/.taskly contract paths a bug report starts from. Labels are English
+  // fixed strings — machine-oriented like the CLI's --json.
+  std::wstring profile;
+  wchar_t profile_buf[MAX_PATH];
+  const DWORD profile_len = GetEnvironmentVariableW(
+      L"USERPROFILE", profile_buf, MAX_PATH);
+  if (profile_len > 0 && profile_len < MAX_PATH) {
+    profile.assign(profile_buf, profile_len);
+  }
+  const std::wstring diagnostics =
+      std::wstring(L"Taskly v") + wide(rivet_app::kVersion) +
+      L" (Windows, x64)\nDatabase: " + profile + L"\\.taskly\\tasks.db" +
+      L"\nConfig: " + profile + L"\\.taskly\\config.ini";
+  auto diagnostics_text = mxc::TextBlock{};
+  diagnostics_text.Text(diagnostics);
+  diagnostics_text.FontFamily(mx::Media::FontFamily{L"Consolas"});
+  diagnostics_text.FontSize(11);
+  diagnostics_text.Margin({0, 8, 0, 0});
+  diagnostics_text.IsTextSelectionEnabled(true);
+  auto copy_diagnostics = mxc::Button{};
+  copy_diagnostics.Content(winrt::box_value(t("aboutCopyDiagnostics")));
+  copy_diagnostics.HorizontalAlignment(mx::HorizontalAlignment::Center);
+  copy_diagnostics.Padding({12, 4, 12, 4});
+  copy_diagnostics.Click(
+      [text = winrt::weak_ref<mxc::Button>(copy_diagnostics), diagnostics](
+          auto&&, auto&&) {
+        auto package =
+            winrt::Windows::ApplicationModel::DataTransfer::DataPackage{};
+        package.RequestedOperation(
+            winrt::Windows::ApplicationModel::DataTransfer::
+                DataPackageOperation::Copy);
+        package.SetText(diagnostics);
+        winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(
+            package);
+        if (auto button = text.get()) {
+          button.Content(winrt::box_value(t("statusDiagnosticsCopied")));
+          auto restore = mx::DispatcherTimer();
+          restore.Interval(std::chrono::milliseconds{2500});
+          restore.Tick([restore, text](auto&&, auto&&) {
+            if (auto b = text.get()) {
+              b.Content(winrt::box_value(t("aboutCopyDiagnostics")));
+            }
+            restore.Stop();
+          });
+          restore.Start();
+        }
+      });
   panel.Children().Append(tagline);
   panel.Children().Append(license);
   panel.Children().Append(website);
+  panel.Children().Append(manual);
+  panel.Children().Append(changelog);
   panel.Children().Append(issue);
+  panel.Children().Append(diagnostics_text);
+  panel.Children().Append(copy_diagnostics);
 
   auto dialog = mxc::ContentDialog{};
   dialog.Title(winrt::box_value(L"Taskly v" + wide(rivet_app::kVersion)));

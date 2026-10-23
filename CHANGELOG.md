@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- About dialog becomes the update/link/feedback portal on every platform:
+  User Manual and Changelog links join Website and Report an Issue, and a
+  diagnostics block (release identity, platform, database and config
+  paths) carries a Copy Diagnostics button so a bug report can include
+  the full context verbatim (#58).
 - Release-kind acceptance: the update chain — signed-feed rejection,
   download cancellation, the N→N+1 lifecycle, data preservation, and the
   Linux AppImage in-place swap — is now an executable `release`

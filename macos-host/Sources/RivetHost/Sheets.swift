@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Signed ARGB int as stored in the DB color column (DATA-FORMAT §2):
@@ -244,7 +245,8 @@ private struct ColorSwatchGrid: View {
     }
 }
 
-/// About box (Help ▸ About) — `Taskly v<version>` (PRODUCT-SPEC §8).
+/// About box (Help ▸ About) — the update/link/feedback hub and the
+/// diagnostics surface (PRODUCT-SPEC §8).
 struct AboutSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -252,6 +254,34 @@ struct AboutSheet: View {
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
             ?? RivetGeneratedConfig.version
+    }
+
+    /// The diagnostics block a bug report starts from (PRODUCT-SPEC §8):
+    /// release identity plus the `~/.taskly` contract paths. Labels are
+    /// English fixed strings — machine-oriented like the CLI's --json.
+    private var diagnosticsText: String {
+        let os = ProcessInfo.processInfo.operatingSystemVersion
+        let arch: String
+        #if arch(arm64)
+        arch = "arm64"
+        #elseif arch(x86_64)
+        arch = "x86_64"
+        #else
+        arch = "unknown"
+        #endif
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        return """
+        Taskly \(version) (macOS \(os.majorVersion).\(os.minorVersion), \(arch))
+        Database: \(home)/.taskly/tasks.db
+        Config: \(home)/.taskly/config.ini
+        """
+    }
+
+    private func copyDiagnostics() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(diagnosticsText, forType: .string)
+        model.flashStatus(model.t("statusDiagnosticsCopied"))
     }
 
     var body: some View {
@@ -275,11 +305,29 @@ struct AboutSheet: View {
             HStack(spacing: 20) {
                 Link(model.t("aboutWebsite"),
                      destination: URL(string: "https://taskly.jrtx.site")!)
+                Link(model.t("aboutManual"),
+                     destination: URL(string: "https://taskly.jrtx.site/manual.html")!)
+            }
+            .font(.system(size: 12))
+            .tint(model.theme.accent)
+            HStack(spacing: 20) {
+                Link(model.t("aboutChangelog"),
+                     destination: URL(string: "https://github.com/turinglambdaai/taskly/blob/main/CHANGELOG.md")!)
                 Link(model.t("aboutReportIssue"),
                      destination: URL(string: "https://github.com/turinglambdaai/taskly/issues")!)
             }
             .font(.system(size: 12))
             .tint(model.theme.accent)
+            Text(diagnosticsText)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(model.theme.secondaryText)
+                .textSelection(.enabled)
+                .multilineTextAlignment(.leading)
+                .lineLimit(3)
+            Button(model.t("aboutCopyDiagnostics")) { copyDiagnostics() }
+                .font(.system(size: 12))
+                .buttonStyle(.bordered)
+                .tint(model.theme.accent)
             Button(model.t("dialogConfirm")) { dismiss() }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.borderedProminent)
