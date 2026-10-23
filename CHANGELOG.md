@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Release-kind acceptance: the update chain — signed-feed rejection,
+  download cancellation, the N→N+1 lifecycle, data preservation, and the
+  Linux AppImage in-place swap — is now an executable `release`
+  requirement in `rivet-acceptance.rktd`, and the release pipeline's
+  publish job runs the suite on the exact tree being published, so a
+  release cannot ship without its update evidence (#58).
+
 ## [0.2.4] - 2026-10-22
 
 ### Added

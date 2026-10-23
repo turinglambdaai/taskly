@@ -227,6 +227,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+      # Release-kind acceptance (#58): signed-feed rejection, download
+      # cancel, the N→N+1 lifecycle, and data preservation must pass on
+      # the exact tree being published — bound here so a release cannot
+      # ship without its update evidence.
+      - name: Release update suite (signed-reject, cancel, N→N+1, data preservation)
+        run: raco test racket/tests/release-update-test.rkt
       - name: Gather + sign the update feed + publish
         env:
           GH_TOKEN: ${{ github.token }}
