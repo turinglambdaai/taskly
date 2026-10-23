@@ -18,6 +18,8 @@ var _hmt = _hmt || [];
   s.parentNode.insertBefore(hm, s);
 })();
 </script>
+<style>.lang-menu li.lang-choice{padding:0}.lang-menu .lang-choice button{display:block;width:100%;padding:8px 12px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.lang-menu .lang-choice button:focus-visible{outline:2px solid currentColor;outline-offset:-2px;border-radius:4px}</style>
+<style>.guide-status{margin:20px 0;padding:16px 20px;border:1px solid currentColor;border-radius:10px;font-size:.95rem;line-height:1.65}.guide-status p{margin:0 0 8px}.guide-status a{text-decoration:underline;text-underline-offset:4px}html:lang(en) .reader-zh,html:lang(zh) .reader-en{display:none!important}</style>
 </head>
 
 <body>
@@ -52,8 +54,8 @@ var _hmt = _hmt || [];
                         <span id="current-lang-label" data-en="English" data-zh="简体中文">English</span>
                     </button>
                     <ul class="lang-menu">
-                        <li onclick="setLanguage('en')">English</li>
-                        <li onclick="setLanguage('zh')">简体中文</li>
+                        <li class="lang-choice"><button type="button" onclick="setLanguage('en')">English</button></li>
+                        <li class="lang-choice"><button type="button" onclick="setLanguage('zh')">简体中文</button></li>
                     </ul>
                 </li>
             </ul>
@@ -67,6 +69,7 @@ var _hmt = _hmt || [];
             <h1 class="animate-on-scroll">
                 <span data-en="Everything Taskly can do" data-zh="Taskly 能做的事">Everything Taskly can do</span>
             </h1>
+<aside class="guide-status"><p class="reader-en " lang="en">Development preview; no paid checkout is open. A future official desktop purchase will be announced with its delivered terms.</p><p class="reader-zh " lang="zh">开发预览，尚未开放付费购买。未来官方桌面版开售时再公布实际交付条款。</p><a class="reader-en" lang="en" href="https://github.com/turinglambdaai/taskly/blob/main/docs/USER-GUIDE.md">Current installation, privacy and recovery</a><a class="reader-zh" lang="zh" href="https://github.com/turinglambdaai/taskly/blob/main/docs/USER-GUIDE.zh-CN.md">当前安装、隐私与恢复</a></aside>
             <p class="lead animate-on-scroll"
                 data-en="Scheduling shortcuts, lists, editing, the CLI, and sync — in one place."
                 data-zh="速记语法、列表、编辑、命令行与同步，一处说清。">
@@ -99,7 +102,7 @@ var _hmt = _hmt || [];
 
             <div class="manual-toc-group" data-en="Power" data-zh="进阶">Power</div>
             <a href="#cli" data-en="CLI" data-zh="命令行">CLI</a>
-            <a href="#sync" data-en="Cloud sync" data-zh="云同步">Cloud sync</a>
+            <a href="#sync" data-en="Backup and migration" data-zh="备份与迁移">Backup and migration</a>
         </aside>
 
         <!-- Content -->
@@ -471,17 +474,17 @@ var _hmt = _hmt || [];
             <!-- Sync -->
             <section class="manual-section" id="sync">
                 <h2 class="manual-h2"><span class="h2-emoji">🔄</span>
-                    <span data-en="Cloud sync" data-zh="云同步">Cloud sync</span>
+                    <span data-en="Backup and migration" data-zh="备份与迁移">Backup and migration</span>
                 </h2>
-                <p data-en="Taskly stores everything in a single local SQLite database file. To sync across devices, put the .db file in any cloud-synced folder — iCloud, Dropbox, Syncthing — and point each device at it."
-                   data-zh="Taskly 把所有数据存在一个本地 SQLite 数据库文件里。跨设备同步的方法：把 .db 文件放进任意云同步文件夹（iCloud、Dropbox、Syncthing），然后让每台设备指向它。">
-                    Taskly stores everything in a single local SQLite database file. To sync across devices, put the <code>.db</code> file in any cloud-synced folder — iCloud, Dropbox, Syncthing — and point each device at it.
+                <p data-en="Taskly stores tasks in a local SQLite database. Quit all processes before backing up or moving the complete data directory. Restore to a copy first; avoid simultaneous writers across devices."
+                   data-zh="Taskly 把任务保存在本地 SQLite 数据库中。备份或迁移前退出所有进程，复制完整数据目录，并先在副本验证恢复；不要跨设备同时写入。">
+                    Taskly stores tasks in a local SQLite database. Quit every process before backing up or moving the complete data directory; verify restoration on a copy.
                 </p>
                 <div class="callout">
-                    <div class="callout-title">🔒 <span data-en="WAL mode keeps it safe" data-zh="WAL 模式保障并发安全">WAL mode keeps it safe</span></div>
-                    <span data-en="Taskly runs SQLite in WAL mode, so concurrent reads and writes from cloud-sync daemons won’t corrupt your data. No account, no cloud lock-in."
-                          data-zh="Taskly 以 WAL 模式运行 SQLite，云同步守护进程的并发读写不会损坏数据。无需账号，不绑定云服务。">
-                        Taskly runs SQLite in WAL mode, so concurrent reads and writes from cloud-sync daemons won't corrupt your data. No account, no cloud lock-in.
+                    <div class="callout-title">🔒 <span data-en="WAL is not a sync protocol" data-zh="WAL 不是同步协议">WAL is not a sync protocol</span></div>
+                    <span data-en="SQLite WAL coordinates local database connections, not independent cloud replicas. Keep a closed-app backup including any WAL/SHM files. Opening independent replicas can lose edits or corrupt data."
+                          data-zh="SQLite WAL 协调本地数据库连接，不协调独立云端副本。退出后备份时保留可能存在的 WAL/SHM；跨设备并发复制可能丢失修改或损坏数据。">
+                        SQLite WAL coordinates local connections, not independent cloud replicas. Keep a closed-app backup including any WAL/SHM files; concurrent cloud copies can lose edits or corrupt data.
                     </span>
                 </div>
             </section>

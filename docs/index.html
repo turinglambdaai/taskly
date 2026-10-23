@@ -29,6 +29,13 @@ var _hmt = _hmt || [];
   s.parentNode.insertBefore(hm, s);
 })();
 </script>
+<style id="product-start-style">
+.product-availability{font-size:.95rem;line-height:1.65;max-width:72ch;margin:18px 0;opacity:.85} .hero .product-availability{margin-left:auto;margin-right:auto}
+.product-start{max-width:1120px;margin:64px auto;padding:32px 24px;border-top:1px solid var(--border,#aaa);font:inherit;line-height:1.65}
+.product-start h2{font-size:clamp(1.7rem,3vw,2.4rem);letter-spacing:-.025em;margin:0 0 16px}.product-start h3{font-size:1.05rem;margin:0 0 10px}.product-start p{margin:0 0 16px;max-width:74ch}.product-start-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;margin:28px 0}.product-start a{text-decoration:underline;text-underline-offset:4px;overflow-wrap:anywhere}.product-start a:focus-visible{outline:2px solid currentColor;outline-offset:5px}.product-start .start-links{display:flex;gap:16px 24px;flex-wrap:wrap}.product-start .start-status{font-weight:600}.product-start .start-limits{font-size:.95em}
+html:lang(en) .reader-zh,html:lang(zh) .reader-en{display:none!important}@media(max-width:700px){.product-start{margin:40px auto;padding:24px 20px}.product-start-grid{grid-template-columns:1fr;gap:18px}}
+</style>
+<style>.lang-menu li.lang-choice{padding:0}.lang-menu .lang-choice button{display:block;width:100%;padding:8px 12px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.lang-menu .lang-choice button:focus-visible{outline:2px solid currentColor;outline-offset:-2px;border-radius:4px}</style>
 </head>
 
 <body>
@@ -63,8 +70,8 @@ var _hmt = _hmt || [];
                         <span id="current-lang-label">简体中文</span>
                     </button>
                     <ul class="lang-menu">
-                        <li onclick="setLanguage('en')">English</li>
-                        <li onclick="setLanguage('zh')">简体中文</li>
+                        <li class="lang-choice"><button type="button" onclick="setLanguage('en')">English</button></li>
+                        <li class="lang-choice"><button type="button" onclick="setLanguage('zh')">简体中文</button></li>
                     </ul>
                 </li>
                 <li><button class="theme-btn" id="theme-btn" type="button" aria-label="切换主题">◐</button></li>
@@ -80,6 +87,7 @@ var _hmt = _hmt || [];
                 <span data-i18n="hero.h1a">规划你的生活，</span>
                 <span class="accent" data-i18n="hero.h1b">一次一件。</span>
             </h1>
+<p class="reader-en product-availability" lang="en">Development preview. Development preview; no paid checkout is open. A future official desktop purchase will be announced with its delivered terms.</p><p class="reader-zh product-availability" lang="zh">开发预览。开发预览，尚未开放付费购买。未来官方桌面版开售时再公布实际交付条款。</p>
             <p class="lead animate-on-scroll" data-i18n="hero.lead">
                 Taskly 是一款清爽、专注的任务管理器：支持便捷的排程速记、内置命令行工具便于自动化，并为每个桌面平台提供原生应用。数据始终归你所有。
             </p>
@@ -139,11 +147,11 @@ var _hmt = _hmt || [];
                 <!-- Card 4: Sync -->
                 <div class="bento-card span-2 animate-on-scroll">
                     <div class="card-icon">🔄</div>
-                    <h3 data-i18n="f4.title">按你的方式同步</h3>
+                    <h3 data-i18n="f4.title">备份与安全迁移</h3>
                     <p data-i18n="f4.body">
-                        将 Taskly 指向任意云同步文件夹（iCloud、Dropbox、Syncthing…），数据库便会跟随你穿梭设备。WAL 模式确保并发访问安全。
+                        退出所有 Taskly 进程后备份整个数据目录。不要让多台设备同时编辑备份与迁移中的 SQLite 文件；WAL 不提供跨设备文件同步。
                     </p>
-                    <span class="card-tag" data-i18n="f4.tag">自带你的云。</span>
+                    <span class="card-tag" data-i18n="f4.tag">保留你的副本。</span>
                 </div>
             </div>
         </div>
@@ -234,7 +242,10 @@ var _hmt = _hmt || [];
     </section>
 
     <!-- Footer -->
-    <footer>
+    <section id="start-here" class="product-start" aria-label="Get started / 开始使用">
+<h2 class="reader-en " lang="en">Start with one useful session.</h2><h2 class="reader-zh " lang="zh">从一次有效使用开始。</h2><p class="reader-en start-status" lang="en">Development preview; no paid checkout is open. A future official desktop purchase will be announced with its delivered terms.</p><p class="reader-zh start-status" lang="zh">开发预览，尚未开放付费购买。未来官方桌面版开售时再公布实际交付条款。</p><p class="reader-en " lang="en">Desktop previews for macOS, Windows and Linux. Select the OS and CPU shown on the release asset; mobile and watch applications are not delivered products.</p><p class="reader-zh " lang="zh">提供 macOS、Windows、Linux 桌面预览版。按发布附件标注选择系统与 CPU；移动端和手表端尚未交付。</p><div class="product-start-grid"><article><h3 class="reader-en " lang="en">01</h3><h3 class="reader-zh " lang="zh">01</h3><p class="reader-en " lang="en">Create a list and add one non-sensitive task. Check the parsed date before saving.</p><p class="reader-zh " lang="zh">创建清单，添加一条不含敏感信息的任务；保存前核对解析出的日期。</p></article><article><h3 class="reader-en " lang="en">02</h3><h3 class="reader-zh " lang="zh">02</h3><p class="reader-en " lang="en">Complete the task, reopen the application and confirm the saved state.</p><p class="reader-zh " lang="zh">完成任务，重新打开应用，确认状态已保存。</p></article><article><h3 class="reader-en " lang="en">03</h3><h3 class="reader-zh " lang="zh">03</h3><p class="reader-en " lang="en">For reminders, allow OS notifications and test one while the app is running. Do not assume delivery while it is closed or the computer sleeps.</p><p class="reader-zh " lang="zh">使用提醒前允许系统通知，在应用运行时测试一次；不要假定退出应用或电脑休眠后仍能送达。</p></article></div><p class="reader-en start-limits" lang="en">Notification selection still needs cross-host consolidation (<a href="https://github.com/turinglambdaai/taskly/issues/62">#62</a>). The standalone packaged CLI is not yet part of desktop releases; source CLI instructions remain in the README.</p><p class="reader-zh start-limits" lang="zh">提醒选择逻辑仍需跨宿主收敛（<a href="https://github.com/turinglambdaai/taskly/issues/62">#62</a>）。桌面发行包尚未附带独立 CLI；源码 CLI 用法见 README。</p><div class="start-links"><a class="reader-en" lang="en" href="https://github.com/turinglambdaai/taskly/blob/main/docs/USER-GUIDE.md">Installation, privacy &amp; recovery</a><a class="reader-zh" lang="zh" href="https://github.com/turinglambdaai/taskly/blob/main/docs/USER-GUIDE.zh-CN.md">安装、隐私与恢复</a><a href="https://github.com/turinglambdaai/taskly/issues"><span class="reader-en " lang="en">Get help</span><span class="reader-zh " lang="zh">反馈与帮助</span></a></div>
+</section>
+<footer>
         <div class="container">
             <div class="footer-content">
                 <div class="footer-brand">Taskly</div>
