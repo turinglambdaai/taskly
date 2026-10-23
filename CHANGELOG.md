@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Network transparency: the macOS bundle ships an
+  `InternetAccessPolicy.plist` declaring the update feed as the app's
+  only network use — firewall apps (Little Snitch and friends) show the
+  policy's per-host purpose and deny consequences to the user, and
+  denying it leaves Taskly fully functional offline (#58).
 - About dialog becomes the update/link/feedback portal on every platform:
   User Manual and Changelog links join Website and Report an Issue, and a
   diagnostics block (release identity, platform, database and config
