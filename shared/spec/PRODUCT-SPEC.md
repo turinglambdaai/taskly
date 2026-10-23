@@ -166,12 +166,20 @@ pickers. Save (blank text silently ignored), Delete (confirm first), Cancel
   Check for Updates… (manual online-update check; auto-check runs at
   launch and every 4 h — contract: `UPDATE.md`).
 - Help: About — `Taskly v<version>` + `© 2026 Taskly Team` +
-  `aboutContent` + license line (`aboutLicense`) + two link buttons on
-  every host: Website (`aboutWebsite` → taskly.jrtx.site) and Report an
-  Issue (`aboutReportIssue` → the GitHub issue tracker). macOS and
-  Windows render the fields inside their sheet/dialog; Linux builds the
-  same layout on a plain GtkDialog — GtkAboutDialog cannot carry a
-  second link, so the native about dialog is not used.
+  `aboutContent` + license line (`aboutLicense`) + link buttons on every
+  host: Website (`aboutWebsite` → taskly.jrtx.site), User Manual
+  (`aboutManual` → taskly.jrtx.site/manual.html), Changelog
+  (`aboutChangelog` → the CHANGELOG on GitHub), and Report an Issue
+  (`aboutReportIssue` → the GitHub issue tracker). Below the links, a
+  diagnostics block shows the release identity and the data locations —
+  app version, platform + architecture, OS version, database path,
+  config path — with a `aboutCopyDiagnostics` button that puts the same
+  block on the clipboard so a bug report can include it verbatim; the
+  copy confirmation is a transient status message. Diagnostics labels
+  are English fixed strings (machine-oriented, like the CLI's `--json`).
+  macOS and Windows render the fields inside their sheet/dialog; Linux
+  builds the same layout on a plain GtkDialog — GtkAboutDialog cannot
+  carry multiple links, so the native about dialog is not used.
 - All accelerators work window-wide without opening the menu.
 
 ## 9. Reminders (all platforms)

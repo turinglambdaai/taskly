@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <sys/utsname.h>
 #include <ctime>
 #include <filesystem>
 #include <functional>
@@ -1813,11 +1814,58 @@ void show_about_dialog() {
   gtk_button_set_label(GTK_BUTTON(website), tr("aboutWebsite").c_str());
   gtk_widget_set_hexpand(website, FALSE);
   gtk_box_append(GTK_BOX(links), website);
+  auto* manual = gtk_link_button_new("https://taskly.jrtx.site/manual.html");
+  gtk_button_set_label(GTK_BUTTON(manual), tr("aboutManual").c_str());
+  gtk_widget_set_hexpand(manual, FALSE);
+  gtk_box_append(GTK_BOX(links), manual);
+  auto* links_row2 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 24);
+  gtk_widget_set_halign(links_row2, GTK_ALIGN_CENTER);
+  gtk_box_append(GTK_BOX(content), links_row2);
+  auto* changelog = gtk_link_button_new(
+      "https://github.com/turinglambdaai/taskly/blob/main/CHANGELOG.md");
+  gtk_button_set_label(GTK_BUTTON(changelog), tr("aboutChangelog").c_str());
+  gtk_widget_set_hexpand(changelog, FALSE);
+  gtk_box_append(GTK_BOX(links_row2), changelog);
   auto* issue = gtk_link_button_new(
       "https://github.com/turinglambdaai/taskly/issues");
   gtk_button_set_label(GTK_BUTTON(issue), tr("aboutReportIssue").c_str());
   gtk_widget_set_hexpand(issue, FALSE);
-  gtk_box_append(GTK_BOX(links), issue);
+  gtk_box_append(GTK_BOX(links_row2), issue);
+  // Diagnostics block (PRODUCT-SPEC §8): the release identity and the
+  // ~/.taskly contract paths a bug report starts from. Labels are English
+  // fixed strings — machine-oriented like the CLI's --json.
+  static const std::string diagnostics = [] {
+    utsname names{};
+    uname(&names);
+    return std::string("Taskly v") + rivet_app::kVersion + " (" +
+           names.sysname + " " + names.release + ", " + names.machine + ")" +
+           "\nDatabase: " + g_get_home_dir() + "/.taskly/tasks.db" +
+           "\nConfig: " + g_get_home_dir() + "/.taskly/config.ini";
+  }();
+      names.sysname + " " + names.release + ", " + names.machine + ")" +
+      "\nDatabase: " + home + "/.taskly/tasks.db" +
+      "\nConfig: " + home + "/.taskly/config.ini";
+  auto* diagnostics_label = gtk_label_new(diagnostics.c_str());
+  gtk_label_set_selectable(GTK_LABEL(diagnostics_label), TRUE);
+  gtk_label_set_justify(GTK_LABEL(diagnostics_label), GTK_JUSTIFY_LEFT);
+  PangoAttrList* mono = pango_attr_list_new();
+  pango_attr_list_insert(mono, pango_attr_family_new("monospace"));
+  gtk_label_set_attributes(diagnostics_label, mono);
+  pango_attr_list_unref(mono);
+  gtk_widget_set_halign(diagnostics_label, GTK_ALIGN_CENTER);
+  gtk_box_append(GTK_BOX(content), diagnostics_label);
+  auto* copy_diagnostics = gtk_button_new_with_label(
+      tr("aboutCopyDiagnostics").c_str());
+  gtk_widget_set_halign(copy_diagnostics, GTK_ALIGN_CENTER);
+  g_signal_connect(
+      copy_diagnostics, "clicked",
+      G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+        auto* text = static_cast<const std::string*>(user_data);
+        auto* clipboard = gdk_display_get_clipboard(gdk_display_get_default());
+        gdk_clipboard_set_text(clipboard, text->c_str());
+      }),
+      new std::string(diagnostics));
+  gtk_box_append(GTK_BOX(content), copy_diagnostics);
   g_signal_connect(
       dialog, "response",
       G_CALLBACK(+[](GtkDialog* dialog, gint, gpointer) {

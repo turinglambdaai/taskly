@@ -146,3 +146,45 @@ Scheduled（有日期的）。
 - Manual acceptance: move a task from 工作 to 生活, confirm it disappears from
   工作, appears in 生活 and keeps all other fields; then restart and verify
   ownership persists. Exercise both languages and all smart-list views.
+
+## Raycast 对照（商业标杆，2026-10-23 实拆 2.9.0.0）
+
+> 对象：Raycast（macOS 启动器，收费商业软件）。实拆官方 DMG：Info.plist、
+> 自研更新器（Updater/UpdaterDaemon，无 Sparkle）、IPC 面、Settings 前端
+> 包、InternetAccessPolicy.plist，对照 manual.raycast.com。结论按
+> 「学 / 参考 / 不学」记录，落地见 PRODUCT-SPEC §8 与对应切片。
+
+### 学到的（已落地或已排期）
+
+- **About = 更新/链接/反馈门户**：Raycast 的 Settings → About 收口
+  Raycast Updates、Open Changelog、Website、社区、Send Feedback 五个入口。
+  Taskly 采纳：About 增加 User Manual 与 Changelog 链接（Website/Report an
+  Issue 已有），构成「更新（菜单）+ 手册 + 日志 + 反馈」门户。
+- **复制诊断信息**：Raycast IPC 有 CopyLogFiles。Taskly 采纳：About 增加
+  诊断块（版本/平台/架构/OS/DB 路径/配置路径，英文固定标签，可选中）+
+  「复制诊断信息」按钮，粘贴进 issue 即可带全上下文。
+- **网络透明度**：Raycast 随包分发 InternetAccessPolicy.plist，按主机声明
+  用途与拒绝后果（Little Snitch 等防火墙直接呈现给用户）。Taskly 采纳为
+  安装链切片：声明 github.com 更新源——把「本地优先、只连更新源」的信任
+  故事写进包里。
+- **更新行为显性化**：Raycast 把更新入口明示在 About。Taskly 排期：设置页
+  增加「自动检查更新」开关（默认开，写 config），把已有的 4h 静默检查
+  显性化；下载后仍确认再装（与 Raycast 的退出静默安装分叉——任务管理器
+  是数据工具，保留用户控制感）。
+- **手册结构**：manual.raycast.com 的 Keyboard Shortcuts / Import &
+  Export / Troubleshooting 独立成章、changelog 挂首页。Taskly 排期并入
+  手册切片：快捷键全表（§8 面向用户版）与「数据在哪/如何备份」章节。
+
+### 参考但不照搬
+
+- 退出时静默自动安装（CanShutDownForAutoInstall）：不采纳，理由同上。
+- Sentry 崩溃上报内置于包：v1 无遥测、crash 仅 opt-in，按自己的清单走。
+- 社区/Slack 入口：单机 + 云盘同步路线，GitHub issues 即反馈渠道。
+- 更新后一次性亮点提示（changelog 一等公民）：条件比 Raycast 更好
+  （结构化 CHANGELOG 自动进 release），列为后续增量切片。
+
+### 明确不学
+
+账号/Store/云同步/AI（与本地优先正面冲突）；纯英文零本地化（双语是
+Taskly 契约优势）；设置页做 WebKit 壳（宿主原生 + i18n 单源）；macOS 26
+最低版本门槛（14+ 是真实覆盖面差异）。

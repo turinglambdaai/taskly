@@ -131,5 +131,9 @@
   "aboutLicense": "以 GNU AGPL-3.0 授权发布",
   "aboutWebsite": "访问官网",
   "aboutReportIssue": "问题反馈",
+  "aboutManual": "使用手册",
+  "aboutChangelog": "更新日志",
+  "aboutCopyDiagnostics": "复制诊断信息",
+  "statusDiagnosticsCopied": "已复制诊断信息，可直接粘贴到 issue",
   "updateCopyError": "复制错误信息"
 }
