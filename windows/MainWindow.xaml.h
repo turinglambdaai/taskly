@@ -96,6 +96,10 @@ struct MainWindow : MainWindowT<MainWindow> {
   void OnCancelUpdateDownload(
       winrt::Windows::Foundation::IInspectable const&,
       Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnAutoCheckUpdatesToggled(
+      winrt::Windows::Foundation::IInspectable const&,
+      Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void LoadAutoCheckUpdatesSetting();
 
 private:
   enum class ViewKind { Today, Planned, All, Completed, List };
@@ -221,6 +225,8 @@ private:
 
   std::shared_ptr<rivet::windows::Backend> backend_;
   rivet_app::Settings settings_{};
+  // Host-owned (like last-update-check): UPDATE.md auto-check toggle.
+  bool auto_check_updates_{true};
   rivet_app::SmartCounts current_counts_{};
   std::vector<rivet_app::TodoList> lists_;
   std::vector<rivet_app::Task> tasks_;

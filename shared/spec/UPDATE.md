@@ -15,6 +15,11 @@
   manual `检查更新… / Check for Updates…` menu item (family menu
   convention: Help menu on Windows/Linux, App menu below About on macOS)
   that bypasses the throttle.
+- **Auto-check toggle**: config key `auto-check-updates`, `"1"` (default)
+  or `"0"`, exposed as a checkable 自动检查更新 / Automatically Check for
+  Updates item in the Settings menu. When `"0"`, the silent launch and
+  periodic checks skip; the manual item always checks and is unaffected
+  by the toggle or the throttle.
 - **Silent mode**: network failure / rate limit → silently ignore (never
   nag). Manual mode reports every outcome.
 - **Newer version found** (semver compare, downgrades ignored) → dialog

@@ -210,7 +210,10 @@
     ;; Host-declared install shape (Windows: msi vs portable zip; Linux:
     ;; appimage vs deb/rpm vs tarball) — the updater picks the download
     ;; flavor from it (UPDATE.md).
-    ("install-flavor" ("zip" "msi" "appimage" "package" "tarball"))))
+    ("install-flavor" ("zip" "msi" "appimage" "package" "tarball"))
+    ;; UPDATE.md auto-check toggle: silent launch/4h checks skip when "0";
+    ;; the manual Check for Updates… item always runs.
+    ("auto-check-updates" ("0" "1"))))
 
 ;; Integer-as-string per DATA-FORMAT §7: sidebar selection and the
 ;; update-check throttle (shared/spec/UPDATE.md) persist as plain integers.

@@ -167,6 +167,9 @@ void MainWindow::RunSilentUpdateCheck() {
   if (IsDevCopy()) {
     return;  // dev copies never phone home (UPDATE.md silent mode)
   }
+  if (!auto_check_updates_) {
+    return;  // UPDATE.md auto-check toggle: silent checks skip
+  }
   // Host-side throttle: at most one silent check per 4 h, persisted as the
   // `last-update-check` setting (unix epoch seconds, shared with the other
   // platforms' hosts). Manual checks bypass this entirely.
@@ -763,3 +766,40 @@ winrt::fire_and_forget MainWindow::ShowUpdateDialog(
 }
 
 }  // namespace winrt::RivetHost::implementation
+
+void MainWindow::LoadAutoCheckUpdatesSetting() {
+  auto const weak = get_weak();
+  auto const dispatcher = DispatcherQueue();
+  auto backend = backend_;
+  if (backend == nullptr || !backend->running()) {
+    return;
+  }
+  try {
+    rivet_app::API api(*backend);
+    (void)api.get_setting_async(
+        "auto-check-updates",
+        [dispatcher, weak](rivet_app::Result<std::string> result) {
+          bool on = true;
+          try {
+            on = result.get() != "0";  // missing or unreadable → default on
+          } catch (...) {
+          }
+          dispatcher.TryEnqueue([weak, on] {
+            if (auto window = weak.get()) {
+              window->auto_check_updates_ = on;
+              window->MenuAutoCheckUpdates().IsChecked(on);
+            }
+          });
+        });
+  } catch (...) {
+    // Silent: the toggle defaults to on until the backend answers.
+  }
+}
+
+void MainWindow::OnAutoCheckUpdatesToggled(
+    winrt::Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) {
+  auto_check_updates_ = MenuAutoCheckUpdates().IsChecked();
+  SaveSettingAsync("auto-check-updates",
+                   auto_check_updates_ ? "1" : "0");
+}

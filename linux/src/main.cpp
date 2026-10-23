@@ -1658,11 +1658,18 @@ void on_menu_check_updates(GSimpleAction*, GVariant*, gpointer) {
 // Silent launch check: once per process, 3 s after the backend is up, gated
 // by the 4-hour throttle. A failed throttle read counts as "never checked" —
 // silent mode ignores errors by contract.
+// UPDATE.md auto-check toggle (config `auto-check-updates`, default on);
+// the win.auto-check-updates action state is the single source of truth.
+bool g_auto_check_updates = true;
+
 gboolean on_update_auto_check(gpointer) {
   g_update.auto_check_source = 0;
   if (g_state.api == nullptr ||
       g_state.shutting_down.load(std::memory_order_acquire)) {
     return G_SOURCE_REMOVE;
+  }
+  if (!g_auto_check_updates) {
+    return G_SOURCE_REMOVE;  // silent checks skip; manual still runs
   }
   g_state.api->get_setting_async(
       kUpdateCheckSetting,
@@ -3085,6 +3092,8 @@ void build_menubar() {
   g_menu_append(theme_section, tr("themeDark").c_str(), "win.theme-dark");
   g_menu_append_section(settings_menu, nullptr, G_MENU_MODEL(theme_section));
   g_object_unref(theme_section);
+  g_menu_append(settings_menu, tr("settingsAutoCheckUpdates").c_str(),
+                "win.auto-check-updates");
   g_menu_append_submenu(menu, tr("menuSettings").c_str(),
                         G_MENU_MODEL(settings_menu));
   g_object_unref(settings_menu);
@@ -3520,6 +3529,19 @@ int on_backend_finished(gpointer) {
               apply_theme(settings.theme.empty() ? "system"
                                                  : settings.theme);
               apply_language();
+              g_state.api->get_setting_async(
+                  "auto-check-updates",
+                  [](rivet_app::Result<std::string> toggle) {
+                    if (!toggle.succeeded()) return;
+                    g_auto_check_updates = toggle.get() != "0";
+                    if (auto* action = G_SIMPLE_ACTION(
+                            g_action_map_lookup_action(
+                                G_ACTION_MAP(g_state.window),
+                                "auto-check-updates"))) {
+                      g_simple_action_set_state(
+                          action, g_variant_new_boolean(g_auto_check_updates));
+                    }
+                  });
               // Stamp the install shape so the backend picks the matching
               // update flavor (UPDATE.md): appimage in-place, package
               // manager guidance, portable tarball download.
@@ -4008,6 +4030,19 @@ void on_activate(GtkApplication* app, gpointer) {
                     on_action_focus_search, false);
   add_window_action(GTK_APPLICATION_WINDOW(window), "toggle-completed",
                     on_action_toggle_completed, false);
+  auto* auto_check_action = g_simple_action_new_stateful(
+      "auto-check-updates", nullptr, g_variant_new_boolean(true));
+  g_signal_connect(
+      auto_check_action, "change-state",
+      G_CALLBACK(+[](GSimpleAction* action, GVariant* value, gpointer) {
+        g_auto_check_updates = g_variant_get_boolean(value);
+        g_simple_action_set_state(action, value);
+        save_setting("auto-check-updates",
+                     g_auto_check_updates ? "1" : "0");
+      }),
+      nullptr);
+  g_action_map_add_action(G_ACTION_MAP(window), G_ACTION(auto_check_action));
+  g_object_unref(auto_check_action);
 
   // Window-wide accelerators (PRODUCT-SPEC §8; Things-style keyboard-first).
   static char const* const accels_today[] = {"<Primary>1", nullptr};
