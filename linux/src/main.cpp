@@ -1842,9 +1842,6 @@ void show_about_dialog() {
            "\nDatabase: " + g_get_home_dir() + "/.taskly/tasks.db" +
            "\nConfig: " + g_get_home_dir() + "/.taskly/config.ini";
   }();
-      names.sysname + " " + names.release + ", " + names.machine + ")" +
-      "\nDatabase: " + home + "/.taskly/tasks.db" +
-      "\nConfig: " + home + "/.taskly/config.ini";
   auto* diagnostics_label = gtk_label_new(diagnostics.c_str());
   gtk_label_set_selectable(GTK_LABEL(diagnostics_label), TRUE);
   gtk_label_set_justify(GTK_LABEL(diagnostics_label), GTK_JUSTIFY_LEFT);
@@ -1864,7 +1861,7 @@ void show_about_dialog() {
         auto* clipboard = gdk_display_get_clipboard(gdk_display_get_default());
         gdk_clipboard_set_text(clipboard, text->c_str());
       }),
-      new std::string(diagnostics));
+      &diagnostics);
   gtk_box_append(GTK_BOX(content), copy_diagnostics);
   g_signal_connect(
       dialog, "response",
