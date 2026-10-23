@@ -6,7 +6,7 @@
 
 [English](README.md) · **中文**
 
-Taskly 构建在 [Rivet](https://github.com/turinglambdaai/rivet) 之上：全部领域逻辑——SQLite 存储、排程、自然语言日期、校验、CLI——都在一个 Racket CS 核心里，每个桌面通过类型化 RPC 获得一个轻薄的第一方宿主。宿主只负责渲染和交互，所有逻辑都在后端。
+Taskly 构建在 [Rivet](https://github.com/turinglambdaai/rivet) 之上：全部领域逻辑——SQLite 存储、排程、自然语言日期、校验、CLI——都在一个 Racket CS 核心里，每个桌面通过类型化 RPC 获得一个轻薄的第一方宿主。共享领域逻辑归后端；宿主提醒选择逻辑的收敛仍在 #62 跟进。
 
 | 桌面平台 | 宿主 |
 |---|---|
@@ -16,13 +16,19 @@ Taskly 构建在 [Rivet](https://github.com/turinglambdaai/rivet) 之上：全�
 
 移动端已列入规划：iOS/iPadOS、watchOS 和 Android 宿主计划在桌面线之后落地，前置条件是 Rivet 的一等移动应用交付（Phase 8）。watchOS 将作为 iOS 宿主的类型化 companion 交付——手表 UI 走 WatchConnectivity，后端留在手机侧，遵循 Rivet 的 watch 架构。
 
+## 开始使用
+
+开发预览，尚未开放付费购买。未来官方桌面版开售时再公布实际交付条款。 提供 macOS、Windows、Linux 桌面预览版。按发布附件标注选择系统与 CPU；移动端和手表端尚未交付。
+
+[安装、首次使用、隐私与备份恢复](docs/USER-GUIDE.zh-CN.md) · [English](docs/USER-GUIDE.md)
+
 ## 功能
 
 - **Reminders 风格界面**——智能视图（今天 / 计划 / 全部 / 已完成），emoji 图标 + 12 色板的自定义清单，明暗主题跟随系统，中英双语实时切换。
 - **自然语言快速添加**——输入 `明天买菜` 或 `standup @9am +1d`，回车前就能在实时预览 chip 里看到解析出的排程。
 - **对齐 Reminders 的交互**——⌘/⇧ 多选、批量操作、删除一键撤销横幅；↑/↓ 导航，Return 行内展开（标题、日期/时间 chip、备注），Esc 收起；已完成任务收进可折叠分组。全套能力（含共享应用快捷键 Ctrl/⌘+1…4、N、F、⇧C）已在三平台齐装（[进度](docs/UX-BENCHMARKS.md)）。
 - **到期提醒通知**——60 秒轮询 + 启动检查，去重，超过三条合并为一条汇总。
-- **单文件数据**——所有任务存在一个 SQLite 文件（`~/.taskly/tasks.db`，WAL），丢进 iCloud/OneDrive/Dropbox 即可同步。格式文档化且稳定：[DATA-FORMAT](shared/spec/DATA-FORMAT.md)。
+- **单文件数据**——所有任务存在一个 SQLite 文件（`~/.taskly/tasks.db`，WAL）。退出应用后再备份；云文件夹复制不提供安全的数据库并发同步。格式文档化且稳定：[DATA-FORMAT](shared/spec/DATA-FORMAT.md)。
 - **面向 agent 的 CLI**——`taskly list|add|update|done|rm|search|mklist…`，`--json` 输出稳定、退出码固定、跨平台字节级一致（63 例 golden 套件钉死）。规格：[CLI-SPEC](shared/spec/CLI-SPEC.md)。
 - **在线更新（三平台）**——启动时静默检查 + 设置里手动检查；后端验证 [更新清单](shared/spec/UPDATE.md)（Ed25519）并下载产物，宿主负责安装：macOS 原地换装 bundle，Windows 退出并换装安装目录，Linux 应用内下载、解压覆盖完成安装。
 
@@ -90,7 +96,3 @@ Taskly 本地优先、无遥测，反馈统一走 [GitHub issues](https://github
 ## 许可证
 
 [AGPL-3.0](LICENSE)。
-
-## 产品与收费
-
-首发设计为完整官方桌面版买断、14 天试用、可选续购更新；不把提醒和自然语言输入拆卖。当前仍在开发、没有实际用户，开发预览行为不因本文改变。价格目标、试用后的数据出口与开卖门禁见 [PRICING.md](PRICING.zh-CN.md)，不表示已经开售。

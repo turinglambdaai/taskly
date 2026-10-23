@@ -11,10 +11,9 @@ agent-facing CLI, and a single local SQLite file.
 Taskly is built on [Rivet](https://github.com/turinglambdaai/rivet): the
 entire domain — SQLite storage, scheduling, natural-language dates,
 validation, and the CLI — lives in one Racket CS core, and every desktop
-gets a thin first-party host over typed RPC. The hosts only render and
-interact; all logic lives in the backend.
+gets a thin first-party host over typed RPC. Shared domain logic belongs in the backend; host reminder-selection consolidation remains tracked in #62.
 
-| Desktop | Host | 
+| Desktop | Host |
 |---|---|
 | macOS 14+ (Apple Silicon) | SwiftUI |
 | Windows 10+ (x64) | WinUI 3 |
@@ -25,6 +24,12 @@ after the desktop line, gated on Rivet's first-class mobile application
 delivery (Phase 8). watchOS ships as a typed companion to the iOS host —
 watch UI over WatchConnectivity with the backend on the phone — per Rivet's
 watch architecture.
+
+## Start here
+
+Development preview; no paid checkout is open. A future official desktop purchase will be announced with its delivered terms. Desktop previews for macOS, Windows and Linux. Select the OS and CPU shown on the release asset; mobile and watch applications are not delivered products.
+
+[Installation, first use, privacy, backup and recovery](docs/USER-GUIDE.md) · [简体中文](docs/USER-GUIDE.zh-CN.md)
 
 ## Features
 
@@ -44,8 +49,8 @@ watch architecture.
 - **Due-task notifications** — a 60 s poll plus a startup check, deduped,
   capped at three separate banners (more → one summary).
 - **One data file** — your tasks live in a single SQLite file
-  (`~/.taskly/tasks.db`, WAL) you can drop into iCloud/OneDrive/Dropbox
-  for sync. The format is documented and stable:
+  (`~/.taskly/tasks.db`, WAL). Back it up after closing the app;
+  live cloud-folder replication is not safe concurrent database sync. The format is documented and stable:
   [DATA-FORMAT](shared/spec/DATA-FORMAT.md).
 - **Agent-facing CLI** — `taskly list|add|update|done|rm|search|mklist…`
   with stable `--json` output, fixed exit codes, and byte-level
@@ -148,7 +153,3 @@ The in-app About dialog links to the same tracker on every platform.
 ## License
 
 [AGPL-3.0](LICENSE).
-
-## Product & pricing
-
-Consumer flagship; one purchase for the complete official desktop product. Read the complete [English pricing and product policy](PRICING.md) or [简体中文](PRICING.zh-CN.md) for target prices, free/paid boundaries and launch gates. This is a launch design, not a live offer; this documentation does not add payment restrictions to current development builds.
