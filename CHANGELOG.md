@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Shared-core reminder decisions on macOS, Windows and Linux: the Racket
+  service now owns due-task eligibility, startup summaries, per-database
+  de-duplication and delivery acknowledgement, while each native host owns
+  permission and OS handoff. Windows gains the missing native reminder path,
+  and stale database-switch decisions cannot leak into the new database (#62).
 - An Automatically Check for Updates toggle in the Settings menu on every
   platform (config `auto-check-updates`, default on): silent launch and
   4-hour checks honor it, the manual Check for Updates… item always runs

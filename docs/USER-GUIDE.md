@@ -30,7 +30,7 @@ Core task use is local. Update checks/downloads and links you open contact exter
 
 ## Known limits
 
-Notification selection still needs cross-host consolidation (#62). The standalone packaged CLI is not yet part of desktop releases; source CLI instructions remain in the README.
+Reminders are evaluated consistently by the shared core on all three desktop hosts, but Taskly must be running and the OS must allow notification delivery. The standalone packaged CLI is not yet part of desktop releases; source CLI instructions remain in the README.
 
 ## Updates and removal
 

@@ -12,6 +12,7 @@
          "../taskly/errors.rkt"
          "../taskly/model.rkt"
          "../taskly/paths.rkt"
+         "../taskly/reminder.rkt"
          "../taskly/service.rkt"
          "../taskly/validation.rkt")
 
@@ -128,6 +129,85 @@
      (check-false (service-task service (task-item-id doomed)))
      (check-not-false (service-task service (task-item-id moved)))
 
-     (close-taskly-service service)))
+     (close-taskly-service service)
+
+     ;; Reminder eligibility, startup summarization and session de-duplication
+     ;; belong to the shared service. Native hosts only acknowledge their OS
+     ;; handoff; the clock/calendar is explicit here for midnight/DST-safe
+     ;; deterministic fixtures.
+     (define reminder-path (build-path temp-root "reminders.db"))
+     (define reminder-service (open-taskly-service reminder-path))
+     (for ([i (in-range 4)])
+       (service-add-task! reminder-service (format "overdue ~a" i)
+                          #:due-date "2026-09-19" #:due-time "23:59"))
+     (service-add-task! reminder-service "future"
+                        #:due-date "2026-09-21" #:due-time "00:00")
+     (define done-due
+       (service-add-task! reminder-service "already done"
+                          #:due-date "2026-09-19"))
+     (service-set-completed! reminder-service (task-item-id done-due) #t)
+     (define startup-decisions
+       (service-reminder-decisions!
+        reminder-service #t #:now-date "2026-09-20" #:now-time "00:00"))
+     (check-equal? (length startup-decisions) 1)
+     (define summary (car startup-decisions))
+     (check-equal? (reminder-decision-kind summary) "summary")
+     (check-equal? (reminder-decision-count summary) 4)
+     (check-false (reminder-decision-task summary))
+     (check-equal? (service-reminder-decision-phase
+                    reminder-service (reminder-decision-token summary))
+                   "emitted")
+     (check-true (service-acknowledge-reminder!
+                  reminder-service (reminder-decision-token summary)
+                  "attempted"))
+     (check-true (service-acknowledge-reminder!
+                  reminder-service (reminder-decision-token summary)
+                  "delivered"))
+     ;; Repeated wakeups cannot duplicate a decision, even after delivery.
+     (check-equal?
+      (service-reminder-decisions!
+       reminder-service #f #:now-date "2026-09-20" #:now-time "00:01")
+      '())
+
+     ;; A task becoming due later is emitted once. A failed native handoff is
+     ;; terminal for this session and does not create a retry duplicate.
+     (define later
+       (service-add-task! reminder-service "later"
+                          #:due-date "2026-09-20" #:due-time "00:02"))
+     (check-equal?
+      (service-reminder-decisions!
+       reminder-service #f #:now-date "2026-09-20" #:now-time "00:01")
+      '())
+     (define later-decisions
+       (service-reminder-decisions!
+        reminder-service #f #:now-date "2026-09-20" #:now-time "00:02"))
+     (check-equal? (length later-decisions) 1)
+     (check-equal? (task-item-id
+                    (reminder-decision-task (car later-decisions)))
+                   (task-item-id later))
+     (check-true (service-acknowledge-reminder!
+                  reminder-service
+                  (reminder-decision-token (car later-decisions))
+                  "attempted"))
+     (check-true (service-acknowledge-reminder!
+                  reminder-service
+                  (reminder-decision-token (car later-decisions))
+                  "failed"))
+     (check-equal?
+      (service-reminder-decisions!
+       reminder-service #f #:now-date "2026-09-20" #:now-time "00:03")
+      '())
+
+     ;; Reopening the database starts a new logical session. An outstanding
+     ;; token from the old service cannot acknowledge the new one.
+     (define stale-token (reminder-decision-token summary))
+     (close-taskly-service reminder-service)
+     (define reopened (open-taskly-service reminder-path))
+     (check-false
+      (service-acknowledge-reminder! reopened stale-token "attempted"))
+     (check-not-false
+      (service-reminder-decisions!
+       reopened #t #:now-date "2026-09-20" #:now-time "00:03"))
+     (close-taskly-service reopened)))
  (lambda ()
    (delete-directory/files temp-root)))

@@ -17,7 +17,7 @@
    (parameterize ([current-taskly-home temp-root])
      (define names
        (map (lambda (entry) (hash-ref entry 'name)) (record-schema)))
-     (check-equal? names '("QuickAddParse" "Settings" "SmartCounts" "Snapshot" "Task" "TodoList" "UpdateCheck" "UpdateState"))
+     (check-equal? names '("QuickAddParse" "ReminderDecision" "Settings" "SmartCounts" "Snapshot" "Task" "TodoList" "UpdateCheck" "UpdateState"))
 
      (define service (open-taskly-service (build-path temp-root "schema.db")))
      (define created (service-add-task! service "typed task" #:due-date "2026-09-20"))
@@ -47,6 +47,15 @@
      (check-equal? (record-ref counts 'all) 1)
      (check-equal? (length (record-ref snapshot 'lists)) 1)
      (check-equal? (length (record-ref snapshot 'tasks)) 1)
+
+     (define decisions
+       (service-reminder-decisions!
+        service #f #:now-date "2026-09-20" #:now-time "00:00"))
+     (define reminder-dto (reminder-decision->dto (car decisions)))
+     (check-equal? (record-ref reminder-dto 'kind) "task")
+     (check-equal? (record-ref reminder-dto 'count) 1)
+     (check-equal? (record-ref (record-ref reminder-dto 'task) 'text)
+                   "typed task")
 
      (close-taskly-service service)))
  (lambda ()

@@ -45,10 +45,10 @@
 (check-equal?
  (sort (map (lambda (rpc) (hash-ref rpc 'name)) (rpc-schema)) string<?)
  (sort (map symbol->string
-            '(add_task check_updates close_database create_list
+            '(acknowledge_reminder add_task check_updates close_database create_list
               default_database delete_list delete_task get_setting
               get_settings load_snapshot open_database parse_due
-              parse_quick_add search_tasks set_completed set_setting
+              parse_quick_add reminder_decisions search_tasks set_completed set_setting
               start_download update_list update_state update_task
               update_task_text))
        string<?)
@@ -265,6 +265,34 @@
    (check-equal? del-list #t)
    (define-values (del-list-miss _dlm-err) (call-rpc 'delete_list 99))
    (check-equal? del-list-miss #f)
+
+   ;; ---- reminder decisions + native handoff acknowledgement --------------
+
+   (define-values (_reminder-task _ra-err)
+     (call-rpc 'add_task "wire reminder" (void) "2000-01-01" "00:00" (void)))
+   (check-false _ra-err)
+   (define-values (decisions _rd-err) (call-rpc 'reminder_decisions #f))
+   (check-false _rd-err)
+   (check-equal? (length decisions) 1)
+   ;; ReminderDecision wire shape: [token kind count optional-task].
+   (define decision (car decisions))
+   (check-equal? (length decision) 4)
+   (check-true (string? (list-ref decision 0)))
+   (check-equal? (take (cdr decision) 2) (list "task" 1))
+   (check-equal? (list-ref (list-ref decision 3) 3) "wire reminder")
+   (define token (list-ref decision 0))
+   (define-values (attempted _ar1-err)
+     (call-rpc 'acknowledge_reminder token "attempted"))
+   (check-equal? attempted #t)
+   (define-values (delivered _ar2-err)
+     (call-rpc 'acknowledge_reminder token "delivered"))
+   (check-equal? delivered #t)
+   (define-values (no-duplicate _rd2-err) (call-rpc 'reminder_decisions #f))
+   (check-equal? no-duplicate '())
+   (define-values (_bad-phase bad-phase-err)
+     (call-rpc 'acknowledge_reminder token "retry"))
+   (check-true (and (string? bad-phase-err)
+                    (string-contains? bad-phase-err "Unknown reminder phase")))
 
    ;; ---- settings ----------------------------------------------------------
 

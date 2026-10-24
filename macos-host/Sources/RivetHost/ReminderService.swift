@@ -1,19 +1,16 @@
 import Foundation
 import RivetSystem
 
-/// Due-task reminders (PRODUCT-SPEC §9). Checks every 60 s while a database
-/// is connected plus once at startup. Every task notifies at most once per
-/// session; the startup check summarizes when more than three tasks are due.
-/// Notification transport failures are swallowed for the session — this
-/// crashed on macOS once (0.6.1 regression), never again.
+/// Native scheduling and OS delivery for shared-core reminder decisions.
+/// Eligibility, startup summarization, per-database de-duplication and
+/// acknowledgement state live in the Racket application service.
 @MainActor
 final class ReminderService {
     private weak var model: AppModel?
     private var timer: Timer?
-    private var notifiedIDs: Set<Int64> = []
     private var authorized = false
     private var started = false
-    /// The first check after launch summarizes instead of spamming.
+    /// The first check after launch asks the core for summary semantics.
     private var startupCheckPending = true
 
     init(model: AppModel) {
@@ -30,16 +27,13 @@ final class ReminderService {
             // denied both mean the same thing: stay silent all session.
             self.authorized = (try? await RivetNotifications.requestAuthorization()) ?? false
             guard self.authorized else { return }
-            await MainActor.run {
-                self.scheduleTimer()
-                self.checkNow()
-            }
+            self.scheduleTimer()
+            self.checkNow()
         }
     }
 
-    /// Database changed underneath us (File ▸ Open): forget what we showed.
+    /// `open_database` created a fresh shared-core reminder session.
     func resetSession() {
-        notifiedIDs.removeAll()
         startupCheckPending = true
         if authorized {
             checkNow()
@@ -68,31 +62,45 @@ final class ReminderService {
         startupCheckPending = false
         _Concurrency.Task { [weak self] in
             guard let self else { return }
-            guard let snapshot = try? await model.currentSnapshotForReminders() else { return }
-            await MainActor.run {
-                self.process(snapshot.tasks, startup: startup, model: model)
+            guard let decisions = try? await model.reminderDecisions(startup: startup) else {
+                return
             }
+            await self.deliver(decisions, model: model)
         }
     }
 
-    private func process(_ tasks: [RivetTypes.Task], startup: Bool, model: AppModel) {
-        let due = tasks.filter { isDue($0) && !notifiedIDs.contains($0.id) }
-        // Everything seen now is marked notified, even the summarized ones.
-        for task in due {
-            notifiedIDs.insert(task.id)
-        }
-        guard !due.isEmpty else { return }
+    private func deliver(_ decisions: [RivetTypes.ReminderDecision], model: AppModel) async {
+        for decision in decisions {
+            guard authorized else {
+                _ = await model.acknowledgeReminder(token: decision.token, phase: "failed")
+                continue
+            }
+            guard await model.acknowledgeReminder(
+                token: decision.token, phase: "attempted") else {
+                continue // stale decision after a database switch
+            }
 
-        if startup && due.count > 3 {
-            show(
-                title: model.t("reminderTitle"),
-                body: model.t("reminderStartupSummary", due.count))
-            return
-        }
-        for task in due {
-            show(
-                title: model.t("reminderTitle"),
-                body: Self.body(task, dueAtLabel: model.t("reminderDueAt")))
+            let body: String
+            if decision.kind == "summary" {
+                body = model.t("reminderStartupSummary", Int(decision.count))
+            } else if let task = decision.task {
+                body = Self.body(task, dueAtLabel: model.t("reminderDueAt"))
+            } else {
+                _ = await model.acknowledgeReminder(token: decision.token, phase: "failed")
+                continue
+            }
+
+            do {
+                try await RivetNotifications.show(
+                    title: model.t("reminderTitle"), body: body)
+                _ = await model.acknowledgeReminder(
+                    token: decision.token, phase: "delivered")
+            } catch {
+                // A rejected/unavailable transport disables this app session.
+                authorized = false
+                _ = await model.acknowledgeReminder(
+                    token: decision.token, phase: "failed")
+            }
         }
     }
 
@@ -103,30 +111,5 @@ final class ReminderService {
             when += " \(time)"
         }
         return "\(task.text)\n\(dueAtLabel): \(when)"
-    }
-
-    /// Due = incomplete ∧ has due_date ∧ combine(due_date, due_time|00:00) ≤ now
-    /// (overdue included, however old).
-    private func isDue(_ task: RivetTypes.Task) -> Bool {
-        guard !task.completed, let dateOnly = task.due_date, !dateOnly.isEmpty else {
-            return false
-        }
-        guard var date = DateParser.strictDate(from: dateOnly) else { return false }
-        if let time = task.due_time, !time.isEmpty {
-            let parts = time.split(separator: ":")
-            if parts.count == 2, let hour = Int(parts[0]), let minute = Int(parts[1]) {
-                date = Calendar.current.date(
-                    bySettingHour: hour, minute: minute, second: 0, of: date) ?? date
-            }
-        }
-        return date <= Date()
-    }
-
-    /// A failing transport must never take the app down: swallow for the
-    /// session (PRODUCT-SPEC §9).
-    private func show(title: String, body: String) {
-        _Concurrency.Task {
-            try? await RivetNotifications.show(title: title, body: body)
-        }
     }
 }

@@ -24,13 +24,14 @@ parts where platform fidelity is the feature.
 | SQLite schema/migrations, queries | Racket core |
 | config and DB path resolution | Racket core |
 | validation, date parsing, filtering | Racket core |
+| reminder eligibility, startup summary, session de-duplication and handoff state | Racket core |
 | task/list state transitions | Racket core |
 | CLI semantics and exit classification | Racket core (migration target) |
 | cross-host RPC/state/events, typed DTO generation | Rivet |
 | Racket CS embedding/lifecycle | Rivet |
 | WinUI / SwiftUI / GTK composition | native host |
 | IME, keyboard, accessibility | native host |
-| file dialogs, menus, notifications | native host |
+| file dialogs, menus, notification permission and OS delivery | native host |
 | signing/package/update integration | native host + release tooling |
 
 ## Target data flow
@@ -88,6 +89,7 @@ taskly/
 │   │   ├── config.rkt
 │   │   ├── validation.rkt
 │   │   ├── date-parser.rkt
+│   │   ├── reminder.rkt     # reminder decisions + delivery acknowledgement state
 │   │   ├── db.rkt
 │   │   ├── service.rkt
 │   │   ├── rivet-schema.rkt
