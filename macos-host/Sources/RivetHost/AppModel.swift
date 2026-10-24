@@ -418,14 +418,17 @@ final class AppModel {
 
     // MARK: - Database lifecycle (File menu)
 
-    /// Full snapshot of the planned view — every dated incomplete task,
-    /// due ones first; the reminder poll filters by time (spec §9).
-    func currentSnapshotForReminders() async throws -> RivetTypes.Snapshot {
+    /// Shared-core reminder decisions; native hosts only schedule and deliver.
+    func reminderDecisions(startup: Bool) async throws -> [RivetTypes.ReminderDecision] {
         guard let api else {
             throw HostError.missingRuntimeLayout("backend not started")
         }
-        return try await api.load_snapshot(
-            view: "planned", list_id: nil, show_completed: false)
+        return try await api.reminder_decisions(startup: startup)
+    }
+
+    func acknowledgeReminder(token: String, phase: String) async -> Bool {
+        guard let api else { return false }
+        return (try? await api.acknowledge_reminder(token: token, phase: phase)) ?? false
     }
 
     /// Open (creating when absent) a database file in place.

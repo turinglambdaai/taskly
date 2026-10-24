@@ -30,6 +30,25 @@ struct QuickAddParse {
   std::optional<std::string> due_time;
 };
 
+struct Task {
+  std::int64_t id;
+  std::int64_t list_id;
+  std::optional<std::string> list_name;
+  std::string text;
+  bool completed;
+  std::optional<std::string> due_date;
+  std::optional<std::string> due_time;
+  std::optional<std::string> notes;
+  std::string created_at;
+};
+
+struct ReminderDecision {
+  std::string token;
+  std::string kind;
+  std::int64_t count;
+  std::optional<Task> task;
+};
+
 struct Settings {
   std::string language;
   std::string theme;
@@ -51,18 +70,6 @@ struct TodoList {
   std::optional<std::string> icon;
   std::optional<std::int64_t> color;
   std::int64_t pending_count;
-};
-
-struct Task {
-  std::int64_t id;
-  std::int64_t list_id;
-  std::optional<std::string> list_name;
-  std::string text;
-  bool completed;
-  std::optional<std::string> due_date;
-  std::optional<std::string> due_time;
-  std::optional<std::string> notes;
-  std::string created_at;
 };
 
 struct Snapshot {
@@ -107,10 +114,10 @@ struct Result<void> {
 
 namespace detail {
 inline rivet::Value encode_String(std::string const& v) { return rivet::Value(v); }
+inline rivet::Value encode_Bool(bool v) { return rivet::Value(v); }
 inline rivet::Value encode_Int64(std::int64_t v) { return rivet::Value(v); }
 inline rivet::Value encode__Optional_Int64_(std::optional<std::int64_t> const& v) { return v ? encode_Int64(*v) : rivet::Value{}; }
 inline rivet::Value encode__Optional_String_(std::optional<std::string> const& v) { return v ? encode_String(*v) : rivet::Value{}; }
-inline rivet::Value encode_Bool(bool v) { return rivet::Value(v); }
 inline rivet::Value encode_Task(Task const& v) { rivet::Value::List r; r.reserve(9); r.push_back(encode_Int64(v.id)); r.push_back(encode_Int64(v.list_id)); r.push_back(encode__Optional_String_(v.list_name)); r.push_back(encode_String(v.text)); r.push_back(encode_Bool(v.completed)); r.push_back(encode__Optional_String_(v.due_date)); r.push_back(encode__Optional_String_(v.due_time)); r.push_back(encode__Optional_String_(v.notes)); r.push_back(encode_String(v.created_at)); return rivet::Value(std::move(r)); }
 inline rivet::Value encode_UpdateCheck(UpdateCheck const& v) { rivet::Value::List r; r.reserve(8); r.push_back(encode_String(v.status)); r.push_back(encode__Optional_String_(v.error)); r.push_back(encode_String(v.current_version)); r.push_back(encode__Optional_String_(v.available_version)); r.push_back(encode__Optional_Int64_(v.build)); r.push_back(encode__Optional_String_(v.published_at)); r.push_back(encode__Optional_String_(v.installer)); r.push_back(encode__Optional_Int64_(v.size_bytes)); return rivet::Value(std::move(r)); }
 inline rivet::Value encode_Void() { return rivet::Value{}; }
@@ -121,14 +128,17 @@ inline rivet::Value encode__List_TodoList_(std::vector<TodoList> const& xs) { ri
 inline rivet::Value encode__List_Task_(std::vector<Task> const& xs) { rivet::Value::List r; r.reserve(xs.size()); for (auto const& x : xs) r.push_back(encode_Task(x)); return rivet::Value(std::move(r)); }
 inline rivet::Value encode_Snapshot(Snapshot const& v) { rivet::Value::List r; r.reserve(3); r.push_back(encode_SmartCounts(v.counts)); r.push_back(encode__List_TodoList_(v.lists)); r.push_back(encode__List_Task_(v.tasks)); return rivet::Value(std::move(r)); }
 inline rivet::Value encode_QuickAddParse(QuickAddParse const& v) { rivet::Value::List r; r.reserve(3); r.push_back(encode_String(v.text)); r.push_back(encode__Optional_String_(v.due_date)); r.push_back(encode__Optional_String_(v.due_time)); return rivet::Value(std::move(r)); }
+inline rivet::Value encode__Optional_Task_(std::optional<Task> const& v) { return v ? encode_Task(*v) : rivet::Value{}; }
+inline rivet::Value encode_ReminderDecision(ReminderDecision const& v) { rivet::Value::List r; r.reserve(4); r.push_back(encode_String(v.token)); r.push_back(encode_String(v.kind)); r.push_back(encode_Int64(v.count)); r.push_back(encode__Optional_Task_(v.task)); return rivet::Value(std::move(r)); }
+inline rivet::Value encode__List_ReminderDecision_(std::vector<ReminderDecision> const& xs) { rivet::Value::List r; r.reserve(xs.size()); for (auto const& x : xs) r.push_back(encode_ReminderDecision(x)); return rivet::Value(std::move(r)); }
 inline rivet::Value encode_UpdateState(UpdateState const& v) { rivet::Value::List r; r.reserve(5); r.push_back(encode_String(v.phase)); r.push_back(encode_Int64(v.percent)); r.push_back(encode__Optional_String_(v.message)); r.push_back(encode__Optional_String_(v.downloaded_path)); r.push_back(encode__Optional_String_(v.available_version)); return rivet::Value(std::move(r)); }
 inline rivet::Value encode_Any(rivet::Value v) { return v; }
 
 inline std::string decode_String(rivet::Value const& v) { if (auto p = std::get_if<std::string>(&v.data)) return *p; throw std::runtime_error("Rivet result type mismatch: String"); }
+inline bool decode_Bool(rivet::Value const& v) { if (auto p = std::get_if<bool>(&v.data)) return *p; throw std::runtime_error("Rivet result type mismatch: Bool"); }
 inline std::int64_t decode_Int64(rivet::Value const& v) { if (auto p = std::get_if<std::int64_t>(&v.data)) return *p; throw std::runtime_error("Rivet result type mismatch: Int64"); }
 inline std::optional<std::int64_t> decode__Optional_Int64_(rivet::Value const& v) { if (std::holds_alternative<std::monostate>(v.data)) return std::nullopt; return decode_Int64(v); }
 inline std::optional<std::string> decode__Optional_String_(rivet::Value const& v) { if (std::holds_alternative<std::monostate>(v.data)) return std::nullopt; return decode_String(v); }
-inline bool decode_Bool(rivet::Value const& v) { if (auto p = std::get_if<bool>(&v.data)) return *p; throw std::runtime_error("Rivet result type mismatch: Bool"); }
 inline Task decode_Task(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 9) throw std::runtime_error("Rivet result type mismatch: Task"); return Task{decode_Int64((*p)[0]), decode_Int64((*p)[1]), decode__Optional_String_((*p)[2]), decode_String((*p)[3]), decode_Bool((*p)[4]), decode__Optional_String_((*p)[5]), decode__Optional_String_((*p)[6]), decode__Optional_String_((*p)[7]), decode_String((*p)[8])}; }
 inline UpdateCheck decode_UpdateCheck(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 8) throw std::runtime_error("Rivet result type mismatch: UpdateCheck"); return UpdateCheck{decode_String((*p)[0]), decode__Optional_String_((*p)[1]), decode_String((*p)[2]), decode__Optional_String_((*p)[3]), decode__Optional_Int64_((*p)[4]), decode__Optional_String_((*p)[5]), decode__Optional_String_((*p)[6]), decode__Optional_Int64_((*p)[7])}; }
 inline void decode_Void(rivet::Value const& v) { if (!std::holds_alternative<std::monostate>(v.data)) throw std::runtime_error("Rivet result type mismatch: Void"); }
@@ -139,6 +149,9 @@ inline std::vector<TodoList> decode__List_TodoList_(rivet::Value const& v) { aut
 inline std::vector<Task> decode__List_Task_(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p) throw std::runtime_error("Rivet result type mismatch: (List Task)"); std::vector<Task> r; r.reserve(p->size()); for (auto const& x : *p) r.push_back(decode_Task(x)); return r; }
 inline Snapshot decode_Snapshot(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 3) throw std::runtime_error("Rivet result type mismatch: Snapshot"); return Snapshot{decode_SmartCounts((*p)[0]), decode__List_TodoList_((*p)[1]), decode__List_Task_((*p)[2])}; }
 inline QuickAddParse decode_QuickAddParse(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 3) throw std::runtime_error("Rivet result type mismatch: QuickAddParse"); return QuickAddParse{decode_String((*p)[0]), decode__Optional_String_((*p)[1]), decode__Optional_String_((*p)[2])}; }
+inline std::optional<Task> decode__Optional_Task_(rivet::Value const& v) { if (std::holds_alternative<std::monostate>(v.data)) return std::nullopt; return decode_Task(v); }
+inline ReminderDecision decode_ReminderDecision(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 4) throw std::runtime_error("Rivet result type mismatch: ReminderDecision"); return ReminderDecision{decode_String((*p)[0]), decode_String((*p)[1]), decode_Int64((*p)[2]), decode__Optional_Task_((*p)[3])}; }
+inline std::vector<ReminderDecision> decode__List_ReminderDecision_(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p) throw std::runtime_error("Rivet result type mismatch: (List ReminderDecision)"); std::vector<ReminderDecision> r; r.reserve(p->size()); for (auto const& x : *p) r.push_back(decode_ReminderDecision(x)); return r; }
 inline UpdateState decode_UpdateState(rivet::Value const& v) { auto p = std::get_if<rivet::Value::List>(&v.data); if (!p || p->size() != 5) throw std::runtime_error("Rivet result type mismatch: UpdateState"); return UpdateState{decode_String((*p)[0]), decode_Int64((*p)[1]), decode__Optional_String_((*p)[2]), decode__Optional_String_((*p)[3]), decode__Optional_String_((*p)[4])}; }
 inline rivet::Value decode_Any(rivet::Value const& v) { return v; }
 }  // namespace detail
@@ -154,6 +167,9 @@ class API {
  public:
   explicit API(rivet::linux_runtime::Backend& backend) : backend_(backend) {}
 
+  std::future<bool> acknowledge_reminder(std::string token, std::string phase) { auto rivet_call = backend_.call("acknowledge_reminder", rivet::Value::List{detail::encode_String(token), detail::encode_String(phase)}); return std::async(std::launch::deferred, [rivet_call = std::move(rivet_call)]() mutable -> bool { return detail::decode_Bool(rivet_call.get()); }); }
+  [[nodiscard]] std::uint64_t acknowledge_reminder_async(std::string token, std::string phase, std::function<void(Result<bool>)> completion) { if (!completion) throw std::invalid_argument("Rivet async completion handler is empty"); return backend_.request_async("acknowledge_reminder", rivet::Value::List{detail::encode_String(token), detail::encode_String(phase)}, [completion = std::move(completion)](rivet::linux_runtime::CallResult rivet_result) mutable { Result<bool> result; if (rivet_result.error) { result.error = rivet_result.error; } else { try { if (!rivet_result.value) throw std::runtime_error("Rivet async call completed without a value"); result.value = detail::decode_Bool(*rivet_result.value); } catch (...) { result.error = std::current_exception(); } } completion(std::move(result)); }); }
+  std::optional<bool> acknowledge_reminder_within(std::string token, std::string phase, std::chrono::milliseconds rivet_timeout) { auto rivet_done = std::make_shared<std::promise<bool>>(); auto rivet_future = rivet_done->get_future(); auto rivet_id = backend_.request_async("acknowledge_reminder", rivet::Value::List{detail::encode_String(token), detail::encode_String(phase)}, [rivet_done](rivet::linux_runtime::CallResult rivet_result) mutable { if (rivet_result.error) { rivet_done->set_exception(rivet_result.error); } else { try { if (!rivet_result.value) throw std::runtime_error("Rivet async call completed without a value"); rivet_done->set_value(detail::decode_Bool(*rivet_result.value)); } catch (...) { rivet_done->set_exception(std::current_exception()); } } }); if (rivet_future.wait_for(rivet_timeout) != std::future_status::ready) { backend_.cancel(rivet_id); return std::nullopt; } return rivet_future.get(); }
   std::future<Task> add_task(std::string text, std::optional<std::int64_t> list_id, std::optional<std::string> due_date, std::optional<std::string> due_time, std::optional<std::string> notes) { auto rivet_call = backend_.call("add_task", rivet::Value::List{detail::encode_String(text), detail::encode__Optional_Int64_(list_id), detail::encode__Optional_String_(due_date), detail::encode__Optional_String_(due_time), detail::encode__Optional_String_(notes)}); return std::async(std::launch::deferred, [rivet_call = std::move(rivet_call)]() mutable -> Task { return detail::decode_Task(rivet_call.get()); }); }
   [[nodiscard]] std::uint64_t add_task_async(std::string text, std::optional<std::int64_t> list_id, std::optional<std::string> due_date, std::optional<std::string> due_time, std::optional<std::string> notes, std::function<void(Result<Task>)> completion) { if (!completion) throw std::invalid_argument("Rivet async completion handler is empty"); return backend_.request_async("add_task", rivet::Value::List{detail::encode_String(text), detail::encode__Optional_Int64_(list_id), detail::encode__Optional_String_(due_date), detail::encode__Optional_String_(due_time), detail::encode__Optional_String_(notes)}, [completion = std::move(completion)](rivet::linux_runtime::CallResult rivet_result) mutable { Result<Task> result; if (rivet_result.error) { result.error = rivet_result.error; } else { try { if (!rivet_result.value) throw std::runtime_error("Rivet async call completed without a value"); result.value = detail::decode_Task(*rivet_result.value); } catch (...) { result.error = std::current_exception(); } } completion(std::move(result)); }); }
   std::optional<Task> add_task_within(std::string text, std::optional<std::int64_t> list_id, std::optional<std::string> due_date, std::optional<std::string> due_time, std::optional<std::string> notes, std::chrono::milliseconds rivet_timeout) { auto rivet_done = std::make_shared<std::promise<Task>>(); auto rivet_future = rivet_done->get_future(); auto rivet_id = backend_.request_async("add_task", rivet::Value::List{detail::encode_String(text), detail::encode__Optional_Int64_(list_id), detail::encode__Optional_String_(due_date), detail::encode__Optional_String_(due_time), detail::encode__Optional_String_(notes)}, [rivet_done](rivet::linux_runtime::CallResult rivet_result) mutable { if (rivet_result.error) { rivet_done->set_exception(rivet_result.error); } else { try { if (!rivet_result.value) throw std::runtime_error("Rivet async call completed without a value"); rivet_done->set_value(detail::decode_Task(*rivet_result.value)); } catch (...) { rivet_done->set_exception(std::current_exception()); } } }); if (rivet_future.wait_for(rivet_timeout) != std::future_status::ready) { backend_.cancel(rivet_id); return std::nullopt; } return rivet_future.get(); }
@@ -193,6 +209,9 @@ class API {
   std::future<QuickAddParse> parse_quick_add(std::string text) { auto rivet_call = backend_.call("parse_quick_add", rivet::Value::List{detail::encode_String(text)}); return std::async(std::launch::deferred, [rivet_call = std::move(rivet_call)]() mutable -> QuickAddParse { return detail::decode_QuickAddParse(rivet_call.get()); }); }
   [[nodiscard]] std::uint64_t parse_quick_add_async(std::string text, std::function<void(Result<QuickAddParse>)> completion) { if (!completion) throw std::invalid_argument("Rivet async completion handler is empty"); return backend_.request_async("parse_quick_add", rivet::Value::List{detail::encode_String(text)}, [completion = std::move(completion)](rivet::linux_runtime::CallResult rivet_result) mutable { Result<QuickAddParse> result; if (rivet_result.error) { result.error = rivet_result.error; } else { try { if (!rivet_result.value) throw std::runtime_error("Rivet async call completed without a value"); result.value = detail::decode_QuickAddParse(*rivet_result.value); } catch (...) { result.error = std::current_exception(); } } completion(std::move(result)); }); }
   std::optional<QuickAddParse> parse_quick_add_within(std::string text, std::chrono::milliseconds rivet_timeout) { auto rivet_done = std::make_shared<std::promise<QuickAddParse>>(); auto rivet_future = rivet_done->get_future(); auto rivet_id = backend_.request_async("parse_quick_add", rivet::Value::List{detail::encode_String(text)}, [rivet_done](rivet::linux_runtime::CallResult rivet_result) mutable { if (rivet_result.error) { rivet_done->set_exception(rivet_result.error); } else { try { if (!rivet_result.value) throw std::runtime_error("Rivet async call completed without a value"); rivet_done->set_value(detail::decode_QuickAddParse(*rivet_result.value)); } catch (...) { rivet_done->set_exception(std::current_exception()); } } }); if (rivet_future.wait_for(rivet_timeout) != std::future_status::ready) { backend_.cancel(rivet_id); return std::nullopt; } return rivet_future.get(); }
+  std::future<std::vector<ReminderDecision>> reminder_decisions(bool startup) { auto rivet_call = backend_.call("reminder_decisions", rivet::Value::List{detail::encode_Bool(startup)}); return std::async(std::launch::deferred, [rivet_call = std::move(rivet_call)]() mutable -> std::vector<ReminderDecision> { return detail::decode__List_ReminderDecision_(rivet_call.get()); }); }
+  [[nodiscard]] std::uint64_t reminder_decisions_async(bool startup, std::function<void(Result<std::vector<ReminderDecision>>)> completion) { if (!completion) throw std::invalid_argument("Rivet async completion handler is empty"); return backend_.request_async("reminder_decisions", rivet::Value::List{detail::encode_Bool(startup)}, [completion = std::move(completion)](rivet::linux_runtime::CallResult rivet_result) mutable { Result<std::vector<ReminderDecision>> result; if (rivet_result.error) { result.error = rivet_result.error; } else { try { if (!rivet_result.value) throw std::runtime_error("Rivet async call completed without a value"); result.value = detail::decode__List_ReminderDecision_(*rivet_result.value); } catch (...) { result.error = std::current_exception(); } } completion(std::move(result)); }); }
+  std::optional<std::vector<ReminderDecision>> reminder_decisions_within(bool startup, std::chrono::milliseconds rivet_timeout) { auto rivet_done = std::make_shared<std::promise<std::vector<ReminderDecision>>>(); auto rivet_future = rivet_done->get_future(); auto rivet_id = backend_.request_async("reminder_decisions", rivet::Value::List{detail::encode_Bool(startup)}, [rivet_done](rivet::linux_runtime::CallResult rivet_result) mutable { if (rivet_result.error) { rivet_done->set_exception(rivet_result.error); } else { try { if (!rivet_result.value) throw std::runtime_error("Rivet async call completed without a value"); rivet_done->set_value(detail::decode__List_ReminderDecision_(*rivet_result.value)); } catch (...) { rivet_done->set_exception(std::current_exception()); } } }); if (rivet_future.wait_for(rivet_timeout) != std::future_status::ready) { backend_.cancel(rivet_id); return std::nullopt; } return rivet_future.get(); }
   std::future<std::vector<Task>> search_tasks(std::string keyword) { auto rivet_call = backend_.call("search_tasks", rivet::Value::List{detail::encode_String(keyword)}); return std::async(std::launch::deferred, [rivet_call = std::move(rivet_call)]() mutable -> std::vector<Task> { return detail::decode__List_Task_(rivet_call.get()); }); }
   [[nodiscard]] std::uint64_t search_tasks_async(std::string keyword, std::function<void(Result<std::vector<Task>>)> completion) { if (!completion) throw std::invalid_argument("Rivet async completion handler is empty"); return backend_.request_async("search_tasks", rivet::Value::List{detail::encode_String(keyword)}, [completion = std::move(completion)](rivet::linux_runtime::CallResult rivet_result) mutable { Result<std::vector<Task>> result; if (rivet_result.error) { result.error = rivet_result.error; } else { try { if (!rivet_result.value) throw std::runtime_error("Rivet async call completed without a value"); result.value = detail::decode__List_Task_(*rivet_result.value); } catch (...) { result.error = std::current_exception(); } } completion(std::move(result)); }); }
   std::optional<std::vector<Task>> search_tasks_within(std::string keyword, std::chrono::milliseconds rivet_timeout) { auto rivet_done = std::make_shared<std::promise<std::vector<Task>>>(); auto rivet_future = rivet_done->get_future(); auto rivet_id = backend_.request_async("search_tasks", rivet::Value::List{detail::encode_String(keyword)}, [rivet_done](rivet::linux_runtime::CallResult rivet_result) mutable { if (rivet_result.error) { rivet_done->set_exception(rivet_result.error); } else { try { if (!rivet_result.value) throw std::runtime_error("Rivet async call completed without a value"); rivet_done->set_value(detail::decode__List_Task_(*rivet_result.value)); } catch (...) { rivet_done->set_exception(std::current_exception()); } } }); if (rivet_future.wait_for(rivet_timeout) != std::future_status::ready) { backend_.cancel(rivet_id); return std::nullopt; } return rivet_future.get(); }
