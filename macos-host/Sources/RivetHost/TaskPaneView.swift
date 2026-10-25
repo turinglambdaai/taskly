@@ -258,6 +258,7 @@ struct TaskPaneView: View {
                 Button(model.t("bannerUndo")) {
                     model.undoBannerAction?()
                 }
+                .accessibilityIdentifier("undo-delete")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(model.theme.accent)
                 .buttonStyle(.plain)
@@ -298,6 +299,13 @@ struct TaskPaneView: View {
     /// passes through untouched.
     private func handleKeyEvent(_ event: NSEvent) -> NSEvent? {
         guard model.isConnected, !model.tasks.isEmpty else { return event }
+        // Escape is a draft-cancel command even while AppKit's field editor
+        // owns first responder. Handle it before the typing guard; Return and
+        // ordinary text continue through to the focused control.
+        if event.keyCode == 53, model.expandedTaskID != nil {
+            model.cancelTaskEditToken += 1
+            return nil
+        }
         if let responder = NSApp.keyWindow?.firstResponder,
            responder is NSText || responder is NSTextView {
             return event
@@ -320,10 +328,6 @@ struct TaskPaneView: View {
             }
             return nil
         case 53: // Esc — collapse, then clear selection
-            if model.expandedTaskID != nil {
-                model.expandedTaskID = nil
-                return nil
-            }
             if !model.selectedTaskIDs.isEmpty {
                 model.clearTaskSelection()
                 return nil

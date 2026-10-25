@@ -2025,8 +2025,7 @@ struct TaskEditor {
   std::int64_t task_id{0};
 };
 
-void on_editor_save_clicked(GtkButton*, gpointer user_data) {
-  auto* editor = static_cast<TaskEditor*>(user_data);
+void commit_task_editor(TaskEditor* editor) {
   auto const* stored = find_selected_task(editor->task_id);
   if (stored == nullptr) return;
   auto updated = *stored;
@@ -2043,7 +2042,16 @@ void on_editor_save_clicked(GtkButton*, gpointer user_data) {
       gtk_editable_get_text(GTK_EDITABLE(editor->time)));
   updated.due_time =
       time.empty() ? std::nullopt : std::optional<std::string>(time);
+  g_state.open_editor_id = -1;
   save_task_edits(updated);
+}
+
+void on_editor_save_clicked(GtkButton*, gpointer user_data) {
+  commit_task_editor(static_cast<TaskEditor*>(user_data));
+}
+
+void on_editor_title_activate(GtkEntry*, gpointer user_data) {
+  commit_task_editor(static_cast<TaskEditor*>(user_data));
 }
 
 void on_editor_clear_due_clicked(GtkButton*, gpointer user_data) {
@@ -2098,6 +2106,8 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
                               seed->due_time->c_str());
       }
     }
+    g_signal_connect(editor->text, "activate",
+                     G_CALLBACK(on_editor_title_activate), editor);
 
     auto* grid = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
     gtk_widget_set_margin_start(grid, 28);
@@ -2165,10 +2175,11 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
   }
   gtk_revealer_set_reveal_child(revealer, expand);
   g_state.open_editor_id = expand ? id : -1;
-  if (expand && focus_date) {
+  if (expand) {
     auto* editor = static_cast<TaskEditor*>(
         g_object_get_data(G_OBJECT(row), "task-editor"));
-    gtk_widget_grab_focus(GTK_WIDGET(editor->date));
+    gtk_widget_grab_focus(
+        GTK_WIDGET(focus_date ? editor->date : editor->text));
   }
 }
 
@@ -2177,11 +2188,32 @@ void toggle_task_editor(GtkListBoxRow* row, std::int64_t id, bool focus_date) {
       g_object_get_data(G_OBJECT(row), "task-editor-revealer"));
   auto const expanded = revealer != nullptr &&
                         gtk_revealer_get_reveal_child(revealer);
-  set_task_editor_expanded(row, id, !expanded, focus_date, nullptr);
+  if (expanded) {
+    auto* editor = static_cast<TaskEditor*>(
+        g_object_get_data(G_OBJECT(row), "task-editor"));
+    if (editor != nullptr) commit_task_editor(editor);
+    return;
+  }
+  set_task_editor_expanded(row, id, true, focus_date, nullptr);
 }
 
 // Find the visible row for a task id and expand its editor.
 void open_task_editor(std::int64_t id, bool focus_date) {
+  if (g_state.open_editor_id >= 0 && g_state.open_editor_id != id) {
+    for (GtkWidget* child = gtk_widget_get_first_child(GTK_WIDGET(
+             g_state.task_list));
+         child != nullptr;
+         child = gtk_widget_get_next_sibling(child)) {
+      if (!GTK_IS_LIST_BOX_ROW(child)) continue;
+      auto const row_id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
+          g_object_get_data(G_OBJECT(child), "task-id")));
+      if (row_id != g_state.open_editor_id) continue;
+      auto* editor = static_cast<TaskEditor*>(
+          g_object_get_data(G_OBJECT(child), "task-editor"));
+      if (editor != nullptr) commit_task_editor(editor);
+      break;
+    }
+  }
   for (GtkWidget* child = gtk_widget_get_first_child(GTK_WIDGET(
            g_state.task_list));
        child != nullptr;
@@ -2378,6 +2410,22 @@ GtkWidget* make_task_row(rivet_app::Task const& task) {
     gtk_box_append(GTK_BOX(content), meta_label);
   }
   gtk_box_append(GTK_BOX(box), content);
+
+  auto* details = gtk_button_new_with_label("ⓘ");
+  gtk_widget_add_css_class(details, "flat");
+  gtk_widget_set_valign(details, GTK_ALIGN_CENTER);
+  gtk_widget_set_tooltip_text(details, tr("contextMenuDetails").c_str());
+  gtk_accessible_update_property(
+      GTK_ACCESSIBLE(details), GTK_ACCESSIBLE_PROPERTY_LABEL,
+      tr("contextMenuDetails").c_str(), -1);
+  g_signal_connect(
+      details, "clicked",
+      G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+        open_task_editor(
+            static_cast<std::int64_t>(GPOINTER_TO_SIZE(user_data)), false);
+      }),
+      GSIZE_TO_POINTER(static_cast<gsize>(task.id)));
+  gtk_box_append(GTK_BOX(box), details);
 
   gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(row), box);
   g_object_set_data(G_OBJECT(row), "task-id",
@@ -3870,7 +3918,35 @@ void on_activate(GtkApplication* app, gpointer) {
   gtk_list_box_set_activate_on_single_click(GTK_LIST_BOX(task_list), FALSE);
   g_signal_connect(
       task_list, "selected-rows-changed",
-      G_CALLBACK(+[](GtkListBox*, gpointer) { refresh_bulk_bar(); }),
+      G_CALLBACK(+[](GtkListBox* list, gpointer) {
+        if (g_state.open_editor_id >= 0) {
+          bool editor_still_selected = false;
+          auto* selected = gtk_list_box_get_selected_rows(list);
+          for (auto* node = selected; node != nullptr; node = node->next) {
+            auto* row = GTK_LIST_BOX_ROW(node->data);
+            auto const id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
+                g_object_get_data(G_OBJECT(row), "task-id")));
+            if (id == g_state.open_editor_id) editor_still_selected = true;
+          }
+          g_list_free(selected);
+          if (!editor_still_selected) {
+            for (GtkWidget* child = gtk_widget_get_first_child(
+                     GTK_WIDGET(list));
+                 child != nullptr;
+                 child = gtk_widget_get_next_sibling(child)) {
+              if (!GTK_IS_LIST_BOX_ROW(child)) continue;
+              auto const id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
+                  g_object_get_data(G_OBJECT(child), "task-id")));
+              if (id != g_state.open_editor_id) continue;
+              auto* editor = static_cast<TaskEditor*>(
+                  g_object_get_data(G_OBJECT(child), "task-editor"));
+              if (editor != nullptr) commit_task_editor(editor);
+              break;
+            }
+          }
+        }
+        refresh_bulk_bar();
+      }),
       nullptr);
   g_signal_connect(
       task_list, "row-activated",

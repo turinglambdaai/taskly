@@ -82,6 +82,7 @@ struct TaskRowView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.text)
+                    .accessibilityIdentifier("task-title-\(task.id)")
                     .font(.system(size: 14))
                     .strikethrough(task.completed)
                     .foregroundStyle(task.completed ? model.theme.tertiaryText : model.theme.onSurface)
@@ -107,6 +108,7 @@ struct TaskRowView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("task-details-\(task.id)")
             .help(model.t("contextMenuDetails"))
         }
     }
@@ -306,6 +308,14 @@ struct TaskRowView: View {
         titleFocused = false
     }
 
+    private func cancelExpansion() {
+        guard isExpanded else { return }
+        // Clear the model flag first so onDisappear's commit guard rejects
+        // this draft. Escape is the sole cancel path; click-away/Return save.
+        model.expandedTaskID = nil
+        titleFocused = false
+    }
+
     private var expandedContent: some View {
         HStack(alignment: .top, spacing: 12) {
             checkbox
@@ -319,6 +329,8 @@ struct TaskRowView: View {
                     .textFieldStyle(.plain)
                     .focused($titleFocused)
                     .onSubmit { collapse() }
+                    .onExitCommand { cancelExpansion() }
+                    .accessibilityIdentifier("inline-task-title-\(task.id)")
 
                 // Date + time chips (accent border when set, hollow when empty).
                 HStack(spacing: 8) {
@@ -341,6 +353,7 @@ struct TaskRowView: View {
                     .foregroundStyle(model.theme.onSurface)
                     .lineLimit(2...6)
                     .textFieldStyle(.plain)
+                    .accessibilityIdentifier("inline-task-notes-\(task.id)")
             }
 
             Spacer(minLength: 8)
@@ -368,6 +381,9 @@ struct TaskRowView: View {
         }
         .onDisappear {
             commitExpansion()
+        }
+        .onChange(of: model.cancelTaskEditToken) { _, _ in
+            cancelExpansion()
         }
     }
 

@@ -35,6 +35,21 @@ func find(_ root: AXUIElement, identifierPrefix: String) -> AXUIElement? {
     }
 }
 
+func findTaskTitle(_ root: AXUIElement, text: String) -> AXUIElement? {
+    walk(root).first { element in
+        stringAttribute(element, kAXIdentifierAttribute).hasPrefix("task-title-") &&
+            [kAXTitleAttribute, kAXValueAttribute, kAXDescriptionAttribute]
+                .contains { stringAttribute(element, $0) == text }
+    }
+}
+
+func findDeleteMenuItem(_ root: AXUIElement) -> AXUIElement? {
+    walk(root).first { element in
+        stringAttribute(element, kAXRoleAttribute) == (kAXMenuItemRole as String) &&
+            ["Delete", "删除"].contains(stringAttribute(element, kAXTitleAttribute))
+    }
+}
+
 func containsStaticText(_ root: AXUIElement, _ expected: String) -> Bool {
     walk(root).contains { element in
         stringAttribute(element, kAXRoleAttribute) == (kAXStaticTextRole as String) &&
@@ -97,6 +112,58 @@ func typeText(_ value: String, into element: AXUIElement) throws {
     keyUp.post(tap: .cghidEventTap)
 }
 
+func setValue(_ value: String, on element: AXUIElement) throws {
+    guard AXUIElementSetAttributeValue(
+        element, kAXFocusedAttribute as CFString, kCFBooleanTrue
+    ) == .success else {
+        throw DriverError.failure("could not focus editor")
+    }
+    guard AXUIElementSetAttributeValue(
+        element, kAXValueAttribute as CFString, value as CFString
+    ) == .success else {
+        throw DriverError.failure("could not set editor value")
+    }
+}
+
+func postKey(_ keyCode: CGKeyCode) throws {
+    guard let source = CGEventSource(stateID: .hidSystemState),
+          let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
+          let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false) else {
+        throw DriverError.failure("could not create keyboard event")
+    }
+    keyDown.post(tap: .cghidEventTap)
+    keyUp.post(tap: .cghidEventTap)
+}
+
+func rightClick(_ element: AXUIElement) throws {
+    guard let positionRaw = attribute(element, kAXPositionAttribute),
+          let sizeRaw = attribute(element, kAXSizeAttribute),
+          CFGetTypeID(positionRaw) == AXValueGetTypeID(),
+          CFGetTypeID(sizeRaw) == AXValueGetTypeID() else {
+        throw DriverError.failure("element has no clickable bounds")
+    }
+    let positionValue = positionRaw as! AXValue
+    let sizeValue = sizeRaw as! AXValue
+    var position = CGPoint.zero
+    var size = CGSize.zero
+    guard AXValueGetValue(positionValue, .cgPoint, &position),
+          AXValueGetValue(sizeValue, .cgSize, &size),
+          let source = CGEventSource(stateID: .hidSystemState) else {
+        throw DriverError.failure("could not resolve clickable bounds")
+    }
+    let point = CGPoint(x: position.x + size.width / 2, y: position.y + size.height / 2)
+    guard let down = CGEvent(
+        mouseEventSource: source, mouseType: .rightMouseDown,
+        mouseCursorPosition: point, mouseButton: .right),
+          let up = CGEvent(
+            mouseEventSource: source, mouseType: .rightMouseUp,
+            mouseCursorPosition: point, mouseButton: .right) else {
+        throw DriverError.failure("could not create right-click events")
+    }
+    down.post(tap: .cghidEventTap)
+    up.post(tap: .cghidEventTap)
+}
+
 var diagnosticApplication: AXUIElement?
 var diagnosticOutput: URL?
 
@@ -132,8 +199,66 @@ do {
     }
     _ = try waitFor("RPC-created task row") { containsStaticText(window, "Acceptance task") ? true : nil }
 
+    let taskTitle: AXUIElement = try waitFor("identified task title") {
+        findTaskTitle(window, text: "Acceptance task")
+    }
+    let taskIdentifier = stringAttribute(taskTitle, kAXIdentifierAttribute)
+    guard let taskID = taskIdentifier.split(separator: "-").last.map(String.init) else {
+        throw DriverError.failure("task title had no stable id: \(taskIdentifier)")
+    }
+
+    // Escape is a true draft cancel even while the native field editor owns
+    // focus. Return commits, and the same stable task ID remains visible.
+    let details: AXUIElement = try waitFor("task details control") {
+        find(window, identifier: "task-details-\(taskID)")
+    }
+    try press(details, "task-details-\(taskID)")
+    let cancelledEditor: AXUIElement = try waitFor("inline title editor") {
+        find(window, identifier: "inline-task-title-\(taskID)")
+    }
+    try setValue("Cancelled draft", on: cancelledEditor)
+    try postKey(53) // Escape
+    _ = try waitFor("Escape cancelled inline draft") {
+        find(window, identifier: "inline-task-title-\(taskID)") == nil &&
+            findTaskTitle(window, text: "Acceptance task") != nil ? true : nil
+    }
+
+    let detailsAgain: AXUIElement = try waitFor("task details control after cancel") {
+        find(window, identifier: "task-details-\(taskID)")
+    }
+    try press(detailsAgain, "task-details-\(taskID)")
+    let committedEditor: AXUIElement = try waitFor("inline title editor after cancel") {
+        find(window, identifier: "inline-task-title-\(taskID)")
+    }
+    try setValue("Edited acceptance task", on: committedEditor)
+    try postKey(36) // Return
+    _ = try waitFor("Return committed inline draft") {
+        findTaskTitle(window, text: "Edited acceptance task") != nil ? true : nil
+    }
+
+    // Native context-menu deletion is staged for six seconds. Undo restores
+    // the exact original row ID because no backend delete has happened yet.
+    let editedTitle: AXUIElement = try waitFor("identified edited task title") {
+        findTaskTitle(window, text: "Edited acceptance task")
+    }
+    try rightClick(editedTitle)
+    let deleteItem: AXUIElement = try waitFor("task Delete menu item") {
+        findDeleteMenuItem(application)
+    }
+    try press(deleteItem, "Delete")
+    let undo: AXUIElement = try waitFor("undo-delete action") {
+        find(window, identifier: "undo-delete")
+    }
+    _ = try waitFor("staged deletion hidden") {
+        find(window, identifier: "task-title-\(taskID)") == nil ? true : nil
+    }
+    try press(undo, "undo-delete")
+    _ = try waitFor("identity-preserving undo") {
+        find(window, identifier: "task-title-\(taskID)") != nil ? true : nil
+    }
+
     let completion: AXUIElement = try waitFor("task completion control") {
-        find(window, identifierPrefix: "task-complete-")
+        find(window, identifier: "task-complete-\(taskID)")
     }
     let completionIdentifier = stringAttribute(completion, kAXIdentifierAttribute)
     try press(completion, completionIdentifier)
@@ -151,11 +276,19 @@ do {
 
     try writeJSON([
         "platform": "macos",
-        "actions": ["type:quick-add", "press:quick-add-submit", "press:\(completionIdentifier)"],
+        "actions": [
+            "type:quick-add", "press:quick-add-submit",
+            "edit:escape-cancel", "edit:return-commit",
+            "context-menu:delete", "press:undo-delete",
+            "press:\(completionIdentifier)",
+        ],
         "assertions": [
             "packaged SwiftUI window activated",
             "stable AXIdentifiers exposed",
             "RPC-created task appeared",
+            "Escape cancelled the focused inline draft",
+            "Return committed the inline draft",
+            "delete undo restored the original task ID",
             "changed Event removed the completed task from the active view",
             "native application accepted termination",
         ],

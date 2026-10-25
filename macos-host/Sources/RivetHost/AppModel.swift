@@ -84,6 +84,9 @@ final class AppModel {
     var selectionAnchorIndex: Int?
     /// Row expanded inline for detail editing (Reminders-style ⓘ).
     var expandedTaskID: Int64?
+    /// Incremented when Escape cancels an expanded editor. The row owns the
+    /// draft buffers, so it observes this token and discards them in place.
+    var cancelTaskEditToken = 0
     var searchText = ""
     var quickAddText = ""
     /// Prevent duplicate Enter/click submissions while an add is in flight.
@@ -123,6 +126,11 @@ final class AppModel {
     var undoBannerText: String?
     var undoBannerAction: (() -> Void)?
     @ObservationIgnored private var undoBannerTask: _Concurrency.Task<Void, Never>?
+    /// Task deletion is staged locally for the undo window. Keeping the
+    /// backend rows intact preserves IDs and all metadata on undo.
+    @ObservationIgnored private var stagedDeleteTasks: [RivetTypes.Task] = []
+    @ObservationIgnored private var stagedDeleteGeneration = 0
+    @ObservationIgnored private var databaseGeneration = 0
     @ObservationIgnored private var transientDeadline: _Concurrency.Task<Void, Never>?
     @ObservationIgnored private var appearanceObserver: NSKeyValueObservation?
     /// Reloads just past each local midnight — a window left open
@@ -434,9 +442,13 @@ final class AppModel {
     /// Open (creating when absent) a database file in place.
     func openDatabase(path: String) {
         guard let api else { return }
+        abandonStagedDelete()
+        databaseGeneration += 1
+        let generation = databaseGeneration
         _Concurrency.Task {
             do {
                 let snapshot = try await api.open_database(path: path)
+                guard generation == databaseGeneration else { return }
                 isConnected = true
                 absorb(snapshot)
                 let settings = try? await api.get_settings()
@@ -452,8 +464,12 @@ final class AppModel {
 
     func closeDatabase() {
         guard let api else { return }
+        abandonStagedDelete()
+        databaseGeneration += 1
+        let generation = databaseGeneration
         _Concurrency.Task {
             _ = try? await api.close_database()
+            guard generation == databaseGeneration else { return }
             isConnected = false
             reminder?.stop()
             lists = []
@@ -611,8 +627,9 @@ final class AppModel {
     private func absorb(_ snapshot: RivetTypes.Snapshot) {
         counts = snapshot.counts
         lists = snapshot.lists
+        let stagedIDs = Set(stagedDeleteTasks.map(\.id))
         withAnimation(.easeOut(duration: 0.15)) {
-            tasks = snapshot.tasks
+            tasks = snapshot.tasks.filter { !stagedIDs.contains($0.id) }
         }
     }
 
@@ -645,8 +662,9 @@ final class AppModel {
         _Concurrency.Task { [weak self] in
             guard let results = try? await api.search_tasks(keyword: keyword) else { return }
             guard let self, seq == self.reloadSequence else { return }
+            let stagedIDs = Set(self.stagedDeleteTasks.map(\.id))
             withAnimation(.easeOut(duration: 0.15)) {
-                self.tasks = results
+                self.tasks = results.filter { !stagedIDs.contains($0.id) }
             }
         }
     }
@@ -820,52 +838,62 @@ final class AppModel {
     /// Batch delete with one combined undo banner. When the deleted row is
     /// part of the active selection, the whole selection is the target.
     func deleteTasks(_ tasks: [RivetTypes.Task]) {
-        guard !tasks.isEmpty, let api else { return }
-        let targets = tasks
+        guard !tasks.isEmpty, api != nil else { return }
+        if !stagedDeleteTasks.isEmpty {
+            commitStagedDelete()
+        }
+        stagedDeleteTasks = tasks
+        stagedDeleteGeneration = databaseGeneration
+        let ids = Set(tasks.map(\.id))
+        withAnimation(.easeOut(duration: 0.15)) {
+            self.tasks.removeAll { ids.contains($0.id) }
+        }
+        selectedTaskIDs.subtract(ids)
+        if let expandedTaskID, ids.contains(expandedTaskID) {
+            self.expandedTaskID = nil
+        }
+        let text = tasks.count == 1
+            ? i18n.format("bannerTaskDeleted", tasks[0].text)
+            : i18n.format("bannerTasksDeleted", tasks.count)
+        showUndoBanner(text, undo: { [weak self] in
+            self?.undoStagedDelete()
+        }, expiration: { [weak self] in
+            self?.commitStagedDelete()
+        })
+    }
+
+    private func undoStagedDelete() {
+        guard !stagedDeleteTasks.isEmpty else { return }
+        stagedDeleteTasks = []
+        dismissUndoBanner()
+        reload()
+    }
+
+    private func commitStagedDelete() {
+        guard !stagedDeleteTasks.isEmpty, let api else { return }
+        let targets = stagedDeleteTasks
+        let generation = stagedDeleteGeneration
+        stagedDeleteTasks = []
+        dismissUndoBanner()
+        guard generation == databaseGeneration, isConnected else { return }
         _Concurrency.Task {
             do {
                 for task in targets {
+                    guard generation == databaseGeneration else { return }
                     _ = try await api.delete_task(id: task.id)
                 }
-                for task in targets {
-                    selectedTaskIDs.remove(task.id)
-                    if expandedTaskID == task.id {
-                        expandedTaskID = nil
-                    }
-                }
-                let text = targets.count == 1
-                    ? i18n.format("bannerTaskDeleted", targets[0].text)
-                    : i18n.format("bannerTasksDeleted", targets.count)
-                showUndoBanner(text) { [weak self] in
-                    self?.restoreTasks(targets)
-                }
-                reload()
             } catch {
                 flashStatus("\(error)")
             }
+            reload()
         }
     }
 
-    /// One-step undo for delete: re-adds the tasks (each receives a new
-    /// id — position/order follows the current view's sort).
-    private func restoreTasks(_ tasks: [RivetTypes.Task]) {
-        guard let api else { return }
-        _Concurrency.Task {
-            do {
-                for task in tasks {
-                    _ = try await api.add_task(
-                        text: task.text,
-                        list_id: task.list_id,
-                        due_date: task.due_date,
-                        due_time: task.due_time,
-                        notes: task.notes)
-                }
-                reload()
-            } catch {
-                flashStatus("\(error)")
-            }
-            dismissUndoBanner()
-        }
+    /// A DB switch/disconnect must never apply old task IDs to the new DB.
+    /// Since staged rows were not deleted yet, abandonment needs no write.
+    private func abandonStagedDelete() {
+        stagedDeleteTasks = []
+        dismissUndoBanner()
     }
 
     func moveTask(_ task: RivetTypes.Task, to list: RivetTypes.TodoList) {
@@ -946,14 +974,18 @@ final class AppModel {
         selectionAnchorIndex = nil
     }
 
-    func showUndoBanner(_ text: String, undo: @escaping () -> Void) {
+    func showUndoBanner(
+        _ text: String,
+        undo: @escaping () -> Void,
+        expiration: @escaping () -> Void
+    ) {
         undoBannerTask?.cancel()
         undoBannerText = text
         undoBannerAction = undo
-        undoBannerTask = _Concurrency.Task { [weak self] in
+        undoBannerTask = _Concurrency.Task {
             try? await _Concurrency.Task.sleep(nanoseconds: 6_000_000_000)
             guard !_Concurrency.Task.isCancelled else { return }
-            self?.dismissUndoBanner()
+            expiration()
         }
     }
 

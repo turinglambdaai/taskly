@@ -95,14 +95,15 @@ Tile glyphs are monochrome platform icon fonts (Windows: Segoe Fluent Icons;
 macOS: SF Symbols; Linux: symbolic icons), not emoji — mixed emoji/text runs
 render fallback debris on some stacks.
 
-## Task detail dialog (immersive editor, Things-style)
+## Inline task editor (Things/Reminders style)
 
-480px wide, radius 12. No dialog title — the task text *is* the title:
-18px semibold borderless multiline input. Notes: 13px borderless multiline
-with tertiary placeholder. Date and time render as rounded chips (accent
-border when set, hollow "Add" chips when empty). Bottom row: Delete as a
-red text button on the left, spacer, Cancel as plain text, Save as an
-accent-filled white-text rounded button. No chrome field borders anywhere.
+The selected row expands in place; there is no task-detail modal. The task
+text remains the visual title (15px semibold, borderless, up to three lines).
+Notes use a 13px borderless multiline field with a tertiary placeholder.
+Date and time render as compact rounded chips where the native toolkit
+supports them, or equivalently grouped native fields on GTK/WinUI. The editor
+does not introduce a second card or dialog border. PRODUCT-SPEC §5/§6 owns
+the shared Enter-save, Escape-cancel and click-away-save behavior.
 
 ## App icon
 
