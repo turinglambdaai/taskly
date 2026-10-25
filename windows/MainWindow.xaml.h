@@ -5,6 +5,8 @@
 #include "pch.h"
 #include "GeneratedBackend.hpp"
 #include "MainWindow.g.h"
+#include "system_services.hpp"
+#include "winui_window.hpp"
 
 namespace winrt::RivetHost::implementation {
 
@@ -111,6 +113,8 @@ private:
   void InstallAppAccelerators();
   void SwitchSmartView(ViewKind kind);
   void ToggleShowCompleted();
+  void CheckReminders(bool startup);
+  void DeliverReminder(rivet_app::ReminderDecision decision);
 
   static std::string ViewStringFor(ViewKind kind);
 
@@ -224,6 +228,7 @@ private:
       std::wstring const& copy_button = L"");
 
   std::shared_ptr<rivet::windows::Backend> backend_;
+  std::unique_ptr<rivet::system::TrayIcon> notification_icon_;
   rivet_app::Settings settings_{};
   // Host-owned (like last-update-check): UPDATE.md auto-check toggle.
   bool auto_check_updates_{true};
@@ -258,12 +263,15 @@ private:
   std::string applied_snapshot_;
   std::atomic<bool> reload_in_flight_{false};
   winrt::Microsoft::UI::Xaml::DispatcherTimer poll_timer_{nullptr};
+  winrt::Microsoft::UI::Xaml::DispatcherTimer reminder_timer_{nullptr};
   winrt::Microsoft::UI::Xaml::DispatcherTimer update_timer_{nullptr};
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer preview_timer_{nullptr};
   bool update_downloading_{false};
   // Wall-clock start of the active download; a poll past the total limit
   // fails the download even if the backend state machine went quiet.
   std::int64_t update_download_start_{0};
+  bool database_connected_{false};
+  bool notifications_disabled_{false};
 };
 
 }  // namespace winrt::RivetHost::implementation

@@ -440,11 +440,8 @@ struct AppState {
   std::atomic<bool> reload_in_flight{false};
   std::int64_t open_editor_id{-1};
 
-  // Reminders (PRODUCT-SPEC §9): one notification per task per session, a
-  // dedupe set that resets when the database changes, and a disable-on-failure
-  // rule — a missing notification service must never crash the host.
-  std::unordered_set<std::int64_t> notified_tasks;
-  std::string notified_db_path;
+  // Native reminder transport only. Eligibility, startup summarization,
+  // per-database de-duplication and handoff acknowledgement live in the core.
   bool notifications_disabled{false};
 };
 
@@ -1114,45 +1111,59 @@ void reload_snapshot() {
 }
 
 // ---------------------------------------------------------------------------
-// Reminders (PRODUCT-SPEC §9) — check every 60 s while a DB is connected,
-// plus one check at startup. Due = incomplete ∧ has due_date ∧
-// combine(due_date, due_time|00:00) ≤ now. Each task notifies at most once
-// per session (dedupe set, reset when the DB changes). Startup: ≤3 overdue →
-// one notification each; >3 → one summary, and everything seen is marked
-// notified. The check runs against a full-database snapshot (not the current
-// view). Never crash: capability probe + swallow-everything disables
-// reminders for the session.
+// Reminders (PRODUCT-SPEC §9) — the host schedules the 60 s wakeup and owns
+// native OS delivery. The shared core returns already de-duplicated task or
+// startup-summary decisions and records emitted -> attempted -> delivered or
+// failed. Stale tokens after a database switch are rejected before delivery.
 // ---------------------------------------------------------------------------
 
-// Local "now" as YYYY-MM-DD HH:MM:SS for lexicographic due compares.
-std::string now_stamp() {
-  auto const now = std::time(nullptr);
-  std::tm local{};
-  localtime_r(&now, &local);
-  char buffer[20];
-  std::snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d %02d:%02d:%02d",
-                local.tm_year + 1900, local.tm_mon + 1, local.tm_mday,
-                local.tm_hour, local.tm_min, local.tm_sec);
-  return buffer;
-}
+void deliver_reminder(rivet_app::ReminderDecision decision) {
+  if (g_state.api == nullptr) return;
+  g_state.api->acknowledge_reminder_async(
+      decision.token, "attempted",
+      [decision = std::move(decision)](rivet_app::Result<bool> result) mutable {
+        dispatch_ui([decision = std::move(decision),
+                     result = std::move(result)]() mutable {
+          bool accepted = false;
+          try {
+            accepted = result.get();
+          } catch (...) {
+            return;
+          }
+          // A DB switch invalidates the old decision before OS delivery.
+          if (!accepted || g_state.api == nullptr) return;
 
-bool is_task_due(rivet_app::Task const& task, std::string const& now) {
-  if (task.completed || !task.due_date.has_value()) return false;
-  auto combined = *task.due_date + " " +
-                  task.due_time.value_or("00:00") + ":00";
-  if (combined.size() == 16) combined += ":00";  // "yyyy-MM-dd HH:mm"
-  return combined <= now;
-}
-
-void notify_task_due(rivet_app::Task const& task) {
-  auto body = task.text + "\n" + tr("reminderDueAt") + ": " +
-              *task.due_date;
-  if (task.due_time.has_value()) {
-    body += " " + *task.due_time;
-  }
-  rivet::system::Notifications::Notify(
-      "Taskly", "taskly-reminder-" + std::to_string(task.id),
-      tr("reminderTitle"), body);
+          std::string outcome{"failed"};
+          if (!g_state.notifications_disabled) {
+            try {
+              std::string body;
+              std::string tag;
+              if (decision.kind == "summary") {
+                tag = "taskly-reminder-summary";
+                body = format_positional(tr("reminderStartupSummary"),
+                                         std::to_string(decision.count));
+              } else if (decision.task.has_value() &&
+                         decision.task->due_date.has_value()) {
+                auto const& task = *decision.task;
+                tag = "taskly-reminder-" + std::to_string(task.id);
+                body = task.text + "\n" + tr("reminderDueAt") + ": " +
+                       *task.due_date;
+                if (task.due_time.has_value()) body += " " + *task.due_time;
+              } else {
+                throw std::runtime_error("malformed reminder decision");
+              }
+              rivet::system::Notifications::Notify(
+                  "Taskly", tag, tr("reminderTitle"), body);
+              outcome = "delivered";
+            } catch (...) {
+              // Permission or transport failure disables this app session.
+              g_state.notifications_disabled = true;
+            }
+          }
+          g_state.api->acknowledge_reminder_async(
+              decision.token, outcome, [](rivet_app::Result<bool>) {});
+        });
+      });
 }
 
 void check_reminders(bool startup) {
@@ -1166,42 +1177,20 @@ void check_reminders(bool startup) {
     g_state.notifications_disabled = true;
     return;
   }
-  // The due set must cover the whole database, not the visible view. Errors
-  // are swallowed: a failed reminder snapshot must not touch the UI status.
-  g_state.api->load_snapshot_async(
-      "all", std::nullopt, false,
-      [startup](rivet_app::Result<rivet_app::Snapshot> result) {
-        dispatch_ui([result = std::move(result), startup]() mutable {
+  // Errors are swallowed: a failed reminder decision must not touch UI status.
+  g_state.api->reminder_decisions_async(
+      startup,
+      [](rivet_app::Result<std::vector<rivet_app::ReminderDecision>> result) {
+        dispatch_ui([result = std::move(result)]() mutable {
           if (g_state.notifications_disabled) return;
           try {
-            auto const snapshot = result.get();
-            auto const now = now_stamp();
-            std::vector<rivet_app::Task const*> due;
-            for (auto const& task : snapshot.tasks) {
-              if (g_state.notified_tasks.count(task.id) > 0) continue;
-              if (is_task_due(task, now)) {
-                due.push_back(&task);
-              }
-            }
-            if (due.empty()) return;
-            if (startup && due.size() > 3) {
-              rivet::system::Notifications::Notify(
-                  "Taskly", "taskly-reminder-summary",
-                  tr("reminderTitle"),
-                  format_positional(tr("reminderStartupSummary"),
-                                    std::to_string(due.size())));
-            } else {
-              for (auto const* task : due) {
-                notify_task_due(*task);
-              }
-            }
-            for (auto const* task : due) {
-              g_state.notified_tasks.insert(task->id);
+            auto decisions = result.get();
+            for (auto& decision : decisions) {
+              deliver_reminder(std::move(decision));
             }
           } catch (std::exception const&) {
-            g_state.notifications_disabled = true;
+            // Backend/transient policy errors do not disable OS transport.
           } catch (...) {
-            g_state.notifications_disabled = true;
           }
         });
       });
@@ -3389,12 +3378,7 @@ void open_database_at(std::string const& path) {
                       rebuild_task_list();
                     }
                     refresh_persistent_status();
-                    // Reminders: a different database resets the per-session
-                    // dedupe set; every open runs the startup check.
-                    if (g_state.notified_db_path != path) {
-                      g_state.notified_tasks.clear();
-                      g_state.notified_db_path = path;
-                    }
+                    // open_database created a fresh shared reminder session.
                     check_reminders(true);
                   });
       });

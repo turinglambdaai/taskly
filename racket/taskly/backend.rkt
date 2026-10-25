@@ -7,6 +7,7 @@
          racket/format
          racket/path
          racket/string
+         "clock.rkt"
          "config.rkt"
          "date-parser.rkt"
          "errors.rkt"
@@ -197,6 +198,18 @@
                   (lambda (_) (QuickAddParse clean (void) (void)))])
               (let-values ([(d t) (parse-due-expression command)])
                 (QuickAddParse clean (nullable d) (nullable t))))))))
+
+;; Reminder policy lives in the shared service. Hosts only schedule polls,
+;; localize the returned decision and perform the native OS handoff.
+(define-rpc (reminder_decisions [startup : Bool] : (List ReminderDecision))
+  (map reminder-decision->dto
+       (service-reminder-decisions!
+        (require-service) startup
+        #:now-date (local-date-string)
+        #:now-time (local-time-string))))
+
+(define-rpc (acknowledge_reminder [token : String] [phase : String] : Bool)
+  (service-acknowledge-reminder! (require-service) token phase))
 
 (define-rpc (get_settings : Settings)
   (settings->dto))

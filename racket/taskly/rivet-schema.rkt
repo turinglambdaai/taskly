@@ -4,6 +4,7 @@
          racket/path
          "config.rkt"
          "model.rkt"
+         "reminder.rkt"
          "service.rkt")
 
 (provide (all-defined-out))
@@ -56,6 +57,15 @@
   ([text : String]
    [due-date : (Optional String)]
    [due-time : (Optional String)]))
+
+;; A shared-core reminder decision. `kind` is "task" or "summary"; task is
+;; present only for the former. The opaque token is acknowledged by hosts as
+;; emitted -> attempted -> delivered|failed.
+(define-record ReminderDecision
+  ([token : String]
+   [kind : String]
+   [count : Int64]
+   [task : (Optional Task)]))
 
 ;; Result of check_updates. status: "available" | "up-to-date" | "error";
 ;; the descriptive fields are only filled for "available".
@@ -134,6 +144,14 @@
    (config-close-to-tray config)
    (config-last-selected-list-id config)
    (path->string (resolve-database-path #f config))))
+
+(define (reminder-decision->dto decision)
+  (ReminderDecision
+   (reminder-decision-token decision)
+   (reminder-decision-kind decision)
+   (reminder-decision-count decision)
+   (nullable (and (reminder-decision-task decision)
+                  (task->dto (reminder-decision-task decision))))))
 
 (define (snapshot->dto service #:view [view 'all] #:list-id [list-id #f]
                        #:show-completed [show-completed #f])

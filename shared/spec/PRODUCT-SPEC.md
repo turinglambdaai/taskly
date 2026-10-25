@@ -191,11 +191,21 @@ pickers. Save (blank text silently ignored), Delete (confirm first), Cancel
   DB changes). Startup: ≤3 overdue → one notification each; >3 → single
   summary `"<N> task(s) overdue"`. Everything seen at startup is marked
   notified.
+- The shared Racket application service owns eligibility, summarization and
+  the logical database session. It emits a typed `task` or `summary` decision
+  and records `emitted → attempted → delivered|failed`; repeated wakeups never
+  retry an emitted decision. A database switch invalidates outstanding tokens.
+  Native hosts own permission, timers, OS delivery and localized presentation.
+  Clock/calendar inputs are injectable in core fixtures, including local
+  midnight and DST-boundary cases.
 - Notification: title `⏰ 任务到期` (reminderTitle), body
   `<text>\n<reminderDueAt>: <dueDate[ dueTime]>`.
 - Never crash: missing notification permission or any transport failure is
-  swallowed for the session (this crashed on macOS once — 0.6.1 regression —
-  never again). No click-through action required.
+  swallowed and disables native delivery for the app session (this crashed on
+  macOS once — 0.6.1 regression — never again). The failed handoff is
+  acknowledged without creating a duplicate retry. No click-through action
+  required. Reminders are process-bound: no host promises background delivery
+  after Taskly exits or while the computer sleeps.
 
 ## 10. Validation
 

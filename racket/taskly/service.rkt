@@ -7,6 +7,7 @@
          "db.rkt"
          "errors.rkt"
          "model.rkt"
+         "reminder.rkt"
          "validation.rkt")
 
 (provide (struct-out taskly-service)
@@ -24,12 +25,16 @@
          service-add-list!
          service-update-list!
          service-delete-list!
-         service-counts)
+         service-counts
+         service-reminder-decisions!
+         service-acknowledge-reminder!
+         service-reminder-decision-phase)
 
-(struct taskly-service (db) #:transparent)
+(struct taskly-service (db reminders) #:transparent)
 
 (define (open-taskly-service [path #f])
-  (taskly-service (open-taskly-db (resolve-database-path path))))
+  (taskly-service (open-taskly-db (resolve-database-path path))
+                  (make-reminder-session)))
 
 (define (close-taskly-service service)
   (close-taskly-db (taskly-service-db service)))
@@ -154,3 +159,23 @@
         (db-count-planned db)
         (db-count-incomplete db)
         (db-count-completed db)))
+
+(define (service-reminder-decisions! service startup?
+                                     #:now-date now-date
+                                     #:now-time now-time)
+  (reminder-session-decide!
+   (taskly-service-reminders service)
+   (service-tasks service #:view 'planned #:show-completed #f)
+   startup?
+   #:now-date now-date
+   #:now-time now-time))
+
+(define (service-acknowledge-reminder! service token phase)
+  (unless (member phase '("attempted" "delivered" "failed"))
+    (raise-taskly 'validation 2 (format "Unknown reminder phase: ~a" phase)))
+  (reminder-session-acknowledge!
+   (taskly-service-reminders service) token phase))
+
+(define (service-reminder-decision-phase service token)
+  (reminder-session-decision-phase
+   (taskly-service-reminders service) token))

@@ -616,6 +616,14 @@ MainWindow::MainWindow() {
           window->OnEffectiveThemeChanged();
         }
       });
+  try {
+    // Shell_NotifyIcon is Rivet's first-party notification surface for this
+    // unpackaged WinUI host. Failure/denial disables reminders, never startup.
+    notification_icon_ = std::make_unique<rivet::system::TrayIcon>(
+        hwnd, 2, WM_APP + 43, L"Taskly", ::LoadIconW(nullptr, IDI_APPLICATION));
+  } catch (...) {
+    notifications_disabled_ = true;
+  }
   InstallAppAccelerators();
   InitializeBackendAsync();
 }
@@ -667,6 +675,16 @@ winrt::fire_and_forget MainWindow::InitializeBackendAsync() {
             }
           });
           window->poll_timer_.Start();
+
+          window->reminder_timer_ = mx::DispatcherTimer();
+          window->reminder_timer_.Interval(std::chrono::seconds{60});
+          window->reminder_timer_.Tick(
+              [window_weak = window->get_weak()](auto&&, auto&&) {
+                if (auto current = window_weak.get()) {
+                  current->CheckReminders(false);
+                }
+              });
+          window->reminder_timer_.Start();
 
           rivet_app::API api(backend_ref);
           auto const settings_dispatcher = window->DispatcherQueue();
@@ -724,6 +742,96 @@ winrt::fire_and_forget MainWindow::InitializeBackendAsync() {
       }
     });
   }
+}
+
+// ---------------------------------------------------------------------------
+// Reminders — shared-core decisions, native Windows delivery
+// ---------------------------------------------------------------------------
+
+void MainWindow::CheckReminders(bool startup) {
+  if (!database_connected_ || notifications_disabled_ ||
+      notification_icon_ == nullptr || backend_ == nullptr ||
+      !backend_->running()) {
+    return;
+  }
+  auto const dispatcher = DispatcherQueue();
+  auto const weak = get_weak();
+  rivet_app::API api(*backend_);
+  (void)api.reminder_decisions_async(
+      startup,
+      [dispatcher, weak](
+          rivet_app::Result<std::vector<rivet_app::ReminderDecision>> result) {
+        try {
+          auto decisions = result.get();
+          dispatcher.TryEnqueue(
+              [weak, decisions = std::move(decisions)]() mutable {
+                if (auto window = weak.get()) {
+                  for (auto& decision : decisions) {
+                    window->DeliverReminder(std::move(decision));
+                  }
+                }
+              });
+        } catch (...) {
+          // A transient backend decision failure does not disable transport.
+        }
+      });
+}
+
+void MainWindow::DeliverReminder(rivet_app::ReminderDecision decision) {
+  if (backend_ == nullptr || !backend_->running()) return;
+  auto const dispatcher = DispatcherQueue();
+  auto const weak = get_weak();
+  rivet_app::API api(*backend_);
+  (void)api.acknowledge_reminder_async(
+      decision.token, "attempted",
+      [dispatcher, weak, decision = std::move(decision)](
+          rivet_app::Result<bool> result) mutable {
+        bool accepted = false;
+        try {
+          accepted = result.get();
+        } catch (...) {
+          return;
+        }
+        dispatcher.TryEnqueue(
+            [weak, accepted, decision = std::move(decision)]() mutable {
+              auto window = weak.get();
+              if (!window || !accepted || window->backend_ == nullptr) {
+                return; // stale decision after a database switch
+              }
+
+              std::string outcome{"failed"};
+              if (!window->notifications_disabled_ &&
+                  window->notification_icon_ != nullptr) {
+                try {
+                  std::wstring body;
+                  if (decision.kind == "summary") {
+                    body = tf("reminderStartupSummary",
+                              std::to_wstring(decision.count));
+                  } else if (decision.task.has_value() &&
+                             decision.task->due_date.has_value()) {
+                    auto const& task = *decision.task;
+                    auto when = wide(*task.due_date);
+                    if (task.due_time.has_value()) {
+                      when += L" " + wide(*task.due_time);
+                    }
+                    body = wide(task.text) + L"\n" + t("reminderDueAt") +
+                           L": " + when;
+                  } else {
+                    throw std::runtime_error("malformed reminder decision");
+                  }
+                  window->notification_icon_->Notify(t("reminderTitle"), body);
+                  outcome = "delivered";
+                } catch (...) {
+                  window->notifications_disabled_ = true;
+                }
+              }
+
+              rivet_app::API current_api(*window->backend_);
+              (void)current_api.acknowledge_reminder_async(
+                  decision.token, outcome,
+                  [](rivet_app::Result<bool>) {});
+            });
+      });
 }
 
 // ---------------------------------------------------------------------------
@@ -1859,6 +1967,8 @@ winrt::fire_and_forget MainWindow::OpenDatabaseAsync(std::wstring const& path) {
                   // Opening another DB invalidates the previous fingerprint.
                   window->ApplySnapshot(snapshot, /*force=*/true);
                 }
+                window->database_connected_ = true;
+                window->CheckReminders(true);
                 // An in-flight download owns the status line.
                 if (!window->update_downloading_) {
                   window->SetStatus(t("statusDatabaseConnected"));
@@ -2378,6 +2488,7 @@ void MainWindow::OnCloseDatabase(
               // The next snapshot must render even if it matches the one the
               // closed database ended with.
               window->has_applied_snapshot_ = false;
+              window->database_connected_ = false;
               window->RenderSidebar();
               window->RenderTasks();
               window->SetStatus(L"");
