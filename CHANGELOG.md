@@ -34,6 +34,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   publish job runs the suite on the exact tree being published, so a
   release cannot ship without its update evidence (#58).
 
+### Changed
+- Reconcile the task interaction contract and public manual around the native
+  inline editor: Enter/click-away saves, Escape cancels the complete draft,
+  and packaged UI traces now exercise keyboard focus on all three hosts.
+- Document the first-use-to-upgrade lifecycle, closed-app data backup, and
+  rollback/manual recovery for every supported install shape (#58).
+
+### Fixed
+- macOS deletion now uses the same six-second delayed backend commit as
+  Windows and Linux, so Undo restores the original task IDs and metadata and
+  a database switch cannot leak stale delete IDs into the new database (#58).
+
 ## [0.2.4] - 2026-10-22
 
 ### Added

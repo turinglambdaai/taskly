@@ -70,8 +70,8 @@ README's honest gaps).
 - Row order per view (SQL in DATA-FORMAT/CLI-SPEC §list): All & list views
   `id DESC` with completed sinking when shown; Planned by `due_date ASC`;
   Today `id DESC`; Completed unordered.
-- Deleting a task from the row context menu has **no** confirmation;
-  deletion from the detail dialog **does**.
+- Deleting a task from a row or the shared batch action has **no** confirmation;
+  the reversible six-second staging window below is the safety mechanism.
 
 ## 5. Task row
 
@@ -89,11 +89,12 @@ README's honest gaps).
   list color (accent fallback); Linux, whose stock CheckButton carries no
   recolorable ring, renders an 8px list-color dot before the row instead
   (platform-native idiom, same information).
-- `ⓘ` button (always visible) opens the detail dialog.
-- Edit mode (double-click row): text field focused+selected; Enter=save,
-  Esc=cancel, click-outside=save; date/time buttons open pickers and write
-  through immediately; notes field saved on exit. Text changes re-run
-  ExtractTimeCommand (a new trailing date command updates the due date).
+- `ⓘ` button (always visible) expands the row's inline editor.
+- Edit mode (ⓘ / Return / double-click): the title field receives focus;
+  Enter saves, Esc cancels the complete draft, and clicking another row saves
+  before moving focus. Title, notes, date and time form one draft: no field is
+  persisted until the edit commits. A blank edited title retains the stored
+  title rather than creating an invalid task.
 - Context menu: Toggle Completed, quick reschedule (今天 / 明天 /
   自定日期 / 清除 — the explicit entry points for changing a due
   date), Details, Delete, and Move to List ▸ (other lists,
@@ -101,9 +102,8 @@ README's honest gaps).
 
 ## 5b. Task interactions (Reminders parity)
 
-Contract status: authored against the macOS host, which implements this
-section in full; Windows and Linux track it per their status in
-[UX-BENCHMARKS](../../docs/UX-BENCHMARKS.md) until they catch up.
+This section is the three-host contract. Native controls and modifier glyphs
+differ, but draft, identity and persistence outcomes do not.
 
 - Hover: quiet row fill (hover token) only, plus the info button
   emphasizing (opacity step). Hover never moves row content or reveals
@@ -112,29 +112,47 @@ section in full; Windows and Linux track it per their status in
 - Selection: click selects; ⌘-click toggles; ⇧-click and ⇧↑/⇧↓ extend a
   range; Esc clears; any click on another row collapses an expanded row.
 - Keyboard: ↑/↓ move the selection, Return expands the selected row in
-  place, Esc collapses (then clears selection). While a text field has
-  focus, all keys pass through untouched.
+  place, Esc cancels the expanded draft (a second Esc clears selection).
+  While a text field has focus, normal editing shortcuts pass through; Enter
+  and Esc retain the commit/cancel meanings above.
 - Inline expansion (ⓘ / Return / double-click): the row expands in place —
   title (15px semibold borderless), date/time chips (5-minute time steps),
-  borderless notes — edits commit on collapse; no modal sheet. The date
+  borderless notes — edits commit on Return or click-away; no modal sheet.
+  Esc discards all buffered fields. The date
   chip's popover leads with quick dates (今天 / 明天 / 本周末, where
   本周末 is the coming weekend day) above the calendar, matching the
   Reminders details popover.
-- Delete: no confirmation from the row; instead a transient banner shows
-  the deleted task with a one-step 撤销 (undo re-adds the task; the
-  restored task receives a new id). Banner auto-dismisses after ~6 s.
+- Delete: no confirmation from the row; instead the host hides the selected
+  rows and stages their original records for about six seconds. 撤销 restores
+  the same task IDs and complete metadata because no backend delete has yet
+  occurred. Timeout (or starting another delete batch) commits the captured
+  IDs. A database switch/disconnect abandons the old batch and must never
+  apply those IDs to the new database.
 - Completed tasks render under a collapsible "已完成 N" section header
   (chevron + count) whenever completed tasks are displayed.
 - Sidebar: double-click a list renames it (opens the edit sheet).
 - Quick add: accent + button, focus-highlighted border, live parse-preview chip (typing a schedule shows the parsed date/time before Enter).
 - Not in v1.x: swipe gestures, subtasks (Tab indent), multi-drag.
 
-## 6. Detail dialog
+## 6. Interaction lifecycle scenarios
 
-450px: task text (multiline), notes (multiline), date + time buttons with
-pickers. Save (blank text silently ignored), Delete (confirm first), Cancel
-(discards everything). After save/delete the task pane refreshes wholesale
-(the task may have left the current view).
+Every declared host runs the same outcome scenarios in packaged native-UI
+acceptance. Accessibility mechanics may differ; the stable task identity and
+draft/persistence results may not.
+
+| Scenario | Before | Action | Required result |
+|---|---|---|---|
+| Edit → Escape | stored task `id=N`; editor holds changed title/notes/date/time | press Esc while a field owns focus | editor closes; all fields still equal the stored record for `N` |
+| Edit → click away / Return | stored task `id=N`; editor holds a valid draft | select another row, or press Return in title | one update commits the draft to `N`; a refresh preserves it |
+| Delete → undo | stored rows with IDs and metadata | delete, then undo inside ~6 s | rows return with the original IDs, completion, dates, notes and list ownership |
+| Delete → timeout | stored rows with IDs and metadata | delete; let ~6 s expire | backend deletes exactly the captured IDs; later refresh does not restore them |
+| Search refresh | global results include task `N` from another list | backend `changed` event / periodic refresh | search remains owner; `N` retains its real list label, selection and in-progress draft |
+| Database switch | edit or delete batch belongs to database A | open/close/switch to database B | A's pending callbacks cannot mutate B; selection, drafts and undo state are cleared |
+
+Windows UI Automation, macOS Accessibility and Linux AT-SPI traces cover the
+keyboard/focus and identity-preserving undo paths. Core/RVT1 tests cover the
+database-session and stale-callback boundary. A host-specific exception must
+be written here before it can be accepted; none is declared for these rows.
 
 ## 7. Pickers
 

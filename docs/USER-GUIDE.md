@@ -24,6 +24,10 @@ Use [official Releases](https://github.com/turinglambdaai/taskly/releases), sele
 
 Tasks use SQLite, normally ~/.taskly/tasks.db, with configuration in ~/.taskly/config.ini. Quit every Taskly process, then back up the directory, including any WAL/SHM files. Restore into a separate copy first. A cloud-synced live database is not a supported concurrent-editing mechanism.
 
+## Keyboard and editing
+
+Use Command on macOS and Ctrl on Windows/Linux: 1–4 switches smart views, N focuses quick add, F focuses search, and Shift+C toggles completed tasks. In the task list, arrows move selection and Enter opens inline editing. Enter saves; Escape cancels the whole draft, then a second Escape clears selection. Clicking another row saves before moving focus. Delete is staged for about six seconds; Undo restores the same task identity and metadata.
+
 ## Network, keys and privacy
 
 Core task use is local. Update checks/downloads and links you open contact external services. Sharing a database or diagnostics can disclose task titles and notes.
@@ -35,6 +39,8 @@ Reminders are evaluated consistently by the shared core on all three desktop hos
 ## Updates and removal
 
 Back up data and read the destination release notes first. An in-app update check does not necessarily install an update for your channel; follow the manual for portable, installer and source paths. Never bypass a failed signature check or replace the program with an untrusted artifact. On failure, preserve data and the error, then recover with a trusted release. Removing the program does not necessarily erase its separate data directory; verify your backup before deleting personal data.
+
+DMG, MSI, deb/rpm and portable archives replace application files, not `~/.taskly/`. If an update fails, quit all Taskly processes and reinstall the previous trusted build using the same installation shape; portable users can return to the previous program directory. The exact per-shape rollback table is in the update contract below.
 
 ## Get help
 

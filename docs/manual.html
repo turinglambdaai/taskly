@@ -130,8 +130,8 @@ var _hmt = _hmt || [];
                         data-zh="<strong>加一条任务。</strong>点输入框（或按 <code>⌘N</code> / <code>Ctrl+N</code>），写上要做的事，需要的话用大白话带上时间：<code>交周报 @15:00 +1d</code> 表示明天下午 3 点到期。回车即可。">
                         <strong>Add a task.</strong> Type it with a plain-language due date and press Enter.
                     </li>
-                    <li data-en="<strong>Finish it.</strong> Click the circle next to the task. A banner offers one-click undo — no confirmation dialogs anywhere."
-                        data-zh="<strong>完成它。</strong>点任务前的圆圈即可。误点会有横幅一键撤销——全程没有确认弹窗。">
+                    <li data-en="<strong>Finish it.</strong> Click the circle next to the task. If you delete a task, a six-second banner offers one-click undo instead of a confirmation dialog."
+                        data-zh="<strong>完成它。</strong>点任务前的圆圈即可。若删除任务，会出现六秒撤销横幅，而不是确认弹窗。">
                         <strong>Finish it.</strong> Click the circle; the banner undoes mistakes in one click.
                     </li>
                 </ol>
@@ -194,6 +194,10 @@ var _hmt = _hmt || [];
                         Lowercase <code>m</code> = minutes, uppercase <code>M</code> = months. <code>h</code> = hours, <code>d</code> = days, <code>w</code> = weeks. The number may be omitted (e.g. <code>+d</code> means 1 day).
                     </span>
                 </div>
+                <p data-en="Updates replace application files, never the data directory. If an update fails, keep the error, quit all Taskly processes, and reinstall the previous trusted build using the same shape (DMG/ZIP, MSI/portable ZIP, AppImage/deb/rpm/tarball). Portable users can return to the previous program directory. Do not bypass a failed signature check."
+                   data-zh="更新只替换应用文件，不应修改数据目录。更新失败时保留错误信息、退出全部 Taskly 进程，并使用同一安装形态（DMG/ZIP、MSI/便携 ZIP、AppImage/deb/rpm/tarball）重新安装上一版可信构建；便携版可回到上一版程序目录。不要绕过失败的签名校验。">
+                    Updates replace application files, never the data directory. On failure, reinstall the previous trusted build using the same installation shape; do not bypass a failed signature check.
+                </p>
             </section>
 
             <!-- Exact time -->
@@ -241,9 +245,9 @@ var _hmt = _hmt || [];
                 <h2 class="manual-h2"><span class="h2-emoji">📅</span>
                     <span data-en="Absolute dates" data-zh="绝对日期">Absolute dates</span>
                 </h2>
-                <p data-en="In the detail dialog or with the CLI --due flag, you can type a full date instead of a modifier. These always set the date with no time."
-                   data-zh="在详情对话框或 CLI 的 --due 参数里，可直接输入完整日期（不使用修饰符）。此时只设日期、不设时间。">
-                    In the detail dialog or with the CLI <code>--due</code> flag, you can type a full date instead of a modifier. These always set the date with no time.
+                <p data-en="In the inline editor or with the CLI --due flag, you can type a full date instead of a modifier. These always set the date with no time."
+                   data-zh="在行内编辑器或 CLI 的 --due 参数里，可直接输入完整日期（不使用修饰符）。此时只设日期、不设时间。">
+                    In the inline editor or with the CLI <code>--due</code> flag, you can type a full date instead of a modifier. These always set the date with no time.
                 </p>
                 <table class="syntax-table">
                     <thead>
@@ -377,9 +381,9 @@ var _hmt = _hmt || [];
                 <h2 class="manual-h2"><span class="h2-emoji">✏️</span>
                     <span data-en="Editing tasks" data-zh="编辑任务">Editing tasks</span>
                 </h2>
-                <p data-en="Taskly has two editing surfaces: a quick inline editor, and a full detail dialog."
-                   data-zh="Taskly 有两层编辑：行内快速编辑，和完整的详情对话框。">
-                    Taskly has two editing surfaces: a quick inline editor, and a full detail dialog.
+                <p data-en="Taskly edits a task in place, so its identity and list context stay visible."
+                   data-zh="Taskly 在原行编辑任务，因此任务身份与所属清单始终可见。">
+                    Taskly edits a task in place, so its identity and list context stay visible.
                 </p>
 
                 <h3 class="manual-h3" data-en="Inline editing" data-zh="行内编辑">Inline editing</h3>
@@ -397,11 +401,11 @@ var _hmt = _hmt || [];
                     </div>
                 </div>
 
-                <h3 class="manual-h3" data-en="Detail dialog (ⓘ)" data-zh="详情对话框 (ⓘ)">Detail dialog (ⓘ)</h3>
+                <h3 class="manual-h3" data-en="Inline details (ⓘ / Enter)" data-zh="行内详情 (ⓘ / Enter)">Inline details (ⓘ / Enter)</h3>
                 <div class="dl-grid">
                     <div class="dl-item">
                         <h4 data-en="Open" data-zh="打开">Open</h4>
-                        <p data-en="Click the ⓘ button on any task row." data-zh="点击任务行上的 ⓘ 按钮。">Click the <kbd>ⓘ</kbd> button on any task row.</p>
+                        <p data-en="Click ⓘ, double-click the row, or select it and press Enter." data-zh="点击 ⓘ、双击任务行，或选择后按 Enter。">Click <kbd>ⓘ</kbd>, double-click the row, or select it and press Enter.</p>
                     </div>
                     <div class="dl-item">
                         <h4 data-en="Fields" data-zh="字段">Fields</h4>
@@ -418,10 +422,19 @@ var _hmt = _hmt || [];
                         </p>
                     </div>
                     <div class="dl-item">
-                        <h4 data-en="Delete" data-zh="删除">Delete</h4>
-                        <p data-en="Delete button asks for confirmation first." data-zh="删除按钮会先弹出确认。">Delete button asks for confirmation first.</p>
+                        <h4 data-en="Save or cancel" data-zh="保存或取消">Save or cancel</h4>
+                        <p data-en="Enter or clicking another row saves the complete draft. Escape cancels every changed field."
+                           data-zh="Enter 或点击另一行会保存整份草稿；Escape 会取消所有字段的修改。">Enter or clicking another row saves the complete draft. Escape cancels every changed field.</p>
                     </div>
                 </div>
+                <p data-en="Deleting one or several tasks hides them for about six seconds. Undo restores the original task IDs and metadata; after timeout the delete is committed."
+                   data-zh="删除一条或多条任务后会暂时隐藏约六秒。撤销会恢复原任务 ID 与全部元数据；超时后才真正提交删除。">
+                    Deleting one or several tasks hides them for about six seconds. Undo restores the original task IDs and metadata; after timeout the delete is committed.
+                </p>
+                <p data-en="Keyboard: Command/Ctrl+1…4 switches smart views, Command/Ctrl+N focuses quick add, Command/Ctrl+F focuses search, and Command/Ctrl+Shift+C toggles completed tasks. Arrow keys move task selection; Enter edits; Escape cancels the draft, then clears selection."
+                   data-zh="快捷键：Command/Ctrl+1…4 切换智能视图，Command/Ctrl+N 聚焦快速添加，Command/Ctrl+F 聚焦搜索，Command/Ctrl+Shift+C 切换显示已完成。方向键移动任务选择；Enter 编辑；Escape 先取消草稿，再清除选择。">
+                    Keyboard: Command/Ctrl+1…4 switches smart views, Command/Ctrl+N focuses quick add, Command/Ctrl+F focuses search, and Command/Ctrl+Shift+C toggles completed tasks.
+                </p>
             </section>
 
             <!-- CLI -->
@@ -429,16 +442,16 @@ var _hmt = _hmt || [];
                 <h2 class="manual-h2"><span class="h2-emoji">⌘</span>
                     <span data-en="Command-line interface" data-zh="命令行">Command-line interface</span>
                 </h2>
-                <p data-en="The same Taskly binary is also a CLI. Run it with a subcommand and it never boots the GUI — perfect for scripts and AI agents. Every command speaks JSON."
-                   data-zh="同一个 Taskly 二进制也是命令行工具。带子命令运行时不启动 GUI——适合脚本和 AI agent。每个命令都支持 JSON 输出。">
-                    The same Taskly binary is also a CLI. Run it with a subcommand and it never boots the GUI — perfect for scripts and AI agents. Every command speaks JSON.
+                <p data-en="The source tree includes a developer CLI with stable JSON output for scripts and AI agents. Desktop release packages do not yet include a standalone CLI binary."
+                   data-zh="源码树提供面向脚本与 AI agent、JSON 输出稳定的开发者 CLI；桌面发行包暂未附带独立 CLI 二进制。">
+                    The source tree includes a developer CLI with stable JSON output. Desktop release packages do not yet include a standalone CLI binary.
                 </p>
-                <p data-en="Install the taskly command to your PATH once:"
-                   data-zh="一次性把 taskly 命令安装到你的 PATH：">
-                    Install the <code>taskly</code> command to your PATH once:
+                <p data-en="From a source checkout with Racket installed:"
+                   data-zh="在已安装 Racket 的源码 checkout 中运行：">
+                    From a source checkout with Racket installed:
                 </p>
-                <div class="code-block-light"><span class="comment"># install the CLI (macOS/Linux: ~/.local/bin · Windows: user PATH)</span>
-<span class="prompt">$</span> taskly install-cli</div>
+                <div class="code-block-light"><span class="comment"># development CLI</span>
+<span class="prompt">$</span> scripts/taskly-cli.sh list --json</div>
                 <table class="syntax-table">
                     <thead>
                         <tr>

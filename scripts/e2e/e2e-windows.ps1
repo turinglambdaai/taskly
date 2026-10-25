@@ -205,6 +205,23 @@ try {
     if ($null -ne (Find-ById $window 'prompt-input')) {
         throw 'task details opened the legacy PromptAsync dialog'
     }
+    $inlineTitle.GetCurrentPattern(
+        [System.Windows.Automation.ValuePattern]::Pattern).SetValue('Cancelled inline draft')
+    $inlineTitle.SetFocus()
+    [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+    [void](Wait-Until 'Escape cancelled inline task draft' {
+        if ($null -eq (Find-ById $window 'inline-task-title-2') -and
+            $null -ne (Find-ByName $window $plainTask)) { return $true }
+        return $false
+    })
+    $taskInfo = Wait-Until 'reopen inline task details after cancel' {
+        Find-ById $window 'task-info-2'
+    }
+    $taskInfo.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    $inlineTitle = Wait-Until 'inline task title editor after cancel' {
+        Find-ById $window 'inline-task-title-2'
+    }
     $inlineNotes = Wait-Until 'inline task notes editor' {
         Find-ById $window 'inline-task-notes-2'
     }
@@ -402,7 +419,7 @@ try {
     [ordered]@{
         platform = 'windows'
         artifact = $executable.FullName
-        actions = @('set:quick-add', 'invoke:quick-add-submit', 'toggle:task-complete-1', 'create-list:生活', 'select-list:2', 'enter:quick-add', 'inline:edit-task-2', 'select-list:1', 'select-list:2')
+        actions = @('set:quick-add', 'invoke:quick-add-submit', 'toggle:task-complete-1', 'create-list:生活', 'select-list:2', 'enter:quick-add', 'inline:escape-cancel-task-2', 'inline:edit-task-2', 'select-list:1', 'select-list:2')
         assertions = @(
             'packaged WinUI window activated',
             'stable UI Automation identifiers exposed',
@@ -411,6 +428,7 @@ try {
             'new task submitted by Enter is owned by 生活, not 工作',
             'task checkbox and plain-text title are vertically aligned',
             'Windows task list exposes native multiple selection',
+            'Escape cancels a focused inline draft without mutating the task',
             'task details expand inline without PromptAsync and persist title, notes, date, and time',
             'view switches preserve task list ownership',
             'global search shows the real owning list for every task',

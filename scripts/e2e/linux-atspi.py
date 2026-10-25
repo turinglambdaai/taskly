@@ -92,6 +92,17 @@ def find_editable_named(root, expected_name):
     return None
 
 
+def find_editable_value(root, expected_value):
+    for node in walk(root):
+        try:
+            editable = node.queryEditableText()
+            if editable.getText(0, editable.characterCount) == expected_value:
+                return node
+        except Exception:
+            continue
+    return None
+
+
 def contains_text(root, expected):
     return any(name(node) == expected or text(node) == expected for node in walk(root))
 
@@ -153,7 +164,7 @@ def select_single_named_child(root, expected):
         selection.clearSelection()
         if not selection.selectChild(indexes[0]):
             raise AssertionError(f"AT-SPI failed to select row containing {expected!r}")
-        return container
+        return container.getChildAtIndex(indexes[0])
     return None
 
 
@@ -264,6 +275,36 @@ def main():
         and contains_text(window, "64-bit task B"),
     )
 
+    task_row = wait_for(
+        "single row selected for keyboard editing",
+        lambda: select_single_named_child(window, "64-bit task A"),
+    )
+    details = wait_for(
+        "selected task details button",
+        lambda: next(
+            reversed(
+                [
+                node
+                for node in walk(task_row)
+                if role(node) in ("push button", "button")
+                ]
+            ),
+            None,
+        ),
+    )
+    press(details)
+    editor = wait_for(
+        "keyboard-opened task editor",
+        lambda: find_editable_value(window, "64-bit task A"),
+    )
+    editor.queryEditableText().setTextContents("Cancelled inline draft")
+    pyatspi.Registry.generateKeyboardEvent(9, None, pyatspi.KEY_PRESSRELEASE)  # Escape
+    wait_for(
+        "Escape cancelled the focused task draft",
+        lambda: find_editable_value(window, "Cancelled inline draft") is None
+        and contains_text(window, "64-bit task A"),
+    )
+
     entry.queryEditableText().setTextContents("Acceptance task")
     press(submit)
     wait_for("quick-add field cleared", lambda: text(entry) == "")
@@ -282,6 +323,8 @@ def main():
                     "press:batch-schedule-tomorrow",
                     "press:batch-delete",
                     "press:undo",
+                    "press:selected-row-details",
+                    "key:escape-cancel-draft",
                     "set:quick-add",
                     "press:quick-add-submit",
                 ],
@@ -292,6 +335,7 @@ def main():
                     "batch scheduling clears hidden due times for both tasks",
                     "six-second staged deletion hides both tasks without deleting them",
                     "undo restores the original task IDs and metadata",
+                    "accessible details action focuses the task editor and Escape cancels its draft",
                     "RPC-created task appeared after the quick-add field cleared",
                     "quick-add preserved the selected 64-bit list ownership",
                 ],
