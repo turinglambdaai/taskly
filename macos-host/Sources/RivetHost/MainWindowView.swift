@@ -183,6 +183,12 @@ private struct SmartChip: View {
                     .strokeBorder(model.theme.divider, lineWidth: 1))
         }
         .buttonStyle(.plain)
+        // SwiftUI combines a Button's label subtree into one AX element on
+        // macOS, so expose the visible count on that real actionable node as
+        // well as keeping the Text identifier for visual hierarchy tooling.
+        .accessibilityIdentifier("smart-view-\(view.backendView)")
+        .accessibilityLabel(Text(model.t(titleKey)))
+        .accessibilityValue(Text("\(count)"))
         .disabled(!model.isConnected)
         .animation(.easeOut(duration: 0.12), value: isSelected)
         .onHover { hovering in

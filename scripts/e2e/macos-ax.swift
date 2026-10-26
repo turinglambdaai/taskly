@@ -189,7 +189,7 @@ do {
 
     for view in ["today", "planned", "all", "completed"] {
         let _: AXUIElement = try waitFor("visible zero count for \(view)") {
-            guard let candidate = find(window, identifier: "smart-count-\(view)") else { return nil }
+            guard let candidate = find(window, identifier: "smart-view-\(view)") else { return nil }
             return [kAXTitleAttribute, kAXValueAttribute, kAXDescriptionAttribute]
                 .contains { stringAttribute(candidate, $0) == "0" } ? candidate : nil
         }
