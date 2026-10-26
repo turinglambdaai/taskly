@@ -46,6 +46,14 @@
      (check-equal? (config-ref (read-config) "auto-check-updates") "0")
      (set_setting "auto-check-updates" "1")
      (check-exn exn:fail? (lambda () (set_setting "auto-check-updates" "off")))
+     ;; The updater reads this key from disk in a later RPC. Keeping it in
+     ;; set_setting's validation table is insufficient if write-config!
+     ;; silently drops it during serialization (the Windows MSI 1620 bug).
+     (set_setting "install-flavor" "msi")
+     (check-equal? (get_setting "install-flavor") "msi")
+     (check-equal? (config-ref (read-config) "install-flavor") "msi")
+     (check-exn exn:fail?
+                (lambda () (set_setting "install-flavor" "exe")))
 
      ;; open_database remembers the opened file (DATA-FORMAT §7) so hosts
      ;; restart against it — the 0.2.1 OTA regression: manually opened DBs
