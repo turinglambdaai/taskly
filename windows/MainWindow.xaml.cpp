@@ -948,7 +948,8 @@ mx::Media::Brush MainWindow::ThemeBrush(wchar_t const* key) {
 // Smart-view chips: refresh glyph/title/count and the checked fill. Per
 // DESIGN-TOKENS the saturated view color only ever sits on the glyph; the
 // chip itself is neutral surface (+1px divider from XAML) with a quiet
-// selection fill while its view is current. Zero counts stay hidden.
+// selection fill while its view is current. Counts always render, including
+// zero, so the four-tile grid remains visually balanced.
 void MainWindow::RefreshSmartTiles() {
   struct Chip {
     ViewKind kind;
@@ -982,12 +983,8 @@ void MainWindow::RefreshSmartTiles() {
     chip.tile.Background(ThemeBrush(view_ == chip.kind
                                         ? L"TasklySelectionBrush"
                                         : L"TasklySurfaceBrush"));
-    if (chip.value > 0) {
-      chip.count.Text(std::to_wstring(chip.value));
-      chip.count.Visibility(mx::Visibility::Visible);
-    } else {
-      chip.count.Visibility(mx::Visibility::Collapsed);
-    }
+    chip.count.Text(std::to_wstring(chip.value));
+    chip.count.Visibility(mx::Visibility::Visible);
   }
 }
 

@@ -225,6 +225,47 @@ void MainWindow::RunUpdateCheck(bool silent) {
   if (!silent) {
     SetStatus(t("updateChecking"));
   }
+  // Selection happens in the backend, so persist the host-detected install
+  // shape before asking it to choose an artifact. This ordering is part of
+  // the update contract: a fire-and-forget startup stamp can otherwise race
+  // the first manual/silent check and make an MSI install download the ZIP.
+  try {
+    rivet_app::API api(*backend);
+    (void)api.set_setting_async(
+        "install-flavor", IsMsiInstall() ? "msi" : "zip",
+        [dispatcher, weak, silent](
+            rivet_app::Result<rivet_app::Settings> result) {
+          std::string failure;
+          try {
+            (void)result.get();
+          } catch (std::exception const& e) {
+            failure = e.what();
+          }
+          dispatcher.TryEnqueue(
+              [weak, silent, failure = std::move(failure)] {
+                if (auto window = weak.get()) {
+                  if (failure.empty()) {
+                    window->ContinueUpdateCheck(silent);
+                  } else {
+                    window->HandleUpdateCheckResult(
+                        false, rivet_app::UpdateCheck{}, failure, silent);
+                  }
+                }
+              });
+        });
+  } catch (std::exception const& e) {
+    HandleUpdateCheckResult(false, rivet_app::UpdateCheck{}, e.what(), silent);
+  }
+}
+
+void MainWindow::ContinueUpdateCheck(bool silent) {
+  if (backend_ == nullptr || !backend_->running() || update_downloading_) {
+    if (!silent) SetStatus(L"");
+    return;
+  }
+  auto const dispatcher = DispatcherQueue();
+  auto const weak = get_weak();
+  auto backend = backend_;
   try {
     rivet_app::API api(*backend);
     (void)api.check_updates_async(
@@ -574,7 +615,7 @@ std::string msi_install_batch(unsigned long pid) {
   return batch;
 }
 
-void MainWindow::InstallDownloadedUpdate(std::wstring const& zip_path) {
+void MainWindow::InstallDownloadedUpdate(std::wstring const& update_path) {
   auto const work = update_work_dir();
   if (work.empty()) {
     ShowUpdateDialog(L"Taskly", tf("updateInstallFailed", L"temp"), L"",
@@ -582,7 +623,20 @@ void MainWindow::InstallDownloadedUpdate(std::wstring const& zip_path) {
     return;
   }
   std::error_code ec;
-  auto const msi = IsMsiInstall();
+  // Dispatch the bytes that were selected, signed, downloaded and verified;
+  // never re-infer their type from the install directory. The old two-phase
+  // inference could select a ZIP before install-flavor was persisted, then
+  // hand those ZIP bytes to msiexec merely because Taskly lived under
+  // Program Files (Windows Installer error 1620).
+  auto const extension = lowercase(
+      std::filesystem::path(update_path).extension().wstring());
+  if (extension != L".msi" && extension != L".zip") {
+    ShowUpdateDialog(L"Taskly",
+                     tf("updateInstallFailed", L"unexpected package type"),
+                     L"", t("dialogConfirm"), nullptr);
+    return;
+  }
+  auto const msi = extension == L".msi";
   auto const script = work / (msi ? L"msi-install.cmd" : L"update-install.cmd");
   // Stale markers from earlier attempts must not survive this one.
   std::filesystem::remove(update_failure_marker(), ec);
@@ -611,13 +665,13 @@ void MainWindow::InstallDownloadedUpdate(std::wstring const& zip_path) {
   std::wstring parameters;
   if (msi) {
     auto const msi_log = work / L"msiexec.log";
-    parameters = L"/c call \"" + script.wstring() + L"\" \"" + zip_path +
+    parameters = L"/c call \"" + script.wstring() + L"\" \"" + update_path +
                  L"\" \"" + msi_log.wstring() + L"\" \"" + exe + L"\" \"" +
                  update_failure_marker().wstring() + L"\"";
   } else {
     std::wstring const install_dir =
         executable_path().parent_path().wstring();
-    parameters = L"/c call \"" + script.wstring() + L"\" \"" + zip_path +
+    parameters = L"/c call \"" + script.wstring() + L"\" \"" + update_path +
                  L"\" \"" + install_dir + L"\" \"" + exe + L"\" \"" +
                  update_failure_marker().wstring() + L"\" \"" +
                  update_success_marker().wstring() + L"\"";

@@ -94,6 +94,20 @@ try {
     # opened its database. Clicking during that interval intentionally keeps
     # the draft unsent, so wait for the product's real readiness signal.
     [void](Wait-Until 'database connection' { Find-ByName $window 'Database Connected' })
+    [void](Wait-Until 'portable install flavor persisted' {
+        if ((Get-Content -LiteralPath (Join-Path $tasklyHome 'config.ini') -Raw) `
+                -match '(?m)^install-flavor = zip$') { return $true }
+        return $false
+    })
+    foreach ($view in @('today', 'planned', 'all', 'completed')) {
+        $count = Wait-Until ("visible zero count for {0}" -f $view) {
+            $candidate = Find-ById $window ("smart-count-{0}" -f $view)
+            if ($null -ne $candidate -and $candidate.Current.Name -eq '0') {
+                return $candidate
+            }
+            return $null
+        }
+    }
     $quickAdd.GetCurrentPattern(
         [System.Windows.Automation.ValuePattern]::Pattern).SetValue('Acceptance task')
     $submit.GetCurrentPattern(

@@ -164,11 +164,10 @@ private struct SmartChip: View {
                     // The label compresses last: Spacer and count yield first.
                     .layoutPriority(1)
                 Spacer(minLength: 4)
-                if count > 0 {
-                    Text("\(count)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(model.theme.secondaryText)
-                }
+                Text("\(count)")
+                    .font(.system(size: 12))
+                    .foregroundStyle(model.theme.secondaryText)
+                    .accessibilityIdentifier("smart-count-\(view.backendView)")
             }
             .padding(.horizontal, 8)
             .frame(maxWidth: .infinity)

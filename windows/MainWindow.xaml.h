@@ -205,6 +205,7 @@ private:
   winrt::fire_and_forget AutoCheckUpdatesAsync();
   void RunSilentUpdateCheck();
   void RunUpdateCheck(bool silent);
+  void ContinueUpdateCheck(bool silent);
   void HandleUpdateCheckResult(bool ok, rivet_app::UpdateCheck const& check,
                                std::string const& failure, bool silent);
   void RecordUpdateCheck();
@@ -214,7 +215,7 @@ private:
   void HandleUpdatePoll(rivet_app::Result<rivet_app::UpdateState> const& result);
   void FailDownload(std::string const& message);
   winrt::fire_and_forget ShowInstallConsent(std::wstring const& path);
-  void InstallDownloadedUpdate(std::wstring const& zip_path);
+  void InstallDownloadedUpdate(std::wstring const& update_path);
   void HandleInstallMarkers();
   bool IsDevCopy();
   bool IsMsiInstall();
