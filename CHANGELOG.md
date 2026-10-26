@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The product site's tab icon and manual nav logo follow the family
+  palette again.** The terracotta rebrand recolored the page and the index
+  nav logo but left `docs/favicon.ico` and `docs/taskly.svg` on the retired
+  Apple-blue gradient, so browser tabs showed a blue icon over a terracotta
+  page; `manual.html`'s nav logo stayed `#007AFF` too. All three now use
+  the site accent (`#c15f3c` / hover `#a84e2f`) — the same mark as the
+  index nav logo.
+
 ## [0.2.5] - 2026-10-26
 
 ### Added
