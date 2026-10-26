@@ -1443,10 +1443,10 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task,
     winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
         date_menu_button, t("labelAddDate"));
     auto date_menu = mxc::MenuFlyout{};
-    auto add_date_option = [&](winrt::hstring const& label,
+    auto add_date_option = [&](std::wstring const& label,
                                std::wstring value) {
       auto option = mxc::MenuFlyoutItem{};
-      option.Text(label);
+      option.Text(winrt::hstring(label));
       option.Click([weak = get_weak(), value = std::move(value)](
                        auto const&, auto const&) {
         if (auto window = weak.get()) {
