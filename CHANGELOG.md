@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-10-26
+
 ### Fixed
 - **Windows task editing is compact and native instead of a tall utility
   form.** The selected row now presents a borderless title and quieter notes
