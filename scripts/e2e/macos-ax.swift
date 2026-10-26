@@ -188,7 +188,7 @@ do {
     _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
 
     for view in ["today", "planned", "all", "completed"] {
-        _ = try waitFor("visible zero count for \(view)") {
+        let _: AXUIElement = try waitFor("visible zero count for \(view)") {
             guard let candidate = find(window, identifier: "smart-count-\(view)") else { return nil }
             return [kAXTitleAttribute, kAXValueAttribute, kAXDescriptionAttribute]
                 .contains { stringAttribute(candidate, $0) == "0" } ? candidate : nil
