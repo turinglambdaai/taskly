@@ -187,6 +187,14 @@ do {
     _ = AXUIElementSetAttributeValue(application, kAXFrontmostAttribute as CFString, kCFBooleanTrue)
     _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
 
+    for view in ["today", "planned", "all", "completed"] {
+        let _: AXUIElement = try waitFor("visible zero count for \(view)") {
+            guard let candidate = find(window, identifier: "smart-view-\(view)") else { return nil }
+            return [kAXTitleAttribute, kAXValueAttribute, kAXDescriptionAttribute]
+                .contains { stringAttribute(candidate, $0) == "0" } ? candidate : nil
+        }
+    }
+
     let quickAdd: AXUIElement = try waitFor("quick-add field") { find(window, identifier: "quick-add") }
     let submit: AXUIElement = try waitFor("quick-add submit button") { find(window, identifier: "quick-add-submit") }
     try typeText("Acceptance task", into: quickAdd)

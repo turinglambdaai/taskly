@@ -159,6 +159,7 @@
                                         TextTrimming="CharacterEllipsis" />
                                     <TextBlock
                                         x:Name="TileTodayCount"
+                                        AutomationProperties.AutomationId="smart-count-today"
                                         Grid.Column="2"
                                         FontSize="12"
                                         Foreground="{ThemeResource TasklySecondaryTextBrush}" />
@@ -179,6 +180,7 @@
                                         TextTrimming="CharacterEllipsis" />
                                     <TextBlock
                                         x:Name="TilePlannedCount"
+                                        AutomationProperties.AutomationId="smart-count-planned"
                                         Grid.Column="2"
                                         FontSize="12"
                                         Foreground="{ThemeResource TasklySecondaryTextBrush}" />
@@ -199,6 +201,7 @@
                                         TextTrimming="CharacterEllipsis" />
                                     <TextBlock
                                         x:Name="TileAllCount"
+                                        AutomationProperties.AutomationId="smart-count-all"
                                         Grid.Column="2"
                                         FontSize="12"
                                         Foreground="{ThemeResource TasklySecondaryTextBrush}" />
@@ -219,6 +222,7 @@
                                         TextTrimming="CharacterEllipsis" />
                                     <TextBlock
                                         x:Name="TileCompletedCount"
+                                        AutomationProperties.AutomationId="smart-count-completed"
                                         Grid.Column="2"
                                         FontSize="12"
                                         Foreground="{ThemeResource TasklySecondaryTextBrush}" />

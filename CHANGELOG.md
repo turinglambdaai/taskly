@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Windows task editing is compact and native instead of a tall utility
+  form.** The selected row now presents a borderless title and quieter notes
+  above one accessible date/time/list action line, with native theme and
+  focus behavior plus consistent Enter/Escape handling across every field
+  (#71).
+- **Windows updates no longer send a verified ZIP to `msiexec` (error
+  1620).** The host now persists the detected install flavor before every
+  update check and dispatches the final handoff from the verified file's
+  `.msi`/`.zip` extension, so artifact selection and installation cannot
+  disagree.
+- Smart-view counts now display `0` instead of leaving an empty trailing
+  space. Windows and macOS match Linux for Today, Planned, All and Completed.
 - **The product site's tab icon and manual nav logo follow the family
   palette again.** The terracotta rebrand recolored the page and the index
   nav logo but left `docs/favicon.ico` and `docs/taskly.svg` on the retired
