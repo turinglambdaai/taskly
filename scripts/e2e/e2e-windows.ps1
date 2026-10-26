@@ -245,6 +245,51 @@ try {
     $inlineTime = Wait-Until 'inline task time editor' {
         Find-ById $window 'inline-task-time-2'
     }
+    $inlineDateMenu = Wait-Until 'compact inline date action' {
+        Find-ById $window 'inline-task-date-menu-2'
+    }
+    $inlineList = Wait-Until 'compact inline list action' {
+        Find-ById $window 'inline-task-list-2'
+    }
+    $compactHeightLimit = [Math]::Max(
+        $inlineTitle.Current.BoundingRectangle.Height,
+        $inlineNotes.Current.BoundingRectangle.Height) * 1.25
+    foreach ($control in @($inlineDateMenu, $inlineDate, $inlineTime, $inlineList)) {
+        if ($control.Current.IsOffscreen -or
+            $control.Current.BoundingRectangle.Height -gt $compactHeightLimit) {
+            throw 'inline task secondary actions are not visible and compact'
+        }
+        if ([string]::IsNullOrWhiteSpace($control.Current.Name)) {
+            throw 'inline task secondary action is missing an accessible name'
+        }
+    }
+    if ($inlineNotes.Current.BoundingRectangle.Top -lt
+            $inlineTitle.Current.BoundingRectangle.Top -or
+        $inlineDateMenu.Current.BoundingRectangle.Top -lt
+            $inlineNotes.Current.BoundingRectangle.Top) {
+        throw 'inline task editor hierarchy must be title, notes, then details'
+    }
+
+    # The visual order and keyboard order are identical: title first, quieter
+    # notes second, then the date/time/list action line.
+    $inlineTitle.SetFocus()
+    foreach ($expectedFocus in @(
+            'inline-task-notes-2',
+            'inline-task-date-menu-2',
+            'inline-task-date-2',
+            'inline-task-time-2',
+            'inline-task-list-2')) {
+        [System.Windows.Forms.SendKeys]::SendWait('{TAB}')
+        [void](Wait-Until ("inline editor Tab reaches {0}" -f $expectedFocus) {
+            $focused = [System.Windows.Automation.AutomationElement]::FocusedElement
+            if ($null -ne $focused -and
+                $focused.Current.AutomationId -eq $expectedFocus) {
+                return $true
+            }
+            return $false
+        })
+    }
+    $inlineTitle.SetFocus()
     $editedPlainTask = 'Life-only task edited inline'
     $editedNotes = 'Inline notes survive a changed-event refresh'
     $inlineTitle.GetCurrentPattern(
@@ -433,7 +478,7 @@ try {
     [ordered]@{
         platform = 'windows'
         artifact = $executable.FullName
-        actions = @('set:quick-add', 'invoke:quick-add-submit', 'toggle:task-complete-1', 'create-list:生活', 'select-list:2', 'enter:quick-add', 'inline:escape-cancel-task-2', 'inline:edit-task-2', 'select-list:1', 'select-list:2')
+        actions = @('set:quick-add', 'invoke:quick-add-submit', 'toggle:task-complete-1', 'create-list:生活', 'select-list:2', 'enter:quick-add', 'inline:escape-cancel-task-2', 'inline:tab-order-task-2', 'inline:edit-task-2', 'select-list:1', 'select-list:2')
         assertions = @(
             'packaged WinUI window activated',
             'stable UI Automation identifiers exposed',
@@ -443,6 +488,7 @@ try {
             'task checkbox and plain-text title are vertically aligned',
             'Windows task list exposes native multiple selection',
             'Escape cancels a focused inline draft without mutating the task',
+            'inline task editor exposes compact accessible date/time/list actions with predictable Tab order',
             'task details expand inline without PromptAsync and persist title, notes, date, and time',
             'view switches preserve task list ownership',
             'global search shows the real owning list for every task',

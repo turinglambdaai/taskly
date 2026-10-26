@@ -251,6 +251,7 @@ private:
   winrt::Microsoft::UI::Xaml::Controls::TextBox inline_notes_box_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBox inline_date_box_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBox inline_time_box_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button inline_list_button_{nullptr};
   std::wstring current_search_;
   ViewKind view_{ViewKind::All};
   std::int64_t view_list_id_{0};
