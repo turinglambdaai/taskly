@@ -30,7 +30,9 @@ var _hmt = _hmt || [];
 })();
 </script>
 <style id="product-start-style">
-.product-availability{font-size:.95rem;line-height:1.65;max-width:72ch;margin:18px 0;opacity:.85} .hero .product-availability{margin-left:auto;margin-right:auto}
+.product-availability{font-size:.95rem;line-height:1.65;max-width:72ch;margin:18px 0;opacity:.85}
+.hero-shot-caption{max-width:72ch;margin:12px auto 0;text-align:center;font-size:.84rem;line-height:1.5;opacity:.8}
+.cli-availability{font-size:.88rem;line-height:1.6;margin:14px 0}.cli-availability a{color:inherit;text-decoration:underline;text-underline-offset:3px}.cli-availability a:focus-visible{outline:2px solid currentColor;outline-offset:3px} .hero .product-availability{margin-left:auto;margin-right:auto}
 .product-start{max-width:1120px;margin:64px auto;padding:32px 24px;border-top:1px solid var(--border,#aaa);font:inherit;line-height:1.65}
 .product-start h2{font-size:clamp(1.7rem,3vw,2.4rem);letter-spacing:-.025em;margin:0 0 16px}.product-start h3{font-size:1.05rem;margin:0 0 10px}.product-start p{margin:0 0 16px;max-width:74ch}.product-start-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;margin:28px 0}.product-start a{text-decoration:underline;text-underline-offset:4px;overflow-wrap:anywhere}.product-start a:focus-visible{outline:2px solid currentColor;outline-offset:5px}.product-start .start-links{display:flex;gap:16px 24px;flex-wrap:wrap}.product-start .start-status{font-weight:600}.product-start .start-limits{font-size:.95em}
 html:lang(en) .reader-zh,html:lang(zh) .reader-en{display:none!important}@media(max-width:700px){.product-start{margin:40px auto;padding:24px 20px}.product-start-grid{grid-template-columns:1fr;gap:18px}}
@@ -87,9 +89,9 @@ html:lang(en) .reader-zh,html:lang(zh) .reader-en{display:none!important}@media(
                 <span data-i18n="hero.h1a">规划你的生活，</span>
                 <span class="accent" data-i18n="hero.h1b">一次一件。</span>
             </h1>
-<p class="reader-en product-availability" lang="en">Development preview. Development preview; no paid checkout is open. A future official desktop purchase will be announced with its delivered terms.</p><p class="reader-zh product-availability" lang="zh">开发预览。开发预览，尚未开放付费购买。未来官方桌面版开售时再公布实际交付条款。</p>
+<p class="reader-en product-availability" lang="en">Development preview; no paid checkout is open. A future official desktop purchase will be announced with its delivered terms.</p><p class="reader-zh product-availability" lang="zh">开发预览，尚未开放付费购买。未来官方桌面版开售时再公布实际交付条款。</p>
             <p class="lead animate-on-scroll" data-i18n="hero.lead">
-                Taskly 是一款清爽、专注的任务管理器：支持便捷的排程速记、内置命令行工具便于自动化，并为每个桌面平台提供原生应用。数据始终归你所有。
+                Taskly 是一款清爽、专注的任务管理器：支持便捷的排程速记、另提供可从源码运行的命令行工具用于自动化，并为每个桌面平台提供原生应用。数据始终归你所有。
             </p>
 
             <div class="hero-buttons animate-on-scroll">
@@ -97,13 +99,15 @@ html:lang(en) .reader-zh,html:lang(zh) .reader-en{display:none!important}@media(
                 <a href="https://github.com/turinglambdaai/taskly" class="btn btn-secondary" data-i18n="hero.github">在 GitHub 查看</a>
             </div>
 
-            <!-- Real app screenshot (macOS build, light & dark) -->
+            <!-- Captured macOS UI examples; precise build/version provenance not yet documented. -->
             <div class="app-window animate-on-scroll">
                 <img class="app-shot app-shot-light" src="img/taskly-main-light.png"
-                     alt="Taskly 主窗口：智能清单、我的列表与任务行（macOS 浅色）" data-i18n-alt="hero.shotAlt">
+                     alt="Taskly 主窗口：智能清单、我的列表与任务行（macOS 浅色）" data-i18n-alt="hero.shotAltLight">
                 <img class="app-shot app-shot-dark" src="img/taskly-main-dark.png"
-                     alt="Taskly 主窗口：智能清单、我的列表与任务行（macOS 深色）" data-i18n-alt="hero.shotAlt">
+                     alt="Taskly 主窗口：智能清单、我的列表与任务行（macOS 深色）" data-i18n-alt="hero.shotAltDark">
             </div>
+            <p class="reader-en hero-shot-caption" lang="en">macOS UI examples (light and dark). Other native desktops may look different; the capture version has not been verified against the latest release.</p>
+            <p class="reader-zh hero-shot-caption" lang="zh">macOS 界面示例（浅色与深色）。其他平台的原生界面可能不同；截图所属版本尚未与最新发行版核实。</p>
         </div>
     </section>
 
@@ -171,6 +175,8 @@ html:lang(en) .reader-zh,html:lang(zh) .reader-en{display:none!important}@media(
                     <div class="code-block"><span class="comment"># add a task, get JSON back</span>
 <span class="prompt">$</span> taskly add <span class="str">"Ship landing-page @friday 5pm"</span> <span class="flag">--list</span> <span class="str">"Work"</span> <span class="flag">--json</span>
 <span class="prompt">$</span> taskly list <span class="flag">--status</span> <span class="str">incomplete</span> <span class="flag">--json</span> <span class="flag">|</span> jq <span class="str">'.[] | .text'</span></div>
+                    <p class="reader-en cli-availability" lang="en">The desktop downloads do not yet include a standalone <code>taskly</code> CLI. These examples require <a href="https://github.com/turinglambdaai/taskly/blob/main/README.md#cli-from-source">running the CLI from source</a>.</p>
+                    <p class="reader-zh cli-availability" lang="zh">桌面安装包目前不包含独立的 <code>taskly</code> CLI。以上示例需要<a href="https://github.com/turinglambdaai/taskly/blob/main/README.zh-CN.md">从源码运行 CLI</a>。</p>
                     <span class="card-tag" data-i18n="cli.tag">为自动化而生。</span>
                 </div>
 
@@ -192,7 +198,7 @@ html:lang(en) .reader-zh,html:lang(zh) .reader-en{display:none!important}@media(
             <span class="eyebrow animate-on-scroll" data-i18n="release.eyebrow">发布</span>
             <h2 class="section-title animate-on-scroll" data-i18n="release.title">三大桌面，一个核心。</h2>
             <p class="section-subtitle animate-on-scroll" data-i18n="release.subtitle">
-                Taskly 覆盖 macOS（SwiftUI）、Windows（WinUI 3）与 Linux（GTK4）——共享 Racket 核心驱动轻薄的第一方宿主，JSON CLI 由 63 例 golden 套件钉死，数据就是单个本地 SQLite 文件。下载安装即用。
+                Taskly 覆盖 macOS（SwiftUI）、Windows（WinUI 3）与 Linux（GTK4）——共享 Racket 核心驱动轻薄的第一方宿主，JSON CLI 由 63 例 golden 套件钉死，数据就是单个本地 SQLite 文件。桌面 GUI 可下载安装；CLI 目前需从源码运行。
             </p>
 
             <div class="bento-grid">
