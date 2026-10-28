@@ -62,6 +62,8 @@
   "statusShowCompleted": "Completed tasks",
   "statusUpdateTaskState": "Task status updated",
   "statusTaskUpdated": "Task updated",
+  "statusTaskSaving": "Saving task…",
+  "statusTaskEditCancelled": "Changes discarded",
   "statusTaskAdded": "Task added",
   "statusTaskMoved": "Task moved to {0}",
   "statusTaskDeleted": "Task deleted",

@@ -297,12 +297,58 @@ def main():
         "keyboard-opened task editor",
         lambda: find_editable_value(window, "64-bit task A"),
     )
+    wait_for(
+        "visible task editor Save action",
+        lambda: find_named(window, "Save", "push button"),
+    )
+    wait_for(
+        "visible task editor Cancel action",
+        lambda: find_named(window, "Cancel", "push button"),
+    )
+    wait_for(
+        "accessible task editor calendar action",
+        lambda: find_named(window, "Add Date", "push button"),
+    )
     editor.queryEditableText().setTextContents("Cancelled inline draft")
     pyatspi.Registry.generateKeyboardEvent(9, None, pyatspi.KEY_PRESSRELEASE)  # Escape
     wait_for(
         "Escape cancelled the focused task draft",
         lambda: find_editable_value(window, "Cancelled inline draft") is None
         and contains_text(window, "64-bit task A"),
+    )
+
+    task_row = wait_for(
+        "task row selected again for explicit Save",
+        lambda: select_single_named_child(window, "64-bit task A"),
+    )
+    details = wait_for(
+        "task details button after Escape",
+        lambda: next(
+            reversed(
+                [
+                    node
+                    for node in walk(task_row)
+                    if role(node) in ("push button", "button")
+                ]
+            ),
+            None,
+        ),
+    )
+    press(details)
+    editor = wait_for(
+        "task editor reopened for explicit Save",
+        lambda: find_editable_value(window, "64-bit task A"),
+    )
+    editor.queryEditableText().setTextContents("Saved inline draft")
+    save = wait_for(
+        "visible task editor Save action after reopen",
+        lambda: find_named(window, "Save", "push button"),
+    )
+    press(save)
+    wait_for(
+        "visible Save persisted the task draft",
+        lambda: find_editable_value(window, "Saved inline draft") is None
+        and contains_text(window, "Saved inline draft"),
     )
 
     entry.queryEditableText().setTextContents("Acceptance task")
@@ -325,6 +371,7 @@ def main():
                     "press:undo",
                     "press:selected-row-details",
                     "key:escape-cancel-draft",
+                    "press:visible-save",
                     "set:quick-add",
                     "press:quick-add-submit",
                 ],
@@ -335,7 +382,8 @@ def main():
                     "batch scheduling clears hidden due times for both tasks",
                     "six-second staged deletion hides both tasks without deleting them",
                     "undo restores the original task IDs and metadata",
-                    "accessible details action focuses the task editor and Escape cancels its draft",
+                    "task editor exposes accessible calendar, Save and Cancel actions; Escape cancels its draft",
+                    "visible Save persists the complete task draft and closes only after acknowledgement",
                     "RPC-created task appeared after the quick-add field cleared",
                     "quick-add preserved the selected 64-bit list ownership",
                 ],

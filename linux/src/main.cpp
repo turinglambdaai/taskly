@@ -90,6 +90,7 @@ char const* kFallbackZhKeys[] = {
     "labelNotes",             "备注:",
     "labelDate",              "日期:",
     "labelTime",              "时间:",
+    "labelAddDate",           "添加日期",
     "hintAddNotes",           "添加备注信息...",
     "taskDelete",             "删除",
     "tooltipDoubleClickEdit", "双击编辑",
@@ -103,6 +104,7 @@ char const* kFallbackZhKeys[] = {
     "contextMenuCustomDate",  "自定日期…",
     "dateTomorrow",           "明天",
     "dateYesterday",          "昨天",
+    "dateThisWeekend",        "本周末",
     "reminderTitle",          "⏰ 任务到期",
     "reminderDueAt",          "到期时间",
     "reminderStartupSummary", "{0} 个任务已过期",
@@ -115,6 +117,9 @@ char const* kFallbackZhKeys[] = {
     "statusShowAll",          "全部任务",
     "statusShowCompleted",    "已完成的任务",
     "statusTaskAdded",        "任务已添加",
+    "statusTaskUpdated",      "任务已更新",
+    "statusTaskSaving",       "正在保存任务…",
+    "statusTaskEditCancelled", "已取消修改",
     "statusTaskDeleted",      "任务已删除",
     "subtitleToday",          "{0}年{1}{2}日 {3}",
     "subtitleOpenTasks",      "{0} 个未完成",
@@ -187,6 +192,7 @@ char const* kFallbackEnKeys[] = {
     "labelNotes",             "Notes:",
     "labelDate",              "Date:",
     "labelTime",              "Time:",
+    "labelAddDate",           "Add Date",
     "hintAddNotes",           "Add notes...",
     "taskDelete",             "Delete",
     "tooltipDoubleClickEdit", "Double-click to edit",
@@ -201,6 +207,7 @@ char const* kFallbackEnKeys[] = {
     "contextMenuCustomDate",  "Custom Date…",
     "dateTomorrow",           "Tomorrow",
     "dateYesterday",          "Yesterday",
+    "dateThisWeekend",        "This Weekend",
     "reminderTitle",          "⏰ Task Due",
     "reminderDueAt",          "Due at",
     "reminderStartupSummary", "{0} task(s) overdue",
@@ -213,6 +220,9 @@ char const* kFallbackEnKeys[] = {
     "statusShowAll",          "All tasks",
     "statusShowCompleted",    "Completed tasks",
     "statusTaskAdded",        "Task added",
+    "statusTaskUpdated",      "Task updated",
+    "statusTaskSaving",       "Saving task…",
+    "statusTaskEditCancelled", "Changes discarded",
     "statusTaskDeleted",      "Task deleted",
     "subtitleToday",          "{3}, {1} {2}, {0}",
     "subtitleOpenTasks",      "{0} open",
@@ -553,6 +563,16 @@ std::string date_string(int offset_days) {
   std::snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d", local.tm_year + 1900,
                 local.tm_mon + 1, local.tm_mday);
   return buffer;
+}
+
+std::string weekend_date_string() {
+  auto const now = std::time(nullptr);
+  std::tm local{};
+  localtime_r(&now, &local);
+  auto const offset = (local.tm_wday == 0 || local.tm_wday == 6)
+                          ? 0
+                          : 6 - local.tm_wday;
+  return date_string(offset);
 }
 
 // Lexicographic YYYY-MM-DD compare, normalized to -1/0/1. Raw
@@ -942,11 +962,34 @@ void update_list_full(rivet_app::TodoList list) {
       });
 }
 
-void save_task_edits(rivet_app::Task updated) {
+void save_task_edits(
+    rivet_app::Task updated,
+    std::optional<std::int64_t> editor_id = std::nullopt) {
   if (g_state.api == nullptr) return;
+  if (editor_id.has_value()) flash_status(tr("statusTaskSaving"));
   g_state.api->update_task_async(
-      updated, [](rivet_app::Result<rivet_app::Task> result) {
-        on_result(std::move(result), [](rivet_app::Task const&) {});
+      updated, [editor_id](rivet_app::Result<rivet_app::Task> result) {
+        dispatch_ui([editor_id, result = std::move(result)]() mutable {
+          try {
+            result.get();
+            if (editor_id.has_value() &&
+                g_state.open_editor_id == *editor_id) {
+              g_state.open_editor_id = -1;
+              if (g_state.current_search.empty()) {
+                rebuild_task_list();
+              } else {
+                run_search(g_state.current_search);
+              }
+            }
+            flash_status(tr("statusTaskUpdated"));
+          } catch (std::exception const& e) {
+            // Keep an explicit-save draft open so the user can correct or
+            // retry it instead of losing the date and notes.
+            set_status_error(e.what());
+          } catch (...) {
+            set_status_error("unknown backend failure");
+          }
+        });
       });
 }
 
@@ -2042,12 +2085,26 @@ void commit_task_editor(TaskEditor* editor) {
       gtk_editable_get_text(GTK_EDITABLE(editor->time)));
   updated.due_time =
       time.empty() ? std::nullopt : std::optional<std::string>(time);
-  g_state.open_editor_id = -1;
-  save_task_edits(updated);
+  save_task_edits(updated, editor->task_id);
 }
 
 void on_editor_save_clicked(GtkButton*, gpointer user_data) {
   commit_task_editor(static_cast<TaskEditor*>(user_data));
+}
+
+void cancel_task_editor() {
+  if (g_state.open_editor_id < 0) return;
+  g_state.open_editor_id = -1;
+  if (g_state.current_search.empty()) {
+    rebuild_task_list();
+  } else {
+    run_search(g_state.current_search);
+  }
+  flash_status(tr("statusTaskEditCancelled"));
+}
+
+void on_editor_cancel_clicked(GtkButton*, gpointer) {
+  cancel_task_editor();
 }
 
 void on_editor_title_activate(GtkEntry*, gpointer user_data) {
@@ -2068,6 +2125,18 @@ void on_editor_calendar_day_selected(GtkCalendar* calendar,
   gtk_editable_set_text(GTK_EDITABLE(editor->date), iso);
   g_free(iso);
   g_date_time_unref(date);
+}
+
+void on_editor_quick_date_clicked(GtkButton* button, gpointer user_data) {
+  auto* editor = static_cast<TaskEditor*>(user_data);
+  auto const* value = static_cast<char const*>(
+      g_object_get_data(G_OBJECT(button), "taskly-date-value"));
+  if (value != nullptr) {
+    gtk_editable_set_text(GTK_EDITABLE(editor->date), value);
+  }
+  auto* popover = static_cast<GtkPopover*>(
+      g_object_get_data(G_OBJECT(button), "taskly-date-popover"));
+  if (popover != nullptr) gtk_popover_popdown(popover);
 }
 
 // Expand (or collapse) the in-place editor underneath the row. When
@@ -2123,9 +2192,28 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
     auto* calendar_button =
         gtk_button_new_from_icon_name("x-office-calendar-symbolic");
     gtk_widget_add_css_class(calendar_button, "flat");
+    gtk_accessible_update_property(
+        GTK_ACCESSIBLE(calendar_button), GTK_ACCESSIBLE_PROPERTY_LABEL,
+        tr("labelAddDate").c_str(), -1);
     auto* date_popover = gtk_popover_new();
+    auto* date_picker = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    auto* quick_dates = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    auto add_quick_date = [&](char const* key, std::string const& value) {
+      auto* option = gtk_button_new_with_label(tr(key).c_str());
+      g_object_set_data_full(G_OBJECT(option), "taskly-date-value",
+                             g_strdup(value.c_str()), g_free);
+      g_object_set_data(G_OBJECT(option), "taskly-date-popover", date_popover);
+      g_signal_connect(option, "clicked",
+                       G_CALLBACK(on_editor_quick_date_clicked), editor);
+      gtk_box_append(GTK_BOX(quick_dates), option);
+    };
+    add_quick_date("navToday", date_string(0));
+    add_quick_date("dateTomorrow", date_string(1));
+    add_quick_date("dateThisWeekend", weekend_date_string());
+    gtk_box_append(GTK_BOX(date_picker), quick_dates);
     auto* calendar = gtk_calendar_new();
-    gtk_popover_set_child(GTK_POPOVER(date_popover), calendar);
+    gtk_box_append(GTK_BOX(date_picker), calendar);
+    gtk_popover_set_child(GTK_POPOVER(date_popover), date_picker);
     g_signal_connect(calendar, "day-selected",
                      G_CALLBACK(on_editor_calendar_day_selected), editor);
     g_signal_connect_swapped(
@@ -2145,15 +2233,25 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
                                                    GTK_WIDGET(editor->time)));
 
     auto* buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
-    auto* save = gtk_button_new_with_label(tr("dialogSave").c_str());
-    gtk_widget_add_css_class(save, "suggested-action");
-    g_signal_connect(save, "clicked", G_CALLBACK(on_editor_save_clicked),
-                     editor);
-    gtk_box_append(GTK_BOX(buttons), save);
     auto* clear = gtk_button_new_with_label(tr("dialogClear").c_str());
     g_signal_connect(clear, "clicked",
                      G_CALLBACK(on_editor_clear_due_clicked), editor);
     gtk_box_append(GTK_BOX(buttons), clear);
+    auto* cancel = gtk_button_new_with_label(tr("dialogCancel").c_str());
+    gtk_accessible_update_property(
+        GTK_ACCESSIBLE(cancel), GTK_ACCESSIBLE_PROPERTY_LABEL,
+        tr("dialogCancel").c_str(), -1);
+    g_signal_connect(cancel, "clicked", G_CALLBACK(on_editor_cancel_clicked),
+                     editor);
+    gtk_box_append(GTK_BOX(buttons), cancel);
+    auto* save = gtk_button_new_with_label(tr("dialogSave").c_str());
+    gtk_widget_add_css_class(save, "suggested-action");
+    gtk_accessible_update_property(
+        GTK_ACCESSIBLE(save), GTK_ACCESSIBLE_PROPERTY_LABEL,
+        tr("dialogSave").c_str(), -1);
+    g_signal_connect(save, "clicked", G_CALLBACK(on_editor_save_clicked),
+                     editor);
+    gtk_box_append(GTK_BOX(buttons), save);
     gtk_box_append(GTK_BOX(grid), buttons);
 
     revealer = GTK_REVEALER(gtk_revealer_new());
@@ -2230,21 +2328,7 @@ void open_task_editor(std::int64_t id, bool focus_date) {
 }
 
 void collapse_open_editor() {
-  if (g_state.open_editor_id < 0) return;
-  for (GtkWidget* child = gtk_widget_get_first_child(GTK_WIDGET(
-           g_state.task_list));
-       child != nullptr;
-       child = gtk_widget_get_next_sibling(child)) {
-    if (!GTK_IS_LIST_BOX_ROW(child)) continue;
-    auto const row_id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
-        g_object_get_data(G_OBJECT(child), "task-id")));
-    if (row_id == g_state.open_editor_id) {
-      set_task_editor_expanded(GTK_LIST_BOX_ROW(child), row_id, false,
-                               false, nullptr);
-      return;
-    }
-  }
-  g_state.open_editor_id = -1;
+  cancel_task_editor();
 }
 
 void show_task_menu(GtkWidget* row, gdouble x, gdouble y, bool user_list) {

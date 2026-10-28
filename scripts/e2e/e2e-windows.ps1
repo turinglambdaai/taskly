@@ -251,6 +251,12 @@ try {
     $inlineList = Wait-Until 'compact inline list action' {
         Find-ById $window 'inline-task-list-2'
     }
+    $inlineSave = Wait-Until 'visible inline save action' {
+        Find-ById $window 'inline-task-save-2'
+    }
+    $inlineCancel = Wait-Until 'visible inline cancel action' {
+        Find-ById $window 'inline-task-cancel-2'
+    }
     $compactHeightLimit = [Math]::Max(
         $inlineTitle.Current.BoundingRectangle.Height,
         $inlineNotes.Current.BoundingRectangle.Height) * 1.25
@@ -269,6 +275,16 @@ try {
             $inlineNotes.Current.BoundingRectangle.Top) {
         throw 'inline task editor hierarchy must be title, notes, then details'
     }
+
+    $inlineDateMenu.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    $inlineCalendar = Wait-Until 'native inline calendar picker' {
+        Find-ById $window 'inline-task-calendar-2'
+    }
+    if ($inlineCalendar.Current.IsOffscreen) {
+        throw 'inline task calendar picker opened offscreen'
+    }
+    [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
 
     # The visual order and keyboard order are identical: title first, quieter
     # notes second, then the date/time/list action line.
@@ -300,8 +316,8 @@ try {
         [System.Windows.Automation.ValuePattern]::Pattern).SetValue('2099-12-31')
     $inlineTime.GetCurrentPattern(
         [System.Windows.Automation.ValuePattern]::Pattern).SetValue('10:30')
-    $inlineTitle.SetFocus()
-    [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+    $inlineSave.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
     [void](Wait-Until 'inline task edit persisted' {
         if ($null -ne (Find-ByName $window $editedPlainTask) -and
             $null -ne (Find-ById $window 'task-notes-2')) { return $true }
@@ -333,11 +349,34 @@ try {
             [System.Windows.Automation.ValuePattern]::Pattern).Current.Value -ne '10:30') {
         throw 'inline task details were not persisted across the backend refresh'
     }
-    $taskInfo = Wait-Until 'collapse inline task details' {
+    $persistedCancel = Wait-Until 'persisted editor cancel action' {
+        Find-ById $window 'inline-task-cancel-2'
+    }
+    $persistedCancel.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    [void](Wait-Until 'visible Cancel closed the unchanged editor' {
+        if ($null -eq (Find-ById $window 'inline-task-title-2')) { return $true }
+        return $false
+    })
+
+    $taskInfo = Wait-Until 'reopen for Return keyboard commit' {
         Find-ById $window 'task-info-2'
     }
     $taskInfo.GetCurrentPattern(
         [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    $returnEditor = Wait-Until 'title editor for Return commit' {
+        Find-ById $window 'inline-task-title-2'
+    }
+    $returnTitle = 'Life-only task saved with Return'
+    $returnEditor.GetCurrentPattern(
+        [System.Windows.Automation.ValuePattern]::Pattern).SetValue($returnTitle)
+    $returnEditor.SetFocus()
+    [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+    [void](Wait-Until 'Return committed the inline task draft' {
+        if ($null -ne (Find-ByName $window $returnTitle)) { return $true }
+        return $false
+    })
+    $plainTask = $returnTitle
 
     Select-TaskList 1 '工作'
     [void](Wait-Until '工作 view selected' {
@@ -489,7 +528,8 @@ try {
             'Windows task list exposes native multiple selection',
             'Escape cancels a focused inline draft without mutating the task',
             'inline task editor exposes compact accessible date/time/list actions with predictable Tab order',
-            'task details expand inline without PromptAsync and persist title, notes, date, and time',
+            'calendar action exposes a native date grid above visible Save and Cancel actions',
+            'visible Save and Return both persist title, notes, date, and time; visible Cancel closes without mutation',
             'view switches preserve task list ownership',
             'global search shows the real owning list for every task',
             'Ctrl/Shift multi-selection completes two tasks in one command',
