@@ -168,20 +168,16 @@ def select_single_named_child(root, expected):
     return None
 
 
-def select_and_press_named_child_trailing_button(root, expected):
-    """Select a rebuilt row and invoke its trailing action in one probe."""
+def select_and_press_named_child_action(root, expected, action_name):
+    """Select a row and invoke one named action without returning a stale node."""
     child = select_single_named_child(root, expected)
     if child is None:
         return None
-    buttons = [
-        node
-        for node in walk(child)
-        if role(node) in ("push button", "button")
-    ]
-    if not buttons:
+    action = find_named(child, action_name, "push button")
+    if action is None:
         return None
     try:
-        actions = buttons[-1].queryAction()
+        actions = action.queryAction()
         return actions.nActions >= 1 and actions.doAction(0)
     except Exception:
         return None
@@ -338,8 +334,8 @@ def main():
 
     wait_for(
         "task details button after Escape",
-        lambda: select_and_press_named_child_trailing_button(
-            window, "64-bit task A"
+        lambda: select_and_press_named_child_action(
+            window, "64-bit task A", "Details"
         ),
     )
     editor = wait_for(

@@ -2094,6 +2094,51 @@ void on_editor_save_clicked(GtkButton*, gpointer user_data) {
 
 void cancel_task_editor() {
   if (g_state.open_editor_id < 0) return;
+  auto const editor_id = g_state.open_editor_id;
+  auto const* stored = find_selected_task(editor_id);
+
+  // Cancelling is a local draft operation. Keep the task row alive so GTK
+  // preserves its keyboard focus and AT-SPI identity instead of rebuilding
+  // the entire list underneath the user. Reset every field before collapsing
+  // so reopening the existing editor can never resurrect the discarded draft.
+  for (GtkWidget* child = gtk_widget_get_first_child(
+           GTK_WIDGET(g_state.task_list));
+       child != nullptr; child = gtk_widget_get_next_sibling(child)) {
+    if (!GTK_IS_LIST_BOX_ROW(child)) continue;
+    auto const row_id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
+        g_object_get_data(G_OBJECT(child), "task-id")));
+    if (row_id != editor_id) continue;
+
+    auto* editor = static_cast<TaskEditor*>(
+        g_object_get_data(G_OBJECT(child), "task-editor"));
+    auto* revealer = GTK_REVEALER(
+        g_object_get_data(G_OBJECT(child), "task-editor-revealer"));
+    if (editor != nullptr && stored != nullptr) {
+      gtk_editable_set_text(GTK_EDITABLE(editor->text), stored->text.c_str());
+      gtk_editable_set_text(GTK_EDITABLE(editor->notes),
+                            stored->notes.has_value()
+                                ? stored->notes->c_str()
+                                : "");
+      gtk_editable_set_text(GTK_EDITABLE(editor->date),
+                            stored->due_date.has_value()
+                                ? stored->due_date->c_str()
+                                : "");
+      gtk_editable_set_text(GTK_EDITABLE(editor->time),
+                            stored->due_time.has_value()
+                                ? stored->due_time->c_str()
+                                : "");
+    }
+    if (revealer != nullptr) {
+      gtk_revealer_set_reveal_child(revealer, FALSE);
+    }
+    g_state.open_editor_id = -1;
+    gtk_widget_grab_focus(child);
+    flash_status(tr("statusTaskEditCancelled"));
+    return;
+  }
+
+  // The row can legitimately disappear if a concurrent snapshot moves it out
+  // of the current view. Fall back to a rebuild only in that exceptional case.
   g_state.open_editor_id = -1;
   if (g_state.current_search.empty()) {
     rebuild_task_list();
