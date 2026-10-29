@@ -168,28 +168,17 @@ def select_single_named_child(root, expected):
     return None
 
 
-def find_last_button_in_named_child(root, expected):
-    """Reacquire a rebuilt direct row and return its trailing action."""
-    for container in walk(root):
-        try:
-            container.querySelection()
-        except Exception:
-            continue
-        indexes = matching_child_indexes(container, expected)
-        if len(indexes) != 1:
-            continue
-        try:
-            child = container.getChildAtIndex(indexes[0])
-        except Exception:
-            continue
-        buttons = [
-            node
-            for node in walk(child)
-            if role(node) in ("push button", "button")
-        ]
-        if buttons:
-            return buttons[-1]
-    return None
+def select_named_child_trailing_button(root, expected):
+    """Select a rebuilt row and resolve its trailing action atomically."""
+    child = select_single_named_child(root, expected)
+    if child is None:
+        return None
+    buttons = [
+        node
+        for node in walk(child)
+        if role(node) in ("push button", "button")
+    ]
+    return buttons[-1] if buttons else None
 
 
 def select_named_children(root, expected_names):
@@ -341,13 +330,9 @@ def main():
         and contains_text(window, "64-bit task A"),
     )
 
-    task_row = wait_for(
-        "task row selected again for explicit Save",
-        lambda: select_single_named_child(window, "64-bit task A"),
-    )
     details = wait_for(
         "task details button after Escape",
-        lambda: find_last_button_in_named_child(window, "64-bit task A"),
+        lambda: select_named_child_trailing_button(window, "64-bit task A"),
     )
     press(details)
     editor = wait_for(
