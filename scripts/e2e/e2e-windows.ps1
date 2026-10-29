@@ -99,6 +99,18 @@ try {
             $process.Id)
         $desktop.FindFirst([System.Windows.Automation.TreeScope]::Children, $condition)
     }
+    $windowBounds = $window.Current.BoundingRectangle
+    $screen = [System.Windows.Forms.Screen]::FromHandle(
+        [IntPtr]$window.Current.NativeWindowHandle)
+    $workArea = $screen.WorkingArea
+    $edgeTolerance = 2
+    if ($windowBounds.Left -lt ($workArea.Left - $edgeTolerance) -or
+        $windowBounds.Top -lt ($workArea.Top - $edgeTolerance) -or
+        $windowBounds.Right -gt ($workArea.Right + $edgeTolerance) -or
+        $windowBounds.Bottom -gt ($workArea.Bottom + $edgeTolerance)) {
+        throw ('Taskly window {0} is outside monitor work area {1}' -f
+            $windowBounds, $workArea)
+    }
     $quickAdd = Wait-Until 'quick-add field' { Find-ById $window 'quick-add' }
     $submit = Wait-Until 'quick-add submit button' { Find-ById $window 'quick-add-submit' }
     # The native window becomes automatable before the embedded backend has
@@ -589,6 +601,7 @@ try {
         actions = @('set:quick-add', 'invoke:quick-add-submit', 'toggle:task-complete-1', 'create-list:生活', 'select-list:2', 'enter:quick-add', 'inline:escape-cancel-task-2', 'inline:tab-order-task-2', 'inline:edit-task-2', 'select-list:1', 'select-list:2')
         assertions = @(
             'packaged WinUI window activated',
+            'initial window is fully visible inside the current monitor work area',
             'fresh profile exposes an actionable first-task empty state',
             'stable UI Automation identifiers exposed',
             'RPC-created task appeared',

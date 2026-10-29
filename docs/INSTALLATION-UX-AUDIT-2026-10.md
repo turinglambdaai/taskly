@@ -76,6 +76,14 @@ Smart-view category colors remain semantic and are not forced to terracotta.
 The goal is common product identity with native platform behavior, not a custom
 cross-platform widget language.
 
+Fresh Windows packaged evidence also exposed a window-placement defect: the
+preferred 1024×768 size was applied literally on a 1024×768 desktop, without
+subtracting the taskbar or compensating for Windows' initial placement. The
+right-hand header actions could therefore open outside the usable desktop.
+Windows now clamps the preferred logical size to the current monitor work area,
+centers it, and the installed-app UIA journey rejects any initial window whose
+edges are not fully usable.
+
 ### P1 — obsolete Rivet baseline
 
 Taskly previously pinned `9d766b4acab672844093204cb4845ef4ef933d2c`.
