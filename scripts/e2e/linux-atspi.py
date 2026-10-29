@@ -168,8 +168,8 @@ def select_single_named_child(root, expected):
     return None
 
 
-def select_named_child_trailing_button(root, expected):
-    """Select a rebuilt row and resolve its trailing action atomically."""
+def select_and_press_named_child_trailing_button(root, expected):
+    """Select a rebuilt row and invoke its trailing action in one probe."""
     child = select_single_named_child(root, expected)
     if child is None:
         return None
@@ -178,7 +178,13 @@ def select_named_child_trailing_button(root, expected):
         for node in walk(child)
         if role(node) in ("push button", "button")
     ]
-    return buttons[-1] if buttons else None
+    if not buttons:
+        return None
+    try:
+        actions = buttons[-1].queryAction()
+        return actions.nActions >= 1 and actions.doAction(0)
+    except Exception:
+        return None
 
 
 def select_named_children(root, expected_names):
@@ -330,11 +336,12 @@ def main():
         and contains_text(window, "64-bit task A"),
     )
 
-    details = wait_for(
+    wait_for(
         "task details button after Escape",
-        lambda: select_named_child_trailing_button(window, "64-bit task A"),
+        lambda: select_and_press_named_child_trailing_button(
+            window, "64-bit task A"
+        ),
     )
-    press(details)
     editor = wait_for(
         "task editor reopened for explicit Save",
         lambda: find_editable_value(window, "64-bit task A"),
