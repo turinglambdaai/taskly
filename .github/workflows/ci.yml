@@ -57,8 +57,8 @@ jobs:
         # tests/documentation module and fails every install (upstream
         # issue filed against keel). Drop this pin once the rename lands.
         run: |
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Core contract tests
         run: raco test racket/
       # Golden CLI suite: byte-identical stdout/stderr/exit codes
@@ -96,8 +96,8 @@ jobs:
         run: |
           # keel pinned below the tests/documentation collision commit
           # (upstream issue filed); drop once keel renames the module.
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
           raco pkg install --auto --no-docs db crypto
       - name: Toolchain doctor
         run: raco rivet doctor --json
@@ -142,8 +142,8 @@ jobs:
         # tests/documentation module and fails every install (upstream
         # issue filed against keel). Drop this pin once the rename lands.
         run: |
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Build host
         run: raco rivet build
       - name: Boot smoke
@@ -195,8 +195,8 @@ jobs:
         # tests/documentation module and fails every install (upstream
         # issue filed against keel). Drop this pin once the rename lands.
         run: |
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Build host
         shell: pwsh
         run: raco rivet build

@@ -41,8 +41,8 @@ jobs:
         # tests/documentation module and fails every install (upstream
         # issue filed against keel). Drop this pin once the rename lands.
         run: |
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Version preflight (VERSION == rivet.rktd == updater == tag)
         run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
       # The Finder DMG uses the PNG, not the editable SVG. Regenerate it so
@@ -98,7 +98,7 @@ jobs:
         shell: pwsh
         # keel pinned below the tests/documentation collision commit
         # (upstream issue filed); drop once keel renames the module.
-        run: raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201' && raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+        run: raco pkg install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201' && raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Install WiX (v5; rivet's MSI toolchain)
         run: dotnet tool install --global wix --version 5.0.2
         shell: bash
@@ -160,8 +160,8 @@ jobs:
         run: |
           # keel pinned below the tests/documentation collision commit
           # (upstream issue filed); drop once keel renames the module.
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
           raco pkg install --auto --no-docs db crypto
       - name: Install GTK4, rpm and packaging tooling
         run: |
@@ -222,8 +222,8 @@ jobs:
         # tests/documentation module and fails every install (upstream
         # issue filed against keel). Drop this pin once the rename lands.
         run: |
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          raco pkg install --auto --no-docs 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
