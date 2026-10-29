@@ -168,8 +168,8 @@ def select_single_named_child(root, expected):
     return None
 
 
-def find_action_in_named_child(root, expected, action_name):
-    """Reacquire a rebuilt direct row, then find its named button."""
+def find_last_button_in_named_child(root, expected):
+    """Reacquire a rebuilt direct row and return its trailing action."""
     for container in walk(root):
         try:
             container.querySelection()
@@ -182,9 +182,13 @@ def find_action_in_named_child(root, expected, action_name):
             child = container.getChildAtIndex(indexes[0])
         except Exception:
             continue
-        action = find_named(child, action_name, "push button")
-        if action is not None:
-            return action
+        buttons = [
+            node
+            for node in walk(child)
+            if role(node) in ("push button", "button")
+        ]
+        if buttons:
+            return buttons[-1]
     return None
 
 
@@ -343,7 +347,7 @@ def main():
     )
     details = wait_for(
         "task details button after Escape",
-        lambda: find_action_in_named_child(window, "64-bit task A", "Details"),
+        lambda: find_last_button_in_named_child(window, "64-bit task A"),
     )
     press(details)
     editor = wait_for(
