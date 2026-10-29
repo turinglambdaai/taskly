@@ -79,11 +79,12 @@ cross-platform widget language.
 ### P1 — obsolete Rivet baseline
 
 Taskly previously pinned `9d766b4acab672844093204cb4845ef4ef933d2c`.
-This change pins `e18c28e6b6b18ab0f59559e82e30c51c4229d91f`, the latest
-reviewed revision with a fully-green upstream check set and the relevant real
-MSI-installed UIA/uninstall and Linux desktop-identity work. A newer Rivet main
-revision existed during audit but still had an incomplete/cancelled check set,
-so it is not represented as verified.
+This change pins `82e4b75b738269b90ef490ebc6c11d30731b8d86`, the exact
+upstream PR #361 revision that preserves the earlier real MSI-installed
+UIA/uninstall and Linux desktop-identity work and fixes the branded DMG detach
+race reproduced by Taskly's macOS x64 acceptance. The candidate is verified by
+Taskly's own matrix; upstream PR checks and production credential gates are
+reported separately and are not inferred from the pin.
 
 ## Release gates still open
 

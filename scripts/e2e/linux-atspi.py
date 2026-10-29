@@ -239,8 +239,20 @@ def snapshot(node, depth=0):
 
 def press(node):
     actions = node.queryAction()
-    if actions.nActions < 1 or not actions.doAction(0):
-        raise AssertionError(f"AT-SPI action failed for {node.name!r}")
+    if actions.nActions >= 1 and actions.doAction(0):
+        return
+
+    # GTK4 exposes GtkMenuButton with the correct button role and name but,
+    # unlike GtkButton, some AT-SPI stacks do not publish a default action.
+    # Exercise the same keyboard path a screen-reader or keyboard-only user
+    # receives instead of treating the missing adapter action as activation.
+    component = node.queryComponent()
+    if component.grabFocus():
+        pyatspi.Registry.generateKeyboardEvent(
+            36, None, pyatspi.KEY_PRESSRELEASE
+        )  # Return
+        return
+    raise AssertionError(f"AT-SPI action and keyboard focus failed for {node.name!r}")
 
 
 def main():

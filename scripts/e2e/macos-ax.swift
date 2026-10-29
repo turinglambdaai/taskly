@@ -196,10 +196,6 @@ do {
     _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
 
     if arguments.contains("--verify-restart") {
-        let completedView: AXUIElement = try waitFor("Completed smart view after restart") {
-            find(window, identifier: "smart-view-completed")
-        }
-        try press(completedView, "smart-view-completed")
         _ = try waitFor("persisted task after application restart") {
             findTaskTitle(window, text: "Return-edited acceptance task")
         }
@@ -338,6 +334,25 @@ do {
         containsStaticText(window, "Acceptance task") ? nil : true
     }
 
+    // Completion is covered with a real native control, but the golden-path
+    // task must remain active so the cold-restart assertion checks the same
+    // task a new user just created and dated. Reveal completed rows, restore
+    // this task, and leave its title/date untouched for restart verification.
+    let showCompleted: AXUIElement = try waitFor("Show Completed action") {
+        findButton(window, title: "Show Completed")
+    }
+    try press(showCompleted, "Show Completed")
+    _ = try waitFor("completed task revealed") {
+        findTaskTitle(window, text: "Return-edited acceptance task")
+    }
+    let restoreCompletion: AXUIElement = try waitFor("completed task restore control") {
+        find(window, identifier: "task-complete-\(taskID)")
+    }
+    try press(restoreCompletion, "task-complete-\(taskID)")
+    _ = try waitFor("golden-path task restored to active state") {
+        findTaskTitle(window, text: "Return-edited acceptance task") != nil ? true : nil
+    }
+
     try writeJSON(snapshot(application), to: output.appendingPathComponent("accessibility.json"))
     let screenshot = Process()
     screenshot.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
@@ -352,7 +367,8 @@ do {
             "type:quick-add", "press:quick-add-submit",
             "edit:escape-cancel", "edit:return-commit",
             "context-menu:delete", "press:undo-delete",
-            "press:\(completionIdentifier)",
+            "press:\(completionIdentifier)", "press:show-completed",
+            "press:task-complete-\(taskID)",
         ],
         "assertions": [
             "packaged SwiftUI window activated",
@@ -365,6 +381,7 @@ do {
             "Return committed a subsequent inline draft",
             "delete undo restored the original task ID",
             "changed Event removed the completed task from the active view",
+            "Show Completed exposed the task and native completion restored it for the golden restart path",
             "native application accepted termination",
         ],
     ], to: output.appendingPathComponent("interaction-trace.json"))

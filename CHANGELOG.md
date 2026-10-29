@@ -26,9 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   higher-contrast neutral text tokens. CI checks both token parity and WCAG
   text/control contrast floors so future Rivet applications can reuse the
   contract without inheriting three visually different palettes.
-- Rivet is pinned to `e18c28e6b6b18ab0f59559e82e30c51c4229d91f`, the
-  fully-green revision that includes real MSI-installed UIA/uninstall coverage
-  and Linux desktop identity support.
+- Rivet is pinned to `82e4b75b738269b90ef490ebc6c11d30731b8d86`, the exact
+  upstream PR #361 revision that also makes branded DMG detach resilient to
+  Finder's `resource busy` / already-unmounted race. Taskly's matrix verifies
+  this candidate directly; production signing and notarization remain separate
+  release gates.
 
 ## [0.2.6] - 2026-10-26
 
