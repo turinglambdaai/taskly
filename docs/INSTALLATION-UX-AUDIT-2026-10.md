@@ -32,9 +32,10 @@ package suite creates development release installers and dispatches to a native
 installer preparation script. Native UI then launches that installed/copy-tested
 application and must emit install-lifecycle evidence after removal.
 
-- Windows: install MSI to an isolated directory; require executable, Start-menu
-  shortcut and Apps & Features registration; record publisher trust; uninstall
-  and require application/shortcut removal while synthetic data remains.
+- Windows: silently install MSI to its normal Program Files destination;
+  resolve the executable from the Start-menu shortcut; require Apps & Features
+  registration; record publisher trust; uninstall and require application/
+  shortcut removal while synthetic data remains.
 - macOS: mount DMG, require the Applications link, copy the application to an
   isolated install root, verify its code-signature structure, record Gatekeeper
   assessment without treating a development rejection as success, then remove
@@ -50,7 +51,9 @@ selection through the real editor, explicit Save acknowledgement and a cold
 application restart that reads the persisted title/date. Windows uses UIA,
 macOS uses AX, and Linux uses AT-SPI under a headless Wayland compositor. Linux
 also runs a dedicated empty-profile pass before its existing 64-bit identity
-and batch-operation regression.
+and batch-operation regression. That pass exposed and fixed a real GTK4 defect:
+the inline editor's date popover was not parented to its calendar button, so
+quick dates were absent from both the screen and AT-SPI tree.
 
 ### P1 — dead-end first run
 

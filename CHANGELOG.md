@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   application or deb payload, verifies native registration/desktop integration,
   and proves uninstall removes application files while preserving synthetic
   user data. Package creation alone no longer counts as installation evidence.
+- Linux task editing now anchors the GTK4 date popover to its calendar button,
+  making Today/Tomorrow/This Weekend visible and accessible instead of leaving
+  the calendar action as a dead end.
 - A zero-configuration first launch now points directly at quick add with a
   harmless example instead of a dead-end “No tasks” message.
 - Windows, macOS and Linux share Taskly's own warm terracotta action accent and

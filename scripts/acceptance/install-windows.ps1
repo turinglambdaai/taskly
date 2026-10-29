@@ -11,8 +11,6 @@ $msi = Get-ChildItem -LiteralPath (Join-Path $Repo 'dist') `
     -Filter 'taskly-*-windows-x64.msi' -File | Select-Object -First 1
 if (-not $msi) { throw 'Taskly MSI was not produced' }
 
-$tempRoot = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [IO.Path]::GetTempPath() }
-$installRoot = Join-Path $tempRoot ("taskly-installed-{0}" -f $PID)
 $installLog = Join-Path $Output 'msi-install.log'
 $uninstallLog = Join-Path $Output 'msi-uninstall-on-failure.log'
 
@@ -25,9 +23,6 @@ function Invoke-TasklyMsi {
     $start.UseShellExecute = $false
     foreach ($argument in @("/$Action", $msi.FullName, '/qn', '/norestart', '/l*v', $LogFile)) {
         [void]$start.ArgumentList.Add($argument)
-    }
-    if ($Action -eq 'i') {
-        [void]$start.ArgumentList.Add("INSTALLFOLDER=$installRoot")
     }
     $process = [System.Diagnostics.Process]::Start($start)
     try {
@@ -49,14 +44,24 @@ try {
     Invoke-TasklyMsi -Action i -LogFile $installLog
     $installed = $true
 
-    $executable = Join-Path $installRoot 'RivetHost.exe'
-    if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
-        throw "MSI did not install RivetHost.exe under requested INSTALLFOLDER: $installRoot"
-    }
     $shortcut = Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\Taskly\Taskly.lnk'
     if (-not (Test-Path -LiteralPath $shortcut -PathType Leaf)) {
         throw 'MSI did not create the Taskly Start menu shortcut'
     }
+    # Exercise the normal end-user install location. Besides matching the real
+    # first-run journey, this verifies the host's MSI-vs-portable detection,
+    # which intentionally keys off Program Files. Resolve the executable from
+    # the installed shortcut instead of duplicating WiX directory casing here.
+    $shell = New-Object -ComObject WScript.Shell
+    try {
+        $executable = $shell.CreateShortcut($shortcut).TargetPath
+    } finally {
+        [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell)
+    }
+    if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
+        throw "MSI Start menu shortcut points to a missing executable: $executable"
+    }
+    $installRoot = Split-Path -Parent $executable
     $registration = Get-ItemProperty `
         'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*', `
         'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' `
@@ -80,7 +85,7 @@ try {
         publisherTrustStatus = [string]$signature.Status
         packageVerified = $true
         assertions = @(
-            'development MSI installed silently into an isolated directory',
+            'development MSI installed silently into its normal Program Files directory',
             'installed executable exists',
             'Start menu shortcut exists',
             'Apps and Features uninstall registration exists',

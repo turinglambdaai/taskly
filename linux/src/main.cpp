@@ -2259,6 +2259,11 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
     auto* calendar = gtk_calendar_new();
     gtk_box_append(GTK_BOX(date_picker), calendar);
     gtk_popover_set_child(GTK_POPOVER(date_popover), date_picker);
+    // GtkPopover is not a native toplevel in GTK4: it must be parented to the
+    // control that anchors it before gtk_popover_popup(). Without this, the
+    // calendar action appears clickable but no quick-date choices reach the
+    // visual or accessibility tree (and GTK emits invalid-surface warnings).
+    gtk_widget_set_parent(date_popover, calendar_button);
     g_signal_connect(calendar, "day-selected",
                      G_CALLBACK(on_editor_calendar_day_selected), editor);
     g_signal_connect_swapped(
