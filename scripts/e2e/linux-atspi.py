@@ -168,21 +168,6 @@ def select_single_named_child(root, expected):
     return None
 
 
-def select_and_press_named_child_action(root, expected, action_name):
-    """Select a row and invoke one named action without returning a stale node."""
-    child = select_single_named_child(root, expected)
-    if child is None:
-        return None
-    action = find_named(child, action_name, "push button")
-    if action is None:
-        return None
-    try:
-        actions = action.queryAction()
-        return actions.nActions >= 1 and actions.doAction(0)
-    except Exception:
-        return None
-
-
 def select_named_children(root, expected_names):
     """Select the direct rows that contain every expected task title."""
     for container in walk(root):
@@ -332,14 +317,12 @@ def main():
         and contains_text(window, "64-bit task A"),
     )
 
-    wait_for(
-        "task details button after Escape",
-        lambda: select_and_press_named_child_action(
-            window, "64-bit task A", "Details"
-        ),
-    )
+    # Cancelling returns focus to the same native GtkListBoxRow. Reopen it
+    # through the keyboard activation path instead of retaining or rediscovering
+    # a button node from the editor's collapsed accessibility subtree.
+    pyatspi.Registry.generateKeyboardEvent(36, None, pyatspi.KEY_PRESSRELEASE)  # Return
     editor = wait_for(
-        "task editor reopened for explicit Save",
+        "Return reopened the task editor for explicit Save",
         lambda: find_editable_value(window, "64-bit task A"),
     )
     editor.queryEditableText().setTextContents("Saved inline draft")
@@ -374,6 +357,7 @@ def main():
                     "press:undo",
                     "press:selected-row-details",
                     "key:escape-cancel-draft",
+                    "key:return-reopen-task",
                     "press:visible-save",
                     "set:quick-add",
                     "press:quick-add-submit",
