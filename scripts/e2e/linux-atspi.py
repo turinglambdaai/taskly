@@ -291,7 +291,10 @@ def main():
         press(add_date)
         tomorrow = wait_for(
             "first task Tomorrow choice",
-            lambda: find_named(window, "Tomorrow", "push button"),
+            # Popover buttons are exposed as either "button" or
+            # "push button" across AT-SPI stacks; the accessible name is
+            # the stable product contract.
+            lambda: find_named(application, "Tomorrow"),
         )
         press(tomorrow)
         save = wait_for(

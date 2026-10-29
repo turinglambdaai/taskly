@@ -196,6 +196,10 @@ do {
     _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
 
     if arguments.contains("--verify-restart") {
+        let completedView: AXUIElement = try waitFor("Completed smart view after restart") {
+            find(window, identifier: "smart-view-completed")
+        }
+        try press(completedView, "smart-view-completed")
         _ = try waitFor("persisted task after application restart") {
             findTaskTitle(window, text: "Return-edited acceptance task")
         }

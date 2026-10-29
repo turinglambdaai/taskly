@@ -61,7 +61,10 @@ try {
         'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*', `
         'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' `
         -ErrorAction SilentlyContinue |
-        Where-Object { $_.DisplayName -eq 'Taskly' } | Select-Object -First 1
+        Where-Object {
+            $_.PSObject.Properties.Name -contains 'DisplayName' -and
+            $_.DisplayName -eq 'Taskly'
+        } | Select-Object -First 1
     if (-not $registration) { throw 'MSI did not register Taskly for uninstall' }
 
     $signature = Get-AuthenticodeSignature -LiteralPath $executable
