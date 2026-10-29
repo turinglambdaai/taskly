@@ -168,22 +168,6 @@ def select_single_named_child(root, expected):
     return None
 
 
-def press_first_button_in_named_row(root, expected):
-    """Reacquire a task row after GTK reparents its accessibility subtree."""
-    for row in walk(root):
-        if role(row) != "list item" or not contains_text(row, expected):
-            continue
-        for node in walk(row):
-            if role(node) not in ("push button", "button"):
-                continue
-            try:
-                actions = node.queryAction()
-                return actions.nActions >= 1 and actions.doAction(0)
-            except Exception:
-                continue
-    return None
-
-
 def select_named_children(root, expected_names):
     """Select the direct rows that contain every expected task title."""
     for container in walk(root):
@@ -336,13 +320,27 @@ def main():
     (args.output / "task-editor-after-escape.json").write_text(
         json.dumps(snapshot(window), ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    wait_for(
-        "reacquired task Details action after Escape",
-        lambda: press_first_button_in_named_row(window, "64-bit task A"),
+    save_row = wait_for(
+        "second task selected for explicit Save",
+        lambda: select_single_named_child(window, "64-bit task B"),
     )
+    save_details = wait_for(
+        "second task Details action",
+        lambda: next(
+            reversed(
+                [
+                    node
+                    for node in walk(save_row)
+                    if role(node) in ("push button", "button")
+                ]
+            ),
+            None,
+        ),
+    )
+    press(save_details)
     editor = wait_for(
-        "stable Details action reopened the task editor for explicit Save",
-        lambda: find_editable_value(window, "64-bit task A"),
+        "second task editor opened for explicit Save",
+        lambda: find_editable_value(window, "64-bit task B"),
     )
     editor.queryEditableText().setTextContents("Saved inline draft")
     save = wait_for(
@@ -376,7 +374,7 @@ def main():
                     "press:undo",
                     "press:selected-row-details",
                     "key:escape-cancel-draft",
-                    "press:stable-row-details-after-cancel",
+                    "press:second-row-details",
                     "press:visible-save",
                     "set:quick-add",
                     "press:quick-add-submit",
