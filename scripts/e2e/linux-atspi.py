@@ -168,6 +168,26 @@ def select_single_named_child(root, expected):
     return None
 
 
+def find_action_in_named_child(root, expected, action_name):
+    """Reacquire a rebuilt direct row, then find its named button."""
+    for container in walk(root):
+        try:
+            container.querySelection()
+        except Exception:
+            continue
+        indexes = matching_child_indexes(container, expected)
+        if len(indexes) != 1:
+            continue
+        try:
+            child = container.getChildAtIndex(indexes[0])
+        except Exception:
+            continue
+        action = find_named(child, action_name, "push button")
+        if action is not None:
+            return action
+    return None
+
+
 def select_named_children(root, expected_names):
     """Select the direct rows that contain every expected task title."""
     for container in walk(root):
@@ -323,16 +343,7 @@ def main():
     )
     details = wait_for(
         "task details button after Escape",
-        lambda: next(
-            reversed(
-                [
-                    node
-                    for node in walk(task_row)
-                    if role(node) in ("push button", "button")
-                ]
-            ),
-            None,
-        ),
+        lambda: find_action_in_named_child(window, "64-bit task A", "Details"),
     )
     press(details)
     editor = wait_for(
