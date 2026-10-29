@@ -317,12 +317,11 @@ def main():
         and contains_text(window, "64-bit task A"),
     )
 
-    # Cancelling returns focus to the same native GtkListBoxRow. Reopen it
-    # through the keyboard activation path instead of retaining or rediscovering
-    # a button node from the editor's collapsed accessibility subtree.
-    pyatspi.Registry.generateKeyboardEvent(36, None, pyatspi.KEY_PRESSRELEASE)  # Return
+    # Cancelling no longer rebuilds the row, so its original Details control
+    # must retain a valid AT-SPI identity and can reopen the discarded draft.
+    press(details)
     editor = wait_for(
-        "Return reopened the task editor for explicit Save",
+        "stable Details action reopened the task editor for explicit Save",
         lambda: find_editable_value(window, "64-bit task A"),
     )
     editor.queryEditableText().setTextContents("Saved inline draft")
@@ -357,7 +356,7 @@ def main():
                     "press:undo",
                     "press:selected-row-details",
                     "key:escape-cancel-draft",
-                    "key:return-reopen-task",
+                    "press:stable-row-details-after-cancel",
                     "press:visible-save",
                     "set:quick-add",
                     "press:quick-add-submit",
