@@ -349,8 +349,14 @@ do {
         find(window, identifier: "task-complete-\(taskID)")
     }
     try press(restoreCompletion, "task-complete-\(taskID)")
-    _ = try waitFor("golden-path task restored to active state") {
-        findTaskTitle(window, text: "Return-edited acceptance task") != nil ? true : nil
+    _ = try waitFor("golden-path task restored and persisted as active") {
+        guard let completed = find(window, identifier: "smart-view-completed") else {
+            return nil
+        }
+        let countIsZero = [kAXTitleAttribute, kAXValueAttribute, kAXDescriptionAttribute]
+            .contains { stringAttribute(completed, $0) == "0" }
+        return countIsZero &&
+            findTaskTitle(window, text: "Return-edited acceptance task") != nil ? true : nil
     }
 
     try writeJSON(snapshot(application), to: output.appendingPathComponent("accessibility.json"))

@@ -52,9 +52,9 @@ jobs:
 
       - name: Install pinned Racket dependencies
         run: |
-          raco pkg install --auto --no-docs "https://github.com/turinglambdaai/keel.git#${KEEL_PIN}"
-          raco pkg install --auto --no-docs "https://github.com/turinglambdaai/rivet.git#${RIVET_PIN}"
-          raco pkg install --auto --no-docs db crypto
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turinglambdaai/keel.git#${KEEL_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turinglambdaai/rivet.git#${RIVET_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh db crypto
 
       - name: Regenerate clients from the canonical RPC contract
         run: |

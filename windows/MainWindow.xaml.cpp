@@ -640,8 +640,10 @@ MainWindow::MainWindow() {
   MONITORINFO monitor_info{sizeof(MONITORINFO)};
   auto const monitor = ::MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
   if (monitor != nullptr && ::GetMonitorInfoW(monitor, &monitor_info)) {
-    auto const work_width = monitor_info.rcWork.right - monitor_info.rcWork.left;
-    auto const work_height = monitor_info.rcWork.bottom - monitor_info.rcWork.top;
+    auto const work_width = static_cast<std::int32_t>(
+        monitor_info.rcWork.right - monitor_info.rcWork.left);
+    auto const work_height = static_cast<std::int32_t>(
+        monitor_info.rcWork.bottom - monitor_info.rcWork.top);
     auto const width = (std::min)(preferred_width, work_width);
     auto const height = (std::min)(preferred_height, work_height);
     auto const x = monitor_info.rcWork.left + (work_width - width) / 2;

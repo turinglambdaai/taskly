@@ -119,4 +119,6 @@ Future Rivet applications can copy the acceptance structure, not Taskly's
 brand: installer creation → native installation/copy → packaged UI golden path
 → cold restart persistence → uninstall/application removal → synthetic data
 preservation. They can also reuse semantic token names and contrast checks while
-substituting their own approved brand palette.
+substituting their own approved brand palette. The package-install helper also
+distinguishes bounded catalog retry from product execution, so network checksum
+or timeout failures remain visible without being mislabeled as UI failures.

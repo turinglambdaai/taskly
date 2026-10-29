@@ -76,8 +76,8 @@ jobs:
           version: '9.3'
       - name: Install pinned dependencies
         run: |
-          raco pkg install --auto --no-docs "https://github.com/turinglambdaai/keel.git#${KEEL_PIN}"
-          raco pkg install --auto --no-docs "https://github.com/turinglambdaai/rivet.git#${RIVET_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turinglambdaai/keel.git#${KEEL_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turinglambdaai/rivet.git#${RIVET_PIN}"
       - name: Render DMG artwork from SVG
         run: |
           brew install librsvg
@@ -99,7 +99,9 @@ jobs:
   linux:
     name: Linux packaged GTK4 acceptance
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # A single Racket catalog request can consume its built-in 30-minute
+    # timeout. Leave room for one bounded retry plus the actual product run.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - name: Set up embeddable Racket CS
@@ -112,9 +114,9 @@ jobs:
           sudo apt-get install --yes at-spi2-core dbus-x11 libgtk-4-dev \
             desktop-file-utils file libadwaita-1-dev libjson-glib-dev \
             libsecret-1-dev python3-pyatspi rpm weston
-          raco pkg install --auto --no-docs "https://github.com/turinglambdaai/keel.git#${KEEL_PIN}"
-          raco pkg install --auto --no-docs "https://github.com/turinglambdaai/rivet.git#${RIVET_PIN}"
-          raco pkg install --auto --no-docs --skip-installed db crypto
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turinglambdaai/keel.git#${KEEL_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turinglambdaai/rivet.git#${RIVET_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh db crypto
       - name: Run executable acceptance contract
         shell: bash
         run: |

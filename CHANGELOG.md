@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   current monitor work area, so taskbar space, small displays and DPI scaling
   cannot hide header actions off-screen. Packaged UI acceptance enforces the
   full-window visibility contract.
+- CI retries checksum- or timeout-interrupted Racket package installation with
+  a small, bounded backoff. Linux packaged acceptance reserves enough time for
+  one catalog timeout and retry instead of reporting an infrastructure stall
+  as a Taskly interaction failure.
 - Rivet is pinned to `82e4b75b738269b90ef490ebc6c11d30731b8d86`, the exact
   upstream PR #361 revision that also makes branded DMG detach resilient to
   Finder's `resource busy` / already-unmounted race. Taskly's matrix verifies
