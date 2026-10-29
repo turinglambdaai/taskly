@@ -52,8 +52,9 @@ application restart that reads the persisted title/date. Windows uses UIA,
 macOS uses AX, and Linux uses AT-SPI under a headless Wayland compositor. Linux
 also runs a dedicated empty-profile pass before its existing 64-bit identity
 and batch-operation regression. That pass exposed and fixed a real GTK4 defect:
-the inline editor's date popover was not parented to its calendar button, so
-quick dates were absent from both the screen and AT-SPI tree.
+the inline editor used an unmanaged popover on a plain button, so task-snapshot
+row rebuilds destroyed its anchor and quick dates disappeared from both the
+screen and AT-SPI tree. A native `GtkMenuButton` now owns that lifecycle.
 
 ### P1 — dead-end first run
 

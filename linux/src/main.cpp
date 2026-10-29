@@ -2234,8 +2234,9 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
 
     auto* date_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
     gtk_box_append(GTK_BOX(date_row), GTK_WIDGET(editor->date));
-    auto* calendar_button =
-        gtk_button_new_from_icon_name("x-office-calendar-symbolic");
+    auto* calendar_button = gtk_menu_button_new();
+    gtk_menu_button_set_icon_name(GTK_MENU_BUTTON(calendar_button),
+                                  "x-office-calendar-symbolic");
     gtk_widget_add_css_class(calendar_button, "flat");
     gtk_accessible_update_property(
         GTK_ACCESSIBLE(calendar_button), GTK_ACCESSIBLE_PROPERTY_LABEL,
@@ -2259,21 +2260,16 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
     auto* calendar = gtk_calendar_new();
     gtk_box_append(GTK_BOX(date_picker), calendar);
     gtk_popover_set_child(GTK_POPOVER(date_popover), date_picker);
-    // GtkPopover is not a native toplevel in GTK4: it must be parented to the
-    // control that anchors it before gtk_popover_popup(). Without this, the
-    // calendar action appears clickable but no quick-date choices reach the
-    // visual or accessibility tree (and GTK emits invalid-surface warnings).
-    gtk_widget_set_parent(date_popover, calendar_button);
+    // Let GTK own the anchor and popover lifecycle. A hand-parented popover on
+    // a plain GtkButton is destroyed incorrectly when the async task snapshot
+    // rebuilds its row, making the quick dates disappear from both the visual
+    // and AT-SPI trees before a user can choose one.
+    gtk_menu_button_set_popover(GTK_MENU_BUTTON(calendar_button), date_popover);
     g_signal_connect(calendar, "day-selected",
                      G_CALLBACK(on_editor_calendar_day_selected), editor);
     g_signal_connect_swapped(
         calendar, "day-selected",
         G_CALLBACK(+[](GtkWidget* popover) { gtk_popover_popdown(
-            GTK_POPOVER(popover)); }),
-        date_popover);
-    g_signal_connect_swapped(
-        calendar_button, "clicked",
-        G_CALLBACK(+[](GtkWidget* popover) { gtk_popover_popup(
             GTK_POPOVER(popover)); }),
         date_popover);
     gtk_box_append(GTK_BOX(date_row), calendar_button);
