@@ -168,6 +168,22 @@ def select_single_named_child(root, expected):
     return None
 
 
+def press_first_button_in_named_row(root, expected):
+    """Reacquire a task row after GTK reparents its accessibility subtree."""
+    for row in walk(root):
+        if role(row) != "list item" or not contains_text(row, expected):
+            continue
+        for node in walk(row):
+            if role(node) not in ("push button", "button"):
+                continue
+            try:
+                actions = node.queryAction()
+                return actions.nActions >= 1 and actions.doAction(0)
+            except Exception:
+                continue
+    return None
+
+
 def select_named_children(root, expected_names):
     """Select the direct rows that contain every expected task title."""
     for container in walk(root):
@@ -317,9 +333,13 @@ def main():
         and contains_text(window, "64-bit task A"),
     )
 
-    # Cancelling no longer rebuilds the row, so its original Details control
-    # must retain a valid AT-SPI identity and can reopen the discarded draft.
-    press(details)
+    (args.output / "task-editor-after-escape.json").write_text(
+        json.dumps(snapshot(window), ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    wait_for(
+        "reacquired task Details action after Escape",
+        lambda: press_first_button_in_named_row(window, "64-bit task A"),
+    )
     editor = wait_for(
         "stable Details action reopened the task editor for explicit Save",
         lambda: find_editable_value(window, "64-bit task A"),
