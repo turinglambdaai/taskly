@@ -2,15 +2,15 @@
 
 ## Authorization decision before implementation
 
-Decision `2026-10-auth-1`: Offline perpetual entitlement plus a bounded update/feature window; no activation lease or device cap. Read the complete [local authorization decision](https://github.com/turinglambdaai/taskly/pull/60) and its Chinese counterpart before commercial, trial, update-eligibility or credential work. Record this decision revision and the source/policy SHAs actually read in the PR/handoff. Refresh at each bounded slice; existing agent conversations do not receive this change automatically. Follow the existing product contract and implementation issue; do not activate a payment gate merely because a plan exists.
+Decision `2026-10-auth-1`: Offline perpetual entitlement plus a bounded update/feature window; no activation lease or device cap. Read the complete [local authorization decision](https://github.com/turlamai/taskly/pull/60) and its Chinese counterpart before commercial, trial, update-eligibility or credential work. Record this decision revision and the source/policy SHAs actually read in the PR/handoff. Refresh at each bounded slice; existing agent conversations do not receive this change automatically. Follow the existing product contract and implementation issue; do not activate a payment gate merely because a plan exists.
 
 ## Required policy discovery at each slice
 
 Before starting the next bounded slice, refresh remote state safely and re-read
 this root AGENTS file, the repository's canonical implementation handoff, and
-the current [family delivery standard](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/docs/PRODUCT-STANDARD.md),
-[documentation language policy](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/docs/DOCUMENTATION-LANGUAGES.md)
-and [portfolio decisions](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/PORTFOLIO.md).
+the current [family delivery standard](https://github.com/turlamai/turinglambdaai.github.io/blob/master/docs/PRODUCT-STANDARD.md),
+[documentation language policy](https://github.com/turlamai/turinglambdaai.github.io/blob/master/docs/DOCUMENTATION-LANGUAGES.md)
+and [portfolio decisions](https://github.com/turlamai/turinglambdaai.github.io/blob/master/PORTFOLIO.md).
 Follow the corresponding Chinese links when preferred; both public user paths
 must express the same promises. Product-specific plans and technical protocol
 owners remain in their owning repositories.
@@ -23,7 +23,7 @@ Preserve other agents' dirty worktrees; use an isolated checkout when needed,
 without stashing, resetting or overwriting their work. Missing/offline policy
 inputs must be reported as unverified, not silently claimed current.
 
-Current approved launch design is in [PR #60](https://github.com/turinglambdaai/taskly/pull/60), pending its full checks and merge. The complete desktop purchase/trial/update design supersedes the old split-Pro candidates. Historical commercial notes later in this file are superseded by that design; documentation does not activate runtime restrictions or remove existing gates.
+Current approved launch design is in [PR #60](https://github.com/turlamai/taskly/pull/60), pending its full checks and merge. The complete desktop purchase/trial/update design supersedes the old split-Pro candidates. Historical commercial notes later in this file are superseded by that design; documentation does not activate runtime restrictions or remove existing gates.
 
 
 指引给 AI agent（及开发者）：如何理解、构建、运行、改动 Taskly。
@@ -125,12 +125,12 @@ taskly/
 ## 组合定位（Portfolio placement）
 
 - 2026-10-v2：Taskly 是首个消费买断主力；完整官方桌面版，14 天试用，首购含 12 个月更新，续购可选。不把提醒、自然语言输入或 CLI 拆成多个收费项。
-- 具体价格、试用到期的数据出口与开卖门禁以 [PRICING.md](PRICING.md) 为唯一权威；此前 Pro 候选与价格发布限制均已被替代。组合策略见 [PORTFOLIO](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/PORTFOLIO.md)。
+- 具体价格、试用到期的数据出口与开卖门禁以 [PRICING.md](PRICING.md) 为唯一权威；此前 Pro 候选与价格发布限制均已被替代。组合策略见 [PORTFOLIO](https://github.com/turlamai/turinglambdaai.github.io/blob/master/PORTFOLIO.md)。
 - 当前开发中、没有实际用户；先完成 #58 与现有 acceptance，不因此给开发预览即时加收费墙。不售未交付手机平台，不修改 AGPL 源码权利。
 
 ## Documentation languages
 
-Public default documentation is English; maintain complete Chinese user paths in `*.zh-CN.md`, with reciprocal links. Update both languages when prices, quotas, installation, recovery, privacy or supported platforms change. API/protocol identifiers and commands remain unchanged; do not maintain a second normative protocol or implementation. Follow the [family language policy](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/docs/DOCUMENTATION-LANGUAGES.md). Existing internal notes are not a claim that every document is bilingual.
+Public default documentation is English; maintain complete Chinese user paths in `*.zh-CN.md`, with reciprocal links. Update both languages when prices, quotas, installation, recovery, privacy or supported platforms change. API/protocol identifiers and commands remain unchanged; do not maintain a second normative protocol or implementation. Follow the [family language policy](https://github.com/turlamai/turinglambdaai.github.io/blob/master/docs/DOCUMENTATION-LANGUAGES.md). Existing internal notes are not a claim that every document is bilingual.
 
 ## Public product documentation
 
