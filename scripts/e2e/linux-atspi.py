@@ -168,19 +168,34 @@ def select_single_named_child(root, expected):
     return None
 
 
-def press_unedited_named_row_button(root, expected):
-    """Invoke the only action in a task row before it has an editor subtree."""
-    for row in walk(root):
-        if role(row) != "list item" or not contains_text(row, expected):
+def select_and_press_unedited_named_row_button(root, expected):
+    """Select a direct task-list child and invoke its sole row action atomically.
+
+    Looking for any descendant list item is ambiguous in GTK's AT-SPI tree:
+    an outer list item can expose the text of nested task rows. Resolve the
+    direct child through its selection container instead, then keep selection
+    and action invocation in one traversal so no proxy survives a GTK update.
+    """
+    for container in walk(root):
+        try:
+            selection = container.querySelection()
+        except Exception:
             continue
-        buttons = [
-            node
-            for node in walk(row)
-            if role(node) in ("push button", "button")
-        ]
-        if len(buttons) != 1:
+        indexes = matching_child_indexes(container, expected)
+        if len(indexes) != 1:
             continue
         try:
+            selection.clearSelection()
+            if not selection.selectChild(indexes[0]):
+                continue
+            row = container.getChildAtIndex(indexes[0])
+            buttons = [
+                node
+                for node in walk(row)
+                if role(node) in ("push button", "button")
+            ]
+            if len(buttons) != 1:
+                continue
             actions = buttons[0].queryAction()
             return actions.nActions >= 1 and actions.doAction(0)
         except Exception:
@@ -342,7 +357,9 @@ def main():
     )
     wait_for(
         "second task Details action",
-        lambda: press_unedited_named_row_button(window, "64-bit task B"),
+        lambda: select_and_press_unedited_named_row_button(
+            window, "64-bit task B"
+        ),
     )
     editor = wait_for(
         "second task editor opened for explicit Save",
