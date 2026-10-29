@@ -246,6 +246,9 @@ def press(node):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--mode", choices=("main", "first-run", "verify-first-run"), default="main"
+    )
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
 
@@ -256,6 +259,87 @@ def main():
     # stable behavioral contract we actually need.
     entry = wait_for("quick-add entry", lambda: find_editable_named(window, "+ Add Task"))
     submit = wait_for("quick-add submit", lambda: find_named(window, "+ Add Task", "push button"))
+
+    if args.mode == "first-run":
+        wait_for(
+            "actionable first-run empty state",
+            lambda: contains_text(
+                window, "Add your first task above — try “Plan tomorrow”"
+            ),
+        )
+        entry.queryEditableText().setTextContents("First-run persistence task")
+        press(submit)
+        wait_for("first task created", lambda: contains_text(window, "First-run persistence task"))
+        task_row = wait_for(
+            "first task selected",
+            lambda: select_single_named_child(window, "First-run persistence task"),
+        )
+        details = wait_for(
+            "first task details button",
+            lambda: next(
+                reversed(
+                    [node for node in walk(task_row) if role(node) in ("push button", "button")]
+                ),
+                None,
+            ),
+        )
+        press(details)
+        add_date = wait_for(
+            "first task Add Date action",
+            lambda: find_named(window, "Add Date", "push button"),
+        )
+        press(add_date)
+        tomorrow = wait_for(
+            "first task Tomorrow choice",
+            lambda: find_named(window, "Tomorrow", "push button"),
+        )
+        press(tomorrow)
+        save = wait_for(
+            "first task visible Save action",
+            lambda: find_named(window, "Save", "push button"),
+        )
+        press(save)
+        wait_for(
+            "first task save acknowledgement",
+            lambda: find_editable_value(window, "First-run persistence task") is None
+            and contains_text(window, "First-run persistence task"),
+        )
+        (args.output / "first-run-trace.json").write_text(
+            json.dumps(
+                {
+                    "platform": "linux",
+                    "actions": ["set:quick-add", "press:task-details", "press:tomorrow", "press:save"],
+                    "assertions": [
+                        "fresh profile exposes an actionable empty state",
+                        "first task can be created without setup",
+                        "visible Save acknowledges the chosen due date",
+                    ],
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        return
+
+    if args.mode == "verify-first-run":
+        wait_for(
+            "persisted first task after restart",
+            lambda: contains_text(window, "First-run persistence task"),
+        )
+        wait_for("persisted Tomorrow date after restart", lambda: contains_text(window, "Tomorrow"))
+        (args.output / "persistence-restart.json").write_text(
+            json.dumps(
+                {
+                    "platform": "linux",
+                    "assertions": [
+                        "first task and Tomorrow date survive a cold installed-app restart"
+                    ],
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        return
 
     wait_for("default-list sentinel", lambda: contains_text(window, "Default-list sentinel"))
     wait_for("first 64-bit task row", lambda: contains_text(window, "64-bit task A"))

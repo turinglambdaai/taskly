@@ -319,6 +319,8 @@ constexpr I18nEntry kI18nFallback[] = {
     {"showCompletedToggle", "显示已完成", "Show Completed"},
     {"subtitleCompleted", "{0} 个已完成", "{0} completed"},
     {"taskListEmpty", "暂无任务", "No tasks"},
+    {"taskListEmptyFirstRun", "在上方添加第一项任务，例如“明天评审计划”",
+     "Add your first task above — try “Plan tomorrow”"},
     {"sidebarHide", "隐藏侧边栏", "Hide Sidebar"},
     {"sidebarShow", "显示侧边栏", "Show Sidebar"},
     {"dateTomorrow", "明天", "Tomorrow"},
@@ -1186,7 +1188,7 @@ void MainWindow::RenderTasks() {
                                 : mx::Visibility::Collapsed);
   if (empty) {
     EmptyStateIcon().Text(L"\u2713");
-    EmptyStateText().Text(t("taskListEmpty"));
+    EmptyStateText().Text(t("taskListEmptyFirstRun"));
   }
   RefreshBulkActionBar();
 }

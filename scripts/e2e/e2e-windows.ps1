@@ -7,11 +7,20 @@ Add-Type -AssemblyName System.Windows.Forms
 
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $output = Join-Path $repo '.rivet\acceptance\windows'
-$executable = Get-ChildItem -LiteralPath (Join-Path $repo 'dist') `
-    -Filter RivetHost.exe -File -Recurse |
-    Where-Object { $_.FullName -match 'taskly-windows-[^\\]+\\RivetHost\.exe$' } |
-    Select-Object -First 1
+$installRecordPath = Join-Path $output 'installed-app.json'
+$installRecord = if (Test-Path -LiteralPath $installRecordPath) {
+    Get-Content -LiteralPath $installRecordPath -Raw | ConvertFrom-Json
+} else { $null }
+$executable = if ($installRecord) {
+    Get-Item -LiteralPath ([string]$installRecord.executable)
+} else {
+    Get-ChildItem -LiteralPath (Join-Path $repo 'dist') `
+        -Filter RivetHost.exe -File -Recurse |
+        Where-Object { $_.FullName -match 'taskly-windows-[^\\]+\\RivetHost\.exe$' } |
+        Select-Object -First 1
+}
 if (-not $executable) { throw 'packaged Taskly executable was not found' }
+$expectedInstallFlavor = if ($installRecord) { 'msi' } else { 'zip' }
 
 New-Item -ItemType Directory -Force -Path $output | Out-Null
 $testHome = Join-Path $output ("home-{0}" -f $PID)
@@ -69,6 +78,8 @@ function Capture-Screen {
 $oldHome = $env:HOME
 $oldProfile = $env:USERPROFILE
 $process = $null
+$restartProcess = $null
+$scenarioComplete = $false
 try {
     $env:HOME = $testHome
     $env:USERPROFILE = $testHome
@@ -94,10 +105,13 @@ try {
     # opened its database. Clicking during that interval intentionally keeps
     # the draft unsent, so wait for the product's real readiness signal.
     [void](Wait-Until 'database connection' { Find-ByName $window 'Database Connected' })
-    [void](Wait-Until 'portable install flavor persisted' {
+    [void](Wait-Until "$expectedInstallFlavor install flavor persisted" {
         if ((Get-Content -LiteralPath (Join-Path $tasklyHome 'config.ini') -Raw) `
-                -match '(?m)^install-flavor = zip$') { return $true }
+                -match "(?m)^install-flavor = $expectedInstallFlavor$") { return $true }
         return $false
+    })
+    [void](Wait-Until 'actionable first-run empty state' {
+        Find-ByName $window 'Add your first task above — try “Plan tomorrow”'
     })
     foreach ($view in @('today', 'planned', 'all', 'completed')) {
         $count = Wait-Until ("visible zero count for {0}" -f $view) {
@@ -514,12 +528,63 @@ try {
         return $false
     } 15)
 
+    # A backend changed event proves an RPC round trip; a cold application
+    # restart additionally proves the installed host reopens the same data.
+    $restartProcess = Start-Process -FilePath $executable.FullName -PassThru `
+        -RedirectStandardOutput (Join-Path $output 'application-restart.stdout.log') `
+        -RedirectStandardError (Join-Path $output 'application-restart.stderr.log')
+    $window = Wait-Until 'Taskly window after restart' {
+        $restartProcess.Refresh()
+        if ($restartProcess.HasExited) {
+            throw "Taskly exited before restart verification (exit $($restartProcess.ExitCode))"
+        }
+        $condition = [System.Windows.Automation.PropertyCondition]::new(
+            [System.Windows.Automation.AutomationElement]::ProcessIdProperty,
+            $restartProcess.Id)
+        $desktop.FindFirst([System.Windows.Automation.TreeScope]::Children, $condition)
+    }
+    [void](Wait-Until 'database connection after restart' {
+        Find-ByName $window 'Database Connected'
+    })
+    Select-TaskList 2 '生活'
+    [void](Wait-Until 'saved task after restart' { Find-ByName $window $returnTitle })
+    $restartInfo = Wait-Until 'saved task details after restart' {
+        Find-ById $window 'task-info-2'
+    }
+    $restartInfo.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    $restartDate = Wait-Until 'saved task date after restart' {
+        Find-ById $window 'inline-task-date-2'
+    }
+    $restartTime = Wait-Until 'saved task time after restart' {
+        Find-ById $window 'inline-task-time-2'
+    }
+    if ($restartDate.GetCurrentPattern(
+            [System.Windows.Automation.ValuePattern]::Pattern).Current.Value -ne '2099-12-31' -or
+        $restartTime.GetCurrentPattern(
+            [System.Windows.Automation.ValuePattern]::Pattern).Current.Value -ne '10:30') {
+        throw 'task date/time did not survive a cold installed-app restart'
+    }
+    [ordered]@{
+        platform = 'windows'
+        assertions = @('task title, date, and time survive a cold installed-app restart')
+    } | ConvertTo-Json | Set-Content -LiteralPath `
+        (Join-Path $output 'persistence-restart.json') -Encoding utf8
+    $window.GetCurrentPattern(
+        [System.Windows.Automation.WindowPattern]::Pattern).Close()
+    [void](Wait-Until 'restarted process exit' {
+        $restartProcess.Refresh()
+        if ($restartProcess.HasExited) { return $true }
+        return $false
+    } 15)
+
     [ordered]@{
         platform = 'windows'
         artifact = $executable.FullName
         actions = @('set:quick-add', 'invoke:quick-add-submit', 'toggle:task-complete-1', 'create-list:生活', 'select-list:2', 'enter:quick-add', 'inline:escape-cancel-task-2', 'inline:tab-order-task-2', 'inline:edit-task-2', 'select-list:1', 'select-list:2')
         assertions = @(
             'packaged WinUI window activated',
+            'fresh profile exposes an actionable first-task empty state',
             'stable UI Automation identifiers exposed',
             'RPC-created task appeared',
             'changed Event removed the completed task from the active view',
@@ -530,15 +595,17 @@ try {
             'inline task editor exposes compact accessible date/time/list actions with predictable Tab order',
             'calendar action exposes a native date grid above visible Save and Cancel actions',
             'visible Save and Return both persist title, notes, date, and time; visible Cancel closes without mutation',
+            'task title, date, and time survive a cold installed-app restart',
             'view switches preserve task list ownership',
             'global search shows the real owning list for every task',
             'Ctrl/Shift multi-selection completes two tasks in one command',
             'bulk deletion undo restores original rows before backend mutation',
             'batch scheduling is visible and enabled when multiple tasks are selected',
-            'native window close stopped the process'
+            'native window close stopped the process and restart verification exited cleanly'
         )
     } | ConvertTo-Json -Depth 5 |
         Set-Content -LiteralPath (Join-Path $output 'interaction-trace.json') -Encoding utf8
+    $scenarioComplete = $true
 } finally {
     # Archive process state even on a failed or timed-out launch.
     if ($process) {
@@ -560,7 +627,50 @@ try {
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
         $process.WaitForExit()
     }
+    if ($restartProcess -and -not $restartProcess.HasExited) {
+        Stop-Process -Id $restartProcess.Id -Force -ErrorAction SilentlyContinue
+        $restartProcess.WaitForExit()
+    }
     if ($process) { $process.Dispose() }
+    if ($restartProcess) { $restartProcess.Dispose() }
     $env:HOME = $oldHome
     $env:USERPROFILE = $oldProfile
+
+    if ($installRecord) {
+        $uninstallLog = Join-Path $output 'msi-uninstall.log'
+        $start = [System.Diagnostics.ProcessStartInfo]::new('msiexec.exe')
+        $start.UseShellExecute = $false
+        foreach ($argument in @('/x', [string]$installRecord.artifact,
+                                 '/qn', '/norestart', '/l*v', $uninstallLog)) {
+            [void]$start.ArgumentList.Add($argument)
+        }
+        $uninstall = [System.Diagnostics.Process]::Start($start)
+        try {
+            if (-not $uninstall.WaitForExit(180000)) {
+                $uninstall.Kill()
+                throw 'MSI uninstall exceeded 180 seconds'
+            }
+            if ($uninstall.ExitCode -ne 0) {
+                throw "MSI uninstall failed with exit code $($uninstall.ExitCode)"
+            }
+        } finally {
+            $uninstall.Dispose()
+        }
+
+        $binaryRemoved = -not (Test-Path -LiteralPath ([string]$installRecord.executable))
+        $shortcutRemoved = -not (Test-Path -LiteralPath ([string]$installRecord.shortcut))
+        $dataPreserved = Test-Path -LiteralPath (Join-Path $tasklyHome 'tasks.db')
+        [ordered]@{
+            installer = 'msi'
+            binaryRemoved = $binaryRemoved
+            shortcutRemoved = $shortcutRemoved
+            dataPreserved = $dataPreserved
+        } | ConvertTo-Json |
+            Set-Content -LiteralPath (Join-Path $output 'install-lifecycle.json') -Encoding utf8
+        if (-not $binaryRemoved) { throw 'MSI uninstall left the installed executable behind' }
+        if (-not $shortcutRemoved) { throw 'MSI uninstall left the Start menu shortcut behind' }
+        if ($scenarioComplete -and -not $dataPreserved) {
+            throw 'MSI uninstall removed the disposable Taskly data unexpectedly'
+        }
+    }
 }

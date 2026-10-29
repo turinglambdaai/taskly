@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RIVET_PIN: 9d766b4acab672844093204cb4845ef4ef933d2c
+  RIVET_PIN: e18c28e6b6b18ab0f59559e82e30c51c4229d91f
   KEEL_PIN: 76a5b9fdd01bde284d310ff5c05ec73972f64201
 
 jobs:
@@ -34,6 +34,7 @@ jobs:
       - name: Install pinned dependencies
         shell: pwsh
         run: |
+          dotnet tool install --global wix --version 5.0.2
           raco pkg install --auto --no-docs "https://github.com/turinglambdaai/keel.git#$env:KEEL_PIN"
           raco pkg install --auto --no-docs "https://github.com/turinglambdaai/rivet.git#$env:RIVET_PIN"
       - name: Verify Windows installer artwork
@@ -102,14 +103,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up embeddable Racket CS
-        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@9d766b4acab672844093204cb4845ef4ef933d2c
+        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@e18c28e6b6b18ab0f59559e82e30c51c4229d91f
       - name: Install native and pinned Racket dependencies
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install --yes at-spi2-core dbus-x11 libgtk-4-dev \
-            libadwaita-1-dev libjson-glib-dev libsecret-1-dev python3-pyatspi weston
+            desktop-file-utils file libadwaita-1-dev libjson-glib-dev \
+            libsecret-1-dev python3-pyatspi rpm weston
           raco pkg install --auto --no-docs "https://github.com/turinglambdaai/keel.git#${KEEL_PIN}"
           raco pkg install --auto --no-docs "https://github.com/turinglambdaai/rivet.git#${RIVET_PIN}"
           raco pkg install --auto --no-docs --skip-installed db crypto

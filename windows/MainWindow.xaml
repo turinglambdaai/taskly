@@ -19,8 +19,8 @@
                         <SolidColorBrush x:Key="TasklyAccentSoftBrush" Color="#14C94F30" />
                         <SolidColorBrush x:Key="TasklyDueTodayBrush" Color="#C4501B" />
                         <SolidColorBrush x:Key="TasklyOverdueBrush" Color="#D13438" />
-                        <SolidColorBrush x:Key="TasklySecondaryTextBrush" Color="#797775" />
-                        <SolidColorBrush x:Key="TasklyMutedTextBrush" Color="#A19F9D" />
+                        <SolidColorBrush x:Key="TasklySecondaryTextBrush" Color="#5F5D5B" />
+                        <SolidColorBrush x:Key="TasklyMutedTextBrush" Color="#767370" />
                     </ResourceDictionary>
                     <ResourceDictionary x:Key="Dark">
                         <SolidColorBrush x:Key="TasklySidebarBrush" Color="#272424" />
@@ -33,8 +33,8 @@
                         <SolidColorBrush x:Key="TasklyAccentSoftBrush" Color="#14E8704F" />
                         <SolidColorBrush x:Key="TasklyDueTodayBrush" Color="#F2913D" />
                         <SolidColorBrush x:Key="TasklyOverdueBrush" Color="#FF6B6E" />
-                        <SolidColorBrush x:Key="TasklySecondaryTextBrush" Color="#A8A5A3" />
-                        <SolidColorBrush x:Key="TasklyMutedTextBrush" Color="#7A7775" />
+                        <SolidColorBrush x:Key="TasklySecondaryTextBrush" Color="#B2AEAC" />
+                        <SolidColorBrush x:Key="TasklyMutedTextBrush" Color="#A8A5A3" />
                     </ResourceDictionary>
                 </ResourceDictionary.ThemeDictionaries>
                 <!-- Smart-tile view colors (DESIGN-TOKENS, theme-independent);

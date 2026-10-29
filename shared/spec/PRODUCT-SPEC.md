@@ -66,7 +66,9 @@ README's honest gaps).
   list, its initial ALL snapshot must not populate that named list; query
   the selected list first.
 - Empty states: not connected → 📂 + `taskListEmptyHint`; connected and
-  empty → ✓ + `taskListEmpty`.
+  empty → ✓ + actionable `taskListEmptyFirstRun`, which points at quick add
+  and includes a harmless example. A successful first task replaces the hint;
+  reopening the database must show the persisted row instead of the hint.
 - Row order per view (SQL in DATA-FORMAT/CLI-SPEC §list): All & list views
   `id DESC` with completed sinking when shown; Planned by `due_date ASC`;
   Today `id DESC`; Completed unordered.

@@ -193,7 +193,9 @@ struct TaskPaneView: View {
     private var taskList: some View {
         Group {
             if model.tasks.isEmpty {
-                emptyState(icon: "checkmark.circle", opacity: 0.3, text: model.t("taskListEmpty"))
+                emptyState(
+                    icon: "checkmark.circle", opacity: 0.3,
+                    text: model.t("taskListEmptyFirstRun"))
             } else {
                 ScrollView {
                     LazyVStack(spacing: 2) {

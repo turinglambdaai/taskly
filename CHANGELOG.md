@@ -13,6 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Tomorrow and This Weekend above the platform calendar, and saving reports
   progress before confirmed persistence. Explicit save failures keep the full
   draft available for correction instead of silently closing it.
+- Packaged acceptance now prepares and launches the installed MSI, copied DMG
+  application or deb payload, verifies native registration/desktop integration,
+  and proves uninstall removes application files while preserving synthetic
+  user data. Package creation alone no longer counts as installation evidence.
+- A zero-configuration first launch now points directly at quick add with a
+  harmless example instead of a dead-end “No tasks” message.
+- Windows, macOS and Linux share Taskly's own warm terracotta action accent and
+  higher-contrast neutral text tokens. CI checks both token parity and WCAG
+  text/control contrast floors so future Rivet applications can reuse the
+  contract without inheriting three visually different palettes.
+- Rivet is pinned to `e18c28e6b6b18ab0f59559e82e30c51c4229d91f`, the
+  fully-green revision that includes real MSI-installed UIA/uninstall coverage
+  and Linux desktop identity support.
 
 ## [0.2.6] - 2026-10-26
 

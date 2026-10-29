@@ -70,6 +70,7 @@
   "taskListInputHint": "+ 添加任务",
   "taskListInputHintNoDb": "请先创建或打开数据库",
   "taskListEmpty": "暂无任务",
+  "taskListEmptyFirstRun": "在上方添加第一项任务，例如“明天评审计划”",
   "taskListEmptyHint": "请点击“文件”菜单创建或打开数据库",
   "taskCreateListFirst": "请先创建一个任务列表",
   "showCompletedToggle": "显示已完成",
