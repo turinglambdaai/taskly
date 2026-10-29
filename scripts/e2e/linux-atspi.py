@@ -168,6 +168,26 @@ def select_single_named_child(root, expected):
     return None
 
 
+def press_unedited_named_row_button(root, expected):
+    """Invoke the only action in a task row before it has an editor subtree."""
+    for row in walk(root):
+        if role(row) != "list item" or not contains_text(row, expected):
+            continue
+        buttons = [
+            node
+            for node in walk(row)
+            if role(node) in ("push button", "button")
+        ]
+        if len(buttons) != 1:
+            continue
+        try:
+            actions = buttons[0].queryAction()
+            return actions.nActions >= 1 and actions.doAction(0)
+        except Exception:
+            continue
+    return None
+
+
 def select_named_children(root, expected_names):
     """Select the direct rows that contain every expected task title."""
     for container in walk(root):
@@ -320,24 +340,10 @@ def main():
     (args.output / "task-editor-after-escape.json").write_text(
         json.dumps(snapshot(window), ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    save_row = wait_for(
-        "second task selected for explicit Save",
-        lambda: select_single_named_child(window, "64-bit task B"),
-    )
-    save_details = wait_for(
+    wait_for(
         "second task Details action",
-        lambda: next(
-            reversed(
-                [
-                    node
-                    for node in walk(save_row)
-                    if role(node) in ("push button", "button")
-                ]
-            ),
-            None,
-        ),
+        lambda: press_unedited_named_row_button(window, "64-bit task B"),
     )
-    press(save_details)
     editor = wait_for(
         "second task editor opened for explicit Save",
         lambda: find_editable_value(window, "64-bit task B"),
