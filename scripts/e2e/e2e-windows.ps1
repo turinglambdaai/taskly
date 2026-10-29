@@ -428,14 +428,19 @@ try {
 
     # Native multi-selection must drive real batch completion, not only
     # report a selection capability through UI Automation.
-    $secondLife = 'Second Life batch task'
-    $quickAdd.GetCurrentPattern(
-        [System.Windows.Automation.ValuePattern]::Pattern).SetValue($secondLife)
-    $quickAdd.SetFocus()
-    [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
-    [void](Wait-Until 'second task saved under 生活' {
-        Find-ByName $window $secondLife
-    })
+    # Keep the golden-path task incomplete so the cold restart verifies the
+    # same list and state the user saved. Batch behavior gets two dedicated
+    # fixtures instead of consuming the persistence fixture.
+    $batchNames = @('Batch completion task one', 'Batch completion task two')
+    foreach ($title in $batchNames) {
+        $quickAdd.GetCurrentPattern(
+            [System.Windows.Automation.ValuePattern]::Pattern).SetValue($title)
+        $quickAdd.SetFocus()
+        [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+        [void](Wait-Until ("batch task saved under 生活: {0}" -f $title) {
+            Find-ByName $window $title
+        })
+    }
     function Select-TaskForBatch {
         param([string]$Title, [bool]$Append)
         $label = Wait-Until ("task label: {0}" -f $Title) {
@@ -452,8 +457,8 @@ try {
             [System.Windows.Automation.SelectionItemPattern]::Pattern)
         if ($Append) { $pattern.AddToSelection() } else { $pattern.Select() }
     }
-    Select-TaskForBatch $plainTask $false
-    Select-TaskForBatch $secondLife $true
+    Select-TaskForBatch $batchNames[0] $false
+    Select-TaskForBatch $batchNames[1] $true
     $batchComplete = Wait-Until 'multi-selection action bar' {
         Find-ById $window 'bulk-complete'
     }
@@ -466,8 +471,8 @@ try {
     $batchComplete.GetCurrentPattern(
         [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
     [void](Wait-Until 'both selected tasks completed by a single command' {
-        if ($null -eq (Find-ByName $window $plainTask) -and
-            $null -eq (Find-ByName $window $secondLife)) { return $true }
+        if ($null -eq (Find-ByName $window $batchNames[0]) -and
+            $null -eq (Find-ByName $window $batchNames[1])) { return $true }
         return $false
     })
 
