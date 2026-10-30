@@ -2,11 +2,11 @@
 
 一款专注、键盘友好的跨平台任务管理器，覆盖 macOS、Windows 和 Linux——一个 Racket 核心驱动每个桌面的第一方原生宿主，附带面向 agent 的 CLI，数据就是单个本地 SQLite 文件。
 
-[![release](https://img.shields.io/github/v/release/turinglambdaai/taskly)](https://github.com/turinglambdaai/taskly/releases/latest) ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[![release](https://img.shields.io/github/v/release/turlamai/taskly)](https://github.com/turlamai/taskly/releases/latest) ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turlamai/taskly/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/taskly/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
 [English](README.md) · **中文**
 
-Taskly 构建在 [Rivet](https://github.com/turinglambdaai/rivet) 之上：全部领域逻辑——SQLite 存储、排程、自然语言日期、校验、CLI——都在一个 Racket CS 核心里，每个桌面通过类型化 RPC 获得一个轻薄的第一方宿主。共享领域逻辑归后端；宿主提醒选择逻辑的收敛仍在 #62 跟进。
+Taskly 构建在 [Rivet](https://github.com/turlamai/rivet) 之上：全部领域逻辑——SQLite 存储、排程、自然语言日期、校验、CLI——都在一个 Racket CS 核心里，每个桌面通过类型化 RPC 获得一个轻薄的第一方宿主。共享领域逻辑归后端；宿主提醒选择逻辑的收敛仍在 #62 跟进。
 
 | 桌面平台 | 宿主 |
 |---|---|
@@ -38,7 +38,7 @@ Taskly 构建在 [Rivet](https://github.com/turinglambdaai/rivet) 之上：全�
 
 ## 安装
 
-到 [Releases](https://github.com/turinglambdaai/taskly/releases/latest) 下载你的版本：
+到 [Releases](https://github.com/turlamai/taskly/releases/latest) 下载你的版本：
 
 | 平台 | 便携 zip（应用内更新） | 安装器 |
 |---|---|---|
@@ -58,9 +58,9 @@ Linux 需要 GTK 4 桌面（解压后运行 `RivetHost`；GTK 4 及其系统库�
 ## 从源码使用 CLI
 
 ```bash
-git clone https://github.com/turinglambdaai/taskly.git
+git clone https://github.com/turlamai/taskly.git
 cd taskly
-raco pkg install --auto --no-docs https://github.com/turinglambdaai/rivet.git
+raco pkg install --auto --no-docs https://github.com/turlamai/rivet.git
 racket racket/taskly/cli.rkt add "买牛奶" --due tomorrow --json
 racket racket/taskly/cli.rkt install-cli   # 安装到 ~/.local/bin/taskly
 ```
@@ -91,7 +91,7 @@ python3 shared/cli-golden/runner.py --binary scripts/taskly-cli.sh   # 63 例 go
 
 ## 反馈
 
-Taskly 本地优先、无遥测，反馈统一走 [GitHub issues](https://github.com/turinglambdaai/taskly/issues)：[Bug 报告](https://github.com/turinglambdaai/taskly/issues/new?template=bug_report.md)和[功能请求](https://github.com/turinglambdaai/taskly/issues/new?template=feature_request.md)都有模板。各平台的「关于」对话框内也有同一入口。
+Taskly 本地优先、无遥测，反馈统一走 [GitHub issues](https://github.com/turlamai/taskly/issues)：[Bug 报告](https://github.com/turlamai/taskly/issues/new?template=bug_report.md)和[功能请求](https://github.com/turlamai/taskly/issues/new?template=feature_request.md)都有模板。各平台的「关于」对话框内也有同一入口。
 
 ## 许可证
 

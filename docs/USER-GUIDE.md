@@ -12,7 +12,7 @@ Development preview; no paid checkout is open. A future official desktop purchas
 
 Desktop previews for macOS, Windows and Linux. Select the OS and CPU shown on the release asset; mobile and watch applications are not delivered products.
 
-Use [official Releases](https://github.com/turinglambdaai/taskly/releases), select an explicitly listed OS/architecture asset, read its release notes and check supplied checksums. An absent asset/platform is not a delivery promise. Preview builds may lack publisher signing or notarization; do not disable system-wide security protections to install them.
+Use [official Releases](https://github.com/turlamai/taskly/releases), select an explicitly listed OS/architecture asset, read its release notes and check supplied checksums. An absent asset/platform is not a delivery promise. Preview builds may lack publisher signing or notarization; do not disable system-wide security protections to install them.
 
 ## Your first successful session
 
@@ -44,7 +44,7 @@ DMG, MSI, deb/rpm and portable archives replace application files, not `~/.taskl
 
 ## Get help
 
-Report problems in [GitHub Issues](https://github.com/turinglambdaai/taskly/issues), in English or Chinese. Include the version, OS/architecture, installation channel, steps, expected result and actual result. Reproduce with synthetic input first; do not attach keys, credentials, databases, private source documents or complete logs. Public support has no guaranteed response time.
+Report problems in [GitHub Issues](https://github.com/turlamai/taskly/issues), in English or Chinese. Include the version, OS/architecture, installation channel, steps, expected result and actual result. Reproduce with synthetic input first; do not attach keys, credentials, databases, private source documents or complete logs. Public support has no guaranteed response time.
 
 ## Further reading
 
