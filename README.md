@@ -4,11 +4,11 @@ A focused, keyboard-friendly task manager for macOS, Windows and Linux —
 one Racket core driving a first-party native host on every desktop, an
 agent-facing CLI, and a single local SQLite file.
 
-[![release](https://img.shields.io/github/v/release/turinglambdaai/taskly)](https://github.com/turinglambdaai/taskly/releases/latest) ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml/badge.svg)](https://github.com/turinglambdaai/taskly/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[![release](https://img.shields.io/github/v/release/turlamai/taskly)](https://github.com/turlamai/taskly/releases/latest) ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) [![CI](https://github.com/turlamai/taskly/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/taskly/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
 **English** · [中文](README.zh-CN.md)
 
-Taskly is built on [Rivet](https://github.com/turinglambdaai/rivet): the
+Taskly is built on [Rivet](https://github.com/turlamai/rivet): the
 entire domain — SQLite storage, scheduling, natural-language dates,
 validation, and the CLI — lives in one Racket CS core, and every desktop
 gets a thin first-party host over typed RPC. Shared domain logic belongs in the backend; host reminder-selection consolidation remains tracked in #62.
@@ -73,7 +73,7 @@ Development preview; no paid checkout is open. A future official desktop purchas
 ## Install
 
 Grab your build from
-[Releases](https://github.com/turinglambdaai/taskly/releases/latest):
+[Releases](https://github.com/turlamai/taskly/releases/latest):
 The installed app is branded **Taskly**; lowercase `taskly` remains the
 CLI/package filename slug and does not change download URLs or data paths.
 
@@ -101,9 +101,9 @@ everything else is bundled).
 ## CLI from source
 
 ```bash
-git clone https://github.com/turinglambdaai/taskly.git
+git clone https://github.com/turlamai/taskly.git
 cd taskly
-raco pkg install --auto --no-docs https://github.com/turinglambdaai/rivet.git
+raco pkg install --auto --no-docs https://github.com/turlamai/rivet.git
 racket racket/taskly/cli.rkt add "买牛奶" --due tomorrow --json
 racket racket/taskly/cli.rkt install-cli   # shim at ~/.local/bin/taskly
 ```
@@ -143,11 +143,11 @@ macOS arm64/x64, and Linux.
 ## Feedback
 
 Taskly is offline-first and ships no telemetry —
-[GitHub issues](https://github.com/turinglambdaai/taskly/issues) are the
+[GitHub issues](https://github.com/turlamai/taskly/issues) are the
 feedback channel, with templates for both
-[bug reports](https://github.com/turinglambdaai/taskly/issues/new?template=bug_report.md)
+[bug reports](https://github.com/turlamai/taskly/issues/new?template=bug_report.md)
 and
-[feature requests](https://github.com/turinglambdaai/taskly/issues/new?template=feature_request.md).
+[feature requests](https://github.com/turlamai/taskly/issues/new?template=feature_request.md).
 The in-app About dialog links to the same tracker on every platform.
 
 ## License

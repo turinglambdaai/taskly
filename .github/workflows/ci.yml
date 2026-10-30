@@ -60,8 +60,8 @@ jobs:
         # tests/documentation module and fails every install (upstream
         # issue filed against keel). Drop this pin once the rename lands.
         run: |
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Core contract tests
         run: raco test racket/
       # Golden CLI suite: byte-identical stdout/stderr/exit codes
@@ -90,7 +90,7 @@ jobs:
       # Builds and caches the embeddable Racket CS runtime and exports
       # RIVET_RACKET_* (rivet's own composite action).
       - name: Set up embeddable Racket CS
-        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@82e4b75b738269b90ef490ebc6c11d30731b8d86
+        uses: turlamai/rivet/.github/actions/setup-embed-racket@82e4b75b738269b90ef490ebc6c11d30731b8d86
       # Installed after the embeddable runtime so the catalog dependency
       # closure (cext-lib, crypto-lib, keel) resolves against the minimal
       # build — it ships no packages of its own. db-lib backs taskly's storage;
@@ -100,8 +100,8 @@ jobs:
         run: |
           # keel pinned below the tests/documentation collision commit
           # (upstream issue filed); drop once keel renames the module.
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
           bash scripts/install-racket-packages-with-retry.sh db-lib crypto-lib
       - name: Toolchain doctor
         run: raco rivet doctor --json
@@ -146,8 +146,8 @@ jobs:
         # tests/documentation module and fails every install (upstream
         # issue filed against keel). Drop this pin once the rename lands.
         run: |
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Build host
         run: raco rivet build
       - name: Boot smoke
@@ -199,8 +199,8 @@ jobs:
         # tests/documentation module and fails every install (upstream
         # issue filed against keel). Drop this pin once the rename lands.
         run: |
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Build host
         shell: pwsh
         run: raco rivet build

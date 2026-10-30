@@ -15,7 +15,7 @@ concurrency:
 # Single source of truth for the rivet pin; every install step below
 # references this so a bump is one edit, not a grep-replace across jobs.
 env:
-  RIVET_PIN: 82e4b75b738269b90ef490ebc6c11d30731b8d86
+  RIVET_PIN: 9d766b4acab672844093204cb4845ef4ef933d2c
 jobs:
   macos:
     name: macOS (${{ matrix.arch }})
@@ -41,8 +41,8 @@ jobs:
         # tests/documentation module and fails every install (upstream
         # issue filed against keel). Drop this pin once the rename lands.
         run: |
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Version preflight (VERSION == rivet.rktd == updater == tag)
         run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
       # The Finder DMG uses the PNG, not the editable SVG. Regenerate it so
@@ -95,16 +95,16 @@ jobs:
           variant: CS
           version: '9.3'
       - name: Install Rivet (catalog)
-        shell: bash
+        shell: pwsh
         # keel pinned below the tests/documentation collision commit
         # (upstream issue filed); drop once keel renames the module.
-        run: bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201' && bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+        run: raco pkg install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201' && raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Install WiX (v5; rivet's MSI toolchain)
         run: dotnet tool install --global wix --version 5.0.2
         shell: bash
-      - name: Install crypto-lib (updater dependency)
-        run: bash scripts/install-racket-packages-with-retry.sh crypto-lib
-        shell: bash
+      - name: Install crypto (updater dependency)
+        run: raco pkg install --auto --no-docs crypto
+        shell: pwsh
       - name: Version preflight (VERSION == rivet.rktd == updater == tag)
         shell: bash
         run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
@@ -151,19 +151,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up embeddable Racket CS
-        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@82e4b75b738269b90ef490ebc6c11d30731b8d86
+        uses: turlamai/rivet/.github/actions/setup-embed-racket@9d766b4acab672844093204cb4845ef4ef933d2c
       # Installed after the embeddable runtime so the catalog dependency
       # closure (cext-lib, crypto-lib, keel) resolves against the minimal
-      # build — it ships no packages of its own. db-lib backs taskly's storage;
-      # crypto-lib backs the updater's signing without pulling documentation
-      # from the broader meta-packages.
+      # build — it ships no packages of its own. db backs taskly's storage;
+      # crypto backs the updater's signing.
       - name: Install Rivet (catalog) and backend packages
         run: |
           # keel pinned below the tests/documentation collision commit
           # (upstream issue filed); drop once keel renames the module.
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
-          bash scripts/install-racket-packages-with-retry.sh db-lib crypto-lib
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
+          raco pkg install --auto --no-docs db crypto
       - name: Install GTK4, rpm and packaging tooling
         run: |
           sudo apt-get update
@@ -223,8 +222,8 @@ jobs:
         # tests/documentation module and fails every install (upstream
         # issue filed against keel). Drop this pin once the rename lands.
         run: |
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -328,4 +327,4 @@ jobs:
           cp "dist/taskly-${VERSION}-linux-arm64.deb" stable-alias/taskly-linux-arm64.deb
           cp "dist/taskly-${VERSION}-linux-x86_64.AppImage" stable-alias/taskly-linux-x64.AppImage
           cp "dist/taskly-${VERSION}-linux-aarch64.AppImage" stable-alias/taskly-linux-arm64.AppImage
-          gh release upload "$GITHUB_REF_NAME" stable-alias/* --clobber -R turinglambdaai/taskly
+          gh release upload "$GITHUB_REF_NAME" stable-alias/* --clobber -R turlamai/taskly

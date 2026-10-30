@@ -12,7 +12,7 @@
 
 提供 macOS、Windows、Linux 桌面预览版。按发布附件标注选择系统与 CPU；移动端和手表端尚未交付。
 
-从[官方 Releases](https://github.com/turinglambdaai/taskly/releases)选择明确标注系统和架构的附件，阅读该版本说明并核对附带校验文件。未列出的附件或平台不视为已交付。预览构建可能没有系统发行者签名或公证；不要为安装而关闭系统安全保护。
+从[官方 Releases](https://github.com/turlamai/taskly/releases)选择明确标注系统和架构的附件，阅读该版本说明并核对附带校验文件。未列出的附件或平台不视为已交付。预览构建可能没有系统发行者签名或公证；不要为安装而关闭系统安全保护。
 
 - Windows：x64 MSI 会接入开始菜单和“应用和功能”，ZIP 是便携版。当前预览 MSI 尚无 Authenticode 签名，发行者信任与 SmartScreen 信誉还未达到生产发布标准。
 - macOS：打开 DMG，把 Taskly 拖入“应用程序”。当前预览版是临时签名，尚非 Developer ID 签名与公证；若 Gatekeeper 拒绝，不要因此关闭 Gatekeeper。
@@ -50,7 +50,7 @@ Windows MSI 从“应用和功能”卸载，macOS 从“应用程序”删除�
 
 ## 获得帮助
 
-在 [GitHub Issues](https://github.com/turinglambdaai/taskly/issues) 反馈，中文或英文均可。提供版本、系统与架构、安装渠道、复现步骤、预期和实际结果。先用合成样本复现；不要附上密钥、授权文件、数据库、原始私密文档或完整日志。公开支持不承诺响应时限。
+在 [GitHub Issues](https://github.com/turlamai/taskly/issues) 反馈，中文或英文均可。提供版本、系统与架构、安装渠道、复现步骤、预期和实际结果。先用合成样本复现；不要附上密钥、授权文件、数据库、原始私密文档或完整日志。公开支持不承诺响应时限。
 
 ## 深入阅读
 

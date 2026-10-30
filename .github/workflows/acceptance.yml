@@ -36,8 +36,8 @@ jobs:
         shell: pwsh
         run: |
           dotnet tool install --global wix --version 5.0.2
-          raco pkg install --auto --no-docs "https://github.com/turinglambdaai/keel.git#$env:KEEL_PIN"
-          raco pkg install --auto --no-docs "https://github.com/turinglambdaai/rivet.git#$env:RIVET_PIN"
+          raco pkg install --auto --no-docs "https://github.com/turlamai/keel.git#$env:KEEL_PIN"
+          raco pkg install --auto --no-docs "https://github.com/turlamai/rivet.git#$env:RIVET_PIN"
       - name: Verify Windows installer artwork
         shell: pwsh
         run: python scripts/check-windows-installer-bitmaps.py
@@ -77,8 +77,8 @@ jobs:
           version: '9.3'
       - name: Install pinned dependencies
         run: |
-          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turinglambdaai/keel.git#${KEEL_PIN}"
-          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turinglambdaai/rivet.git#${RIVET_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turlamai/keel.git#${KEEL_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turlamai/rivet.git#${RIVET_PIN}"
       - name: Render DMG artwork from SVG
         run: |
           brew install librsvg
@@ -106,7 +106,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up embeddable Racket CS
-        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@82e4b75b738269b90ef490ebc6c11d30731b8d86
+        uses: turlamai/rivet/.github/actions/setup-embed-racket@82e4b75b738269b90ef490ebc6c11d30731b8d86
       - name: Install native and pinned Racket dependencies
         shell: bash
         run: |
@@ -115,8 +115,8 @@ jobs:
           sudo apt-get install --yes at-spi2-core dbus-x11 libgtk-4-dev \
             desktop-file-utils file libadwaita-1-dev libjson-glib-dev \
             libsecret-1-dev python3-pyatspi rpm weston xvfb openbox x11-utils
-          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turinglambdaai/keel.git#${KEEL_PIN}"
-          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turinglambdaai/rivet.git#${RIVET_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turlamai/keel.git#${KEEL_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turlamai/rivet.git#${RIVET_PIN}"
           bash scripts/install-racket-packages-with-retry.sh db-lib crypto-lib
       - name: Run executable acceptance contract
         shell: bash
