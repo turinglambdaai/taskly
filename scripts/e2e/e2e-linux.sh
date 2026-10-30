@@ -81,6 +81,8 @@ export XDG_RUNTIME_DIR="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/taskly-acceptance-runtim
 export WAYLAND_DISPLAY=wayland-taskly-acceptance
 export GDK_BACKEND=wayland
 export GTK_A11Y=atspi
+# Only native acceptance turns on focus-chain diagnostics; shipped apps stay quiet.
+export TASKLY_FOCUS_DEBUG=1
 export NO_AT_BRIDGE=0
 unset DISPLAY
 mkdir -p "$XDG_RUNTIME_DIR"
