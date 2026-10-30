@@ -246,15 +246,10 @@ def has_focus(node):
 
 def press_after_tabs(start, tab_count):
     """Activate the control tab_count positions after a focused start node."""
+    # The app must provide keyboard focus on opening its editor. Forcing
+    # focus from AT-SPI here would conceal broken behavior in the product.
     if not has_focus(start):
-        try:
-            if not start.queryComponent().grabFocus():
-                raise AssertionError("AT-SPI rejected the keyboard starting focus")
-        except Exception as error:
-            raise AssertionError(
-                "could not establish the keyboard starting focus"
-            ) from error
-        wait_for("keyboard starting focus", lambda: has_focus(start), timeout=5.0)
+        raise AssertionError("task editor did not receive native keyboard focus")
 
     for _ in range(tab_count):
         pyatspi.Registry.generateKeyboardEvent(
@@ -350,6 +345,11 @@ def main():
         add_date = wait_for(
             "first task Add Date action",
             lambda: find_named(window, "Add Date", "push button"),
+        )
+        wait_for(
+            "first task editor native keyboard focus",
+            lambda: has_focus(find_editable_value(window, "First-run persistence task")),
+            timeout=10.0,
         )
         # GTK focuses the title when the editor expands. Date is the third
         # native Tab stop after title: notes, date entry, calendar button.
@@ -497,8 +497,18 @@ def main():
         "accessible task editor calendar action",
         lambda: find_named(window, "Add Date", "push button"),
     )
+    wait_for(
+        "task editor native keyboard focus",
+        lambda: has_focus(find_editable_value(window, "64-bit task A")),
+        timeout=10.0,
+    )
     editor.queryEditableText().setTextContents("Cancelled inline draft")
     pyatspi.Registry.generateKeyboardEvent(9, None, pyatspi.KEY_PRESSRELEASE)  # Escape
+    wait_for(
+        "visible Escape cancellation feedback",
+        lambda: contains_text(window, "Changes discarded"),
+        timeout=5.0,
+    )
     wait_for(
         "Escape cancelled the focused task draft",
         lambda: find_editable_value(window, "Cancelled inline draft") is None
