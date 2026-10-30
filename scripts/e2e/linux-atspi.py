@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import argparse
+import datetime
 import json
+import sqlite3
 import subprocess
 import time
 from pathlib import Path
@@ -115,6 +117,51 @@ def find_editable_value(root, expected_value):
 
 def contains_text(root, expected):
     return any(name(node) == expected or text(node) == expected for node in walk(root))
+
+
+def persisted_first_run_due_date():
+    """Assert the exact stored ISO date independently of rendered labels."""
+    db = sqlite3.connect(Path.home() / ".taskly" / "tasks.db")
+    try:
+        rows = db.execute(
+            "SELECT due_date FROM tasks WHERE text = ?",
+            ("First-run persistence task",),
+        ).fetchall()
+    finally:
+        db.close()
+    expected = (
+        datetime.date.today() + datetime.timedelta(days=1)
+    ).isoformat()
+    if rows != [(expected,)]:
+        raise AssertionError(
+            f"first-run task date not persisted: expected {expected!r}, rows={rows!r}"
+        )
+
+
+def first_run_due_rendered(root):
+    """Require Tomorrow on *the persisted task row*, not elsewhere in UI.
+
+    In multi-list views the GTK meta label is 'List name  ·  Tomorrow',
+    so an exact-text match against the whole GtkLabel is incorrect.
+    """
+    for node in walk(root):
+        if role(node) != "list item":
+            continue
+        descendants = list(walk(node))
+        if not any(
+            name(child) == "First-run persistence task"
+            or text(child) == "First-run persistence task"
+            for child in descendants
+        ):
+            continue
+        for child in descendants:
+            values = (name(child), text(child))
+            for value in values:
+                if "Tomorrow" in [
+                    component.strip() for component in value.split("·")
+                ]:
+                    return True
+    return False
 
 
 def find_staged_delete_ready(root):
@@ -451,7 +498,20 @@ def main():
             "persisted first task after restart",
             lambda: contains_text(window, "First-run persistence task"),
         )
-        wait_for("persisted Tomorrow date after restart", lambda: contains_text(window, "Tomorrow"))
+        persisted_first_run_due_date()
+        try:
+            wait_for(
+                "persisted Tomorrow date on the first task row after restart",
+                lambda: first_run_due_rendered(find_live_window()),
+                timeout=15.0,
+            )
+        except AssertionError:
+            live = find_live_window()
+            (args.output / "first-run-restart-accessibility.json").write_text(
+                json.dumps(snapshot(live), ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            raise
         (args.output / "persistence-restart.json").write_text(
             json.dumps(
                 {
