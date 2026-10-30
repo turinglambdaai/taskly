@@ -237,21 +237,51 @@ def snapshot(node, depth=0):
     return result
 
 
-def press(node):
-    actions = node.queryAction()
-    if actions.nActions >= 1 and actions.doAction(0):
-        return
+def press(node, focus_root=None):
+    try:
+        actions = node.queryAction()
+        if actions.nActions >= 1 and actions.doAction(0):
+            return
+    except Exception:
+        pass
 
     # GTK4 exposes GtkMenuButton with the correct button role and name but,
     # unlike GtkButton, some AT-SPI stacks do not publish a default action.
     # Exercise the same keyboard path a screen-reader or keyboard-only user
     # receives instead of treating the missing adapter action as activation.
-    component = node.queryComponent()
-    if component.grabFocus():
-        pyatspi.Registry.generateKeyboardEvent(
-            36, None, pyatspi.KEY_PRESSRELEASE
-        )  # Return
-        return
+    try:
+        component = node.queryComponent()
+        if component.grabFocus():
+            pyatspi.Registry.generateKeyboardEvent(
+                36, None, pyatspi.KEY_PRESSRELEASE
+            )  # Return
+            return
+    except Exception:
+        # Some GTK/AT-SPI combinations expose GtkMenuButton as focusable but
+        # reject Component.grabFocus with a transient atspi_error. Preserve a
+        # real keyboard journey instead of replacing activation with a click:
+        # start from GTK's focused editor field and Tab until the named control
+        # itself reports focus, then send Return.
+        pass
+
+    if focus_root is not None:
+        expected_name = name(node)
+        expected_role = role(node)
+        for _ in range(16):
+            current = find_named(focus_root, expected_name, expected_role)
+            if current is not None:
+                try:
+                    if current.getState().contains(pyatspi.STATE_FOCUSED):
+                        pyatspi.Registry.generateKeyboardEvent(
+                            36, None, pyatspi.KEY_PRESSRELEASE
+                        )  # Return
+                        return
+                except Exception:
+                    pass
+            pyatspi.Registry.generateKeyboardEvent(
+                23, None, pyatspi.KEY_PRESSRELEASE
+            )  # Tab
+            time.sleep(0.05)
     raise AssertionError(f"AT-SPI action and keyboard focus failed for {node.name!r}")
 
 
@@ -300,7 +330,7 @@ def main():
             "first task Add Date action",
             lambda: find_named(window, "Add Date", "push button"),
         )
-        press(add_date)
+        press(add_date, focus_root=window)
         tomorrow = wait_for(
             "first task Tomorrow choice",
             # Popover buttons are exposed as either "button" or
