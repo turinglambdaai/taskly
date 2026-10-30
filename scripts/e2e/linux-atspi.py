@@ -541,7 +541,8 @@ def main():
         lambda: find_editable_value(window, "64-bit task A"),
     )
     editor.queryEditableText().setTextContents("Cancelled inline draft")
-    pyatspi.Registry.generateKeyboardEvent(9, None, pyatspi.KEY_PRESSRELEASE)  # Escape
+    # A symbolic Escape key survives different Wayland/X11 hardware layouts.
+    pyatspi.Registry.generateKeyboardEvent(0xFF1B, None, pyatspi.KEY_SYM)
     wait_for(
         "visible Escape cancellation feedback",
         lambda: contains_text(window, "Changes discarded"),
