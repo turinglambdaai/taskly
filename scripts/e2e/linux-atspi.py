@@ -389,9 +389,9 @@ def main():
         lambda: find_editable_value(window, "64-bit task A"),
     )
     editor.queryEditableText().setTextContents("Cancelled inline draft")
-    # Send a real key press/release to the focused native editor. A keysym
-    # notification alone is not the keyboard event consumed by GTK.
-    pyatspi.Registry.generateKeyboardEvent(9, None, pyatspi.KEY_PRESSRELEASE)
+    # AT-SPI key-symbol synthesis delivers the Escape key independently of
+    # an X11 hardware keycode (the packaged journey runs on Wayland).
+    pyatspi.Registry.generateKeyboardEvent(0xFF1B, None, pyatspi.KEY_SYM)
     wait_for(
         "visible Escape cancellation feedback",
         lambda: contains_text(window, "Changes discarded"),
