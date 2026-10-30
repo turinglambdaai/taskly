@@ -198,7 +198,7 @@ jobs:
           $path = Join-Path $env:RUNNER_TEMP 'taskly-trusted-roots.pem'
           $certs = @()
           foreach ($store in @('Cert:\LocalMachine\Root', 'Cert:\CurrentUser\Root')) {
-            foreach ($cert in Get-ChildItem $store) {
+            foreach ($cert in (Get-ChildItem -Path $store)) {
               try {
                 $raw = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert)
                 if ($raw.Length -gt 0) {
