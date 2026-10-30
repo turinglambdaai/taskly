@@ -246,6 +246,12 @@ def snapshot(node, depth=0):
     return result
 
 
+def find_live_window():
+    # GtkListBox reparents the editor's row and AT-SPI can cache a previous
+    # frame proxy. Fetch the actual accessible frame for focus assertions.
+    return find_frame(find_application())
+
+
 def has_focus(node):
     try:
         return node.getState().contains(pyatspi.STATE_FOCUSED)
@@ -357,8 +363,16 @@ def main():
         )
         wait_for(
             "first task editor native keyboard focus",
-            lambda: has_focus(find_editable_value(window, "First-run persistence task")),
+            lambda: has_focus(
+                find_editable_value(find_live_window(), "First-run persistence task")
+            ),
             timeout=10.0,
+        )
+        application = wait_for("live Taskly application", find_application)
+        window = wait_for("live Taskly frame", lambda: find_frame(application))
+        editor = wait_for(
+            "live first task editor",
+            lambda: find_editable_value(window, "First-run persistence task"),
         )
         # GTK focuses the title when the editor expands. Date is the third
         # native Tab stop after title: notes, date entry, calendar button.
@@ -506,10 +520,25 @@ def main():
         "accessible task editor calendar action",
         lambda: find_named(window, "Add Date", "push button"),
     )
-    wait_for(
-        "task editor native keyboard focus",
-        lambda: has_focus(find_editable_value(window, "64-bit task A")),
-        timeout=10.0,
+    try:
+        wait_for(
+            "task editor native keyboard focus",
+            lambda: has_focus(find_editable_value(find_live_window(), "64-bit task A")),
+            timeout=10.0,
+        )
+    except AssertionError:
+        live = find_live_window()
+        focused = [
+            {"name": name(node), "role": role(node), "text": text(node)[:80]}
+            for node in walk(live)
+            if has_focus(node)
+        ]
+        raise AssertionError(f"task editor has no accessible native focus; focused={focused}")
+    application = wait_for("live Taskly application", find_application)
+    window = wait_for("live Taskly frame", lambda: find_frame(application))
+    editor = wait_for(
+        "live keyboard-opened editor",
+        lambda: find_editable_value(window, "64-bit task A"),
     )
     editor.queryEditableText().setTextContents("Cancelled inline draft")
     pyatspi.Registry.generateKeyboardEvent(9, None, pyatspi.KEY_PRESSRELEASE)  # Escape
