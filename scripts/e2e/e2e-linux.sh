@@ -135,8 +135,8 @@ xprop -root _NET_SUPPORTING_WM_CHECK | grep -q 'window id'
 
 # Keep a separate packaged Wayland boot smoke. It does not pretend to cover
 # keyboard focus; only X11 with a real input seat runs the AT-SPI journey.
-wayland_runtime="$output/wayland-runtime-$"
-wayland_home="$output/wayland-home-$"
+wayland_runtime="$output/wayland-runtime-$BASHPID"
+wayland_home="$output/wayland-home-$BASHPID"
 mkdir -p "$wayland_runtime" "$wayland_home"
 chmod 700 "$wayland_runtime"
 wayland_socket=wayland-taskly-smoke
