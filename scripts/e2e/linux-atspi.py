@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import subprocess
 import time
 from pathlib import Path
 
@@ -252,6 +253,21 @@ def find_live_window():
     return find_frame(find_application())
 
 
+def send_keyboard_key(key):
+    """Send a genuine XTest key event to the active X11 window.
+
+    The acceptance harness explicitly runs GTK on Xvfb + Openbox. The
+    AT-SPI Registry KEY_SYM synthesizer can accept a request without sending
+    a native key to GTK; XTest makes keyboard input observable and verifiable.
+    Focus remains owned by GTK: no accessibility grabFocus injection.
+    """
+    subprocess.run(
+        ["xdotool", "key", "--clearmodifiers", key],
+        check=True,
+        timeout=5,
+    )
+
+
 def has_focus(node):
     # GTK4 GtkEntry delegates keyboard input to its internal GtkText.
     # Require the native focused state on the editor or one of its own
@@ -397,9 +413,8 @@ def main():
         lambda: find_editable_value(window, "64-bit task A"),
     )
     editor.queryEditableText().setTextContents("Cancelled inline draft")
-    # AT-SPI key-symbol synthesis delivers the Escape key independently of
-    # an X11 hardware keycode (the packaged journey runs on Wayland).
-    pyatspi.Registry.generateKeyboardEvent(0xFF1B, None, pyatspi.KEY_SYM)
+    # The packaged keyboard journey runs on the seat-backed X11 acceptance host.
+    send_keyboard_key("Escape")
     wait_for(
         "visible Escape cancellation feedback",
         lambda: contains_text(window, "Changes discarded"),
