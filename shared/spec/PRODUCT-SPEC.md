@@ -91,10 +91,13 @@ README's honest gaps).
   (platform-native idiom, same information).
 - `ⓘ` button (always visible) expands the row's inline editor.
 - Edit mode (ⓘ / Return / double-click): the title field receives focus;
-  Enter saves, Esc cancels the complete draft, and clicking another row saves
-  before moving focus. Title, notes, date and time form one draft: no field is
-  persisted until the edit commits. A blank edited title retains the stored
-  title rather than creating an invalid task.
+  a visible **Save** and **Cancel** pair is always present; Enter saves, Esc
+  cancels the complete draft, and clicking another row saves before moving
+  focus. Save immediately shows a saving acknowledgement, then a persisted
+  success or actionable error. A failed explicit save leaves (or reopens) the
+  complete draft for correction and retry. Title, notes, date and time form
+  one draft: no field is persisted until the edit commits. A blank edited
+  title retains the stored title rather than creating an invalid task.
 - Context menu: Toggle Completed, quick reschedule (今天 / 明天 /
   自定日期 / 清除 — the explicit entry points for changing a due
   date), Details, Delete, and Move to List ▸ (other lists,
@@ -117,11 +120,14 @@ differ, but draft, identity and persistence outcomes do not.
   and Esc retain the commit/cancel meanings above.
 - Inline expansion (ⓘ / Return / double-click): the row expands in place —
   title (15px semibold borderless), date/time chips (5-minute time steps),
-  borderless notes — edits commit on Return or click-away; no modal sheet.
-  Esc discards all buffered fields. The date
+  borderless notes, then visible Save/Cancel actions — edits commit on Save,
+  Return or click-away; no modal sheet. Esc and Cancel discard all buffered
+  fields. The date
   chip's popover leads with quick dates (今天 / 明天 / 本周末, where
-  本周末 is the coming weekend day) above the calendar, matching the
-  Reminders details popover.
+  本周末 is the coming weekend day) above a native calendar. Selecting a date
+  updates the draft only; Save/Return/click-away performs the persistence,
+  matching the Reminders details-popover discoverability without hiding
+  Taskly's explicit transaction boundary.
 - Delete: no confirmation from the row; instead the host hides the selected
   rows and stages their original records for about six seconds. 撤销 restores
   the same task IDs and complete metadata because no backend delete has yet
@@ -144,6 +150,9 @@ draft/persistence results may not.
 |---|---|---|---|
 | Edit → Escape | stored task `id=N`; editor holds changed title/notes/date/time | press Esc while a field owns focus | editor closes; all fields still equal the stored record for `N` |
 | Edit → click away / Return | stored task `id=N`; editor holds a valid draft | select another row, or press Return in title | one update commits the draft to `N`; a refresh preserves it |
+| Edit → visible Save | stored task `id=N`; editor holds changed title/notes/date/time | press Save | status announces saving, then success; reopening reads every field from persistence; an optimistic close must restore the complete draft if persistence fails |
+| Edit → save failure | stored task `id=N`; editor holds a valid draft | press Save; backend rejects/fails | an actionable error is visible; all buffered fields remain available for correction/retry; stored `N` is unchanged |
+| Edit → visible Cancel | stored task `id=N`; editor holds changed title/notes/date/time | press Cancel | editor closes, cancellation is acknowledged, and reopening shows the stored record unchanged |
 | Delete → undo | stored rows with IDs and metadata | delete, then undo inside ~6 s | rows return with the original IDs, completion, dates, notes and list ownership |
 | Delete → timeout | stored rows with IDs and metadata | delete; let ~6 s expire | backend deletes exactly the captured IDs; later refresh does not restore them |
 | Search refresh | global results include task `N` from another list | backend `changed` event / periodic refresh | search remains owner; `N` retains its real list label, selection and in-progress draft |
@@ -156,7 +165,10 @@ be written here before it can be accepted; none is declared for these rows.
 
 ## 7. Pickers
 
-- Date: calendar bounded 1900-01-01…2100-12-31; Clear → no date.
+- Date: the date action opens the platform-native calendar, led by Today /
+  Tomorrow / This Weekend; it is bounded 1900-01-01…2100-12-31; Clear removes
+  date and time from the draft. Date selection never silently commits the
+  surrounding task draft.
 - Time: hour 00–23 + minute in 5-minute steps (00…55); current minute
   rounds to nearest 5; Clear → no time.
 

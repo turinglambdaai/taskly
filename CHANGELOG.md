@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Task editing now has a discoverable, cross-platform commit contract: every
+  native inline editor exposes Save and Cancel, date actions lead with Today,
+  Tomorrow and This Weekend above the platform calendar, and saving reports
+  progress before confirmed persistence. Explicit save failures keep the full
+  draft available for correction instead of silently closing it.
+
 ## [0.2.6] - 2026-10-26
 
 ### Fixed

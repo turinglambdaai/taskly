@@ -171,7 +171,9 @@ private:
   winrt::fire_and_forget ToggleTaskAsync(std::int64_t id, bool completed);
   winrt::fire_and_forget RenameTaskAsync(std::int64_t id, std::wstring const& text);
   winrt::fire_and_forget SetTaskDueAsync(std::int64_t id, std::wstring const& due_date);
-  winrt::fire_and_forget UpdateTaskAsync(rivet_app::Task task);
+  winrt::fire_and_forget UpdateTaskAsync(
+      rivet_app::Task task,
+      std::optional<rivet_app::Task> restore_on_failure = std::nullopt);
   winrt::fire_and_forget DeleteTaskAsync(std::int64_t id);
   winrt::fire_and_forget MoveTaskToListAsync(
       std::int64_t id, std::int64_t target_list_id);

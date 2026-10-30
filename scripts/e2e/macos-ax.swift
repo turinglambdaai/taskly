@@ -238,16 +238,36 @@ do {
     let committedEditor: AXUIElement = try waitFor("inline title editor after cancel") {
         find(window, identifier: "inline-task-title-\(taskID)")
     }
+    let explicitSave: AXUIElement = try waitFor("visible inline Save action") {
+        find(window, identifier: "inline-task-save-\(taskID)")
+    }
+    let _: AXUIElement = try waitFor("visible inline Cancel action") {
+        find(window, identifier: "inline-task-cancel-\(taskID)")
+    }
     try setValue("Edited acceptance task", on: committedEditor)
+    try press(explicitSave, "inline-task-save-\(taskID)")
+    _ = try waitFor("visible Save committed inline draft") {
+        findTaskTitle(window, text: "Edited acceptance task") != nil &&
+            find(window, identifier: "inline-task-title-\(taskID)") == nil ? true : nil
+    }
+
+    let detailsForReturn: AXUIElement = try waitFor("task details control after Save") {
+        find(window, identifier: "task-details-\(taskID)")
+    }
+    try press(detailsForReturn, "task-details-\(taskID)")
+    let returnEditor: AXUIElement = try waitFor("inline title editor for Return") {
+        find(window, identifier: "inline-task-title-\(taskID)")
+    }
+    try setValue("Return-edited acceptance task", on: returnEditor)
     try postKey(36) // Return
     _ = try waitFor("Return committed inline draft") {
-        findTaskTitle(window, text: "Edited acceptance task") != nil ? true : nil
+        findTaskTitle(window, text: "Return-edited acceptance task") != nil ? true : nil
     }
 
     // Native context-menu deletion is staged for six seconds. Undo restores
     // the exact original row ID because no backend delete has happened yet.
     let editedTitle: AXUIElement = try waitFor("identified edited task title") {
-        findTaskTitle(window, text: "Edited acceptance task")
+        findTaskTitle(window, text: "Return-edited acceptance task")
     }
     try rightClick(editedTitle)
     let deleteItem: AXUIElement = try waitFor("task Delete menu item") {
@@ -294,8 +314,9 @@ do {
             "packaged SwiftUI window activated",
             "stable AXIdentifiers exposed",
             "RPC-created task appeared",
-            "Escape cancelled the focused inline draft",
-            "Return committed the inline draft",
+            "Escape cancelled the focused inline draft and visible Save/Cancel actions were exposed",
+            "visible Save acknowledged and committed the inline draft",
+            "Return committed a subsequent inline draft",
             "delete undo restored the original task ID",
             "changed Event removed the completed task from the active view",
             "native application accepted termination",

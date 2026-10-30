@@ -69,17 +69,25 @@ PY
 
 export HOME="$home"
 export XDG_RUNTIME_DIR="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/taskly-acceptance-runtime-$$"
-export WAYLAND_DISPLAY=wayland-taskly-acceptance
-export GDK_BACKEND=wayland
+# The Weston 13 headless backend used by Ubuntu 24.04 exposes no
+# wl_seat. Without a real keyboard seat it cannot verify focus or key input.
+# Use a native X11 display and a real window manager for keyboard AT-SPI,
+# then separately boot-check the packaged binary under headless Wayland.
+export DISPLAY=":$((110 + BASHPID % 400))"
+export GDK_BACKEND=x11
+unset WAYLAND_DISPLAY
 export GTK_A11Y=atspi
+# Only native acceptance turns on focus-chain diagnostics; shipped apps stay quiet.
+export TASKLY_FOCUS_DEBUG=1
 export NO_AT_BRIDGE=0
-unset DISPLAY
 mkdir -p "$XDG_RUNTIME_DIR"
 chmod 700 "$XDG_RUNTIME_DIR"
 
-weston --backend=headless-backend.so --socket="$WAYLAND_DISPLAY" --idle-time=0 \
-  --debug --log="$output/weston.log" &
-weston_pid=$!
+Xvfb "$DISPLAY" -screen 0 1280x800x24 -nolisten tcp >"$output/xvfb.log" 2>&1 &
+display_pid=$!
+openbox_pid=""
+wayland_pid=""
+wayland_app_pid=""
 app_pid=""
 atspi_pid=""
 
@@ -99,18 +107,60 @@ cleanup() {
   trap - EXIT
   [[ -n "$app_pid" ]] && kill -0 "$app_pid" 2>/dev/null && stop_bounded "$app_pid" || true
   [[ -n "$atspi_pid" ]] && kill -0 "$atspi_pid" 2>/dev/null && kill -TERM "$atspi_pid" || true
-  kill -TERM "$weston_pid" 2>/dev/null || true
-  wait "$app_pid" "$atspi_pid" "$weston_pid" 2>/dev/null || true
+  [[ -n "$wayland_app_pid" ]] && kill -TERM "$wayland_app_pid" 2>/dev/null || true
+  [[ -n "$wayland_pid" ]] && kill -TERM "$wayland_pid" 2>/dev/null || true
+  [[ -n "$openbox_pid" ]] && kill -TERM "$openbox_pid" 2>/dev/null || true
+  kill -TERM "$display_pid" 2>/dev/null || true
+  wait "$app_pid" "$atspi_pid" "$wayland_app_pid" "$wayland_pid" "$openbox_pid" "$display_pid" 2>/dev/null || true
   exit "$status"
 }
 trap cleanup EXIT
 
 for _ in $(seq 1 100); do
-  [[ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]] && break
-  kill -0 "$weston_pid" 2>/dev/null
+  xdpyinfo -display "$DISPLAY" >/dev/null 2>&1 && break
+  kill -0 "$display_pid" 2>/dev/null
   sleep 0.05
 done
-[[ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]]
+xdpyinfo -display "$DISPLAY" >"$output/x11-display.log"
+openbox --sm-disable >"$output/openbox.log" 2>&1 &
+openbox_pid=$!
+for _ in $(seq 1 100); do
+  if xprop -root _NET_SUPPORTING_WM_CHECK 2>/dev/null | grep -q 'window id'; then
+    break
+  fi
+  kill -0 "$openbox_pid" 2>/dev/null
+  sleep 0.05
+done
+xprop -root _NET_SUPPORTING_WM_CHECK | grep -q 'window id'
+
+# Keep a separate packaged Wayland boot smoke. It does not pretend to cover
+# keyboard focus; only X11 with a real input seat runs the AT-SPI journey.
+wayland_runtime="$output/wayland-runtime-$BASHPID"
+wayland_home="$output/wayland-home-$BASHPID"
+mkdir -p "$wayland_runtime" "$wayland_home"
+chmod 700 "$wayland_runtime"
+wayland_socket=wayland-taskly-smoke
+XDG_RUNTIME_DIR="$wayland_runtime" weston --backend=headless-backend.so \
+  --socket="$wayland_socket" --idle-time=0 --log="$output/weston.log" &
+wayland_pid=$!
+for _ in $(seq 1 100); do
+  [[ -S "$wayland_runtime/$wayland_socket" ]] && break
+  kill -0 "$wayland_pid" 2>/dev/null
+  sleep 0.05
+done
+[[ -S "$wayland_runtime/$wayland_socket" ]]
+GDK_BACKEND=wayland WAYLAND_DISPLAY="$wayland_socket" \
+  XDG_RUNTIME_DIR="$wayland_runtime" HOME="$wayland_home" \
+  "$executable" >"$output/wayland-smoke.log" 2>&1 &
+wayland_app_pid=$!
+sleep 4
+kill -0 "$wayland_app_pid"
+stop_bounded "$wayland_app_pid"
+wait "$wayland_app_pid" 2>/dev/null || true
+wayland_app_pid=""
+stop_bounded "$wayland_pid"
+wait "$wayland_pid" 2>/dev/null || true
+wayland_pid=""
 
 launcher="$(command -v at-spi-bus-launcher || true)"
 [[ -n "$launcher" ]] || launcher=/usr/libexec/at-spi-bus-launcher
@@ -152,7 +202,7 @@ rows = database.execute(
 ).fetchall()
 assert rows == [
     (4294967302, 4294967301, '64-bit task A', tomorrow, None, 0, 'metadata A'),
-    (4294967303, 4294967301, '64-bit task B', tomorrow, None, 0, 'metadata B'),
+    (4294967303, 4294967301, 'Saved inline draft', tomorrow, None, 0, 'metadata B'),
 ], rows
 created = database.execute(
     "SELECT list_id, completed FROM tasks WHERE text = 'Acceptance task'"
@@ -162,5 +212,5 @@ database.close()
 PY
 
 trap - EXIT
-kill -TERM "$atspi_pid" "$weston_pid" 2>/dev/null || true
-wait "$atspi_pid" "$weston_pid" 2>/dev/null || true
+kill -TERM "$atspi_pid" "$openbox_pid" "$display_pid" 2>/dev/null || true
+wait "$atspi_pid" "$openbox_pid" "$display_pid" 2>/dev/null || true

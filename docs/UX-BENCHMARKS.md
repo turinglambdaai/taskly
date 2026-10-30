@@ -102,7 +102,38 @@ Scheduled（有日期的）。
 - ✅ 三平台打包原生 UI 验收记录行内编辑/Escape 焦点流；Windows/macOS
   另验证 Enter 提交与完整行内草稿，三端均验证稳定 ID 删除撤销。
 
-### 2.5 Quick Find
+### 2.5 任务编辑与日期提交（2026-10-28 复核）
+
+这次复核只借鉴可解释的交互原则，不复制平台外观：
+
+- **Things**：Return 打开编辑，Command-Return 明确保存并关闭；When 选择器把
+  Today 等快捷项、日历和 Clear 放在同一个日期入口中。Taskly 采用“日期入口
+  内先快捷日期、再原生日历”的层级，但保留跨平台可见 Save/Cancel，避免只靠
+  macOS 隐式收起行为。
+- **Apple Reminders**：任务行的详情入口可发现，Add Date 先给建议日期，Custom
+  再进入日历；日期与可选时间是相邻但独立的字段。Taskly 延续 ⓘ 行内展开，
+  日期清除同时清除不可见时间，避免悬空排程。
+- **TickTick**：创建时的日历图标和详情页的 Date & Reminder 都把排程作为明确
+  入口。Taskly 不复制其完整详情页，而把日期、时间、列表保留在轻量行内草稿。
+
+Taskly 自己的事务边界是：标题、备注、日期、时间、列表属于同一草稿；选择日期
+只更新草稿；可见 Save、Return 或点击离开才持久化；Cancel/Escape 整体丢弃；
+保存先显示进行中，再显示成功或错误，显式保存失败时保留完整草稿。三端使用
+SwiftUI DatePicker、WinUI CalendarView、GTK Calendar 等各自原生控件，不追求
+像素一致。完整场景与验收责任归 `shared/spec/PRODUCT-SPEC.md` §5b/§6/§7。
+
+官方依据：
+
+- Things Scheduling / Keyboard Shortcuts：
+  https://culturedcode.com/things/support/articles/2803579/
+  https://culturedcode.com/things/support/articles/2785159/
+- Apple Reminders, Add or change reminders on Mac：
+  https://support.apple.com/guide/reminders/add-or-change-reminders-remndc729e28/mac
+- TickTick, Add Tasks / Effective Reminder Feature：
+  https://help.ticktick.com/articles/7055782422935240704
+  https://help.ticktick.com/articles/7055782395743567872
+
+### 2.6 Quick Find
 
 ✅ 已有对应物：头部搜索框 + 后端 search_tasks（跨清单模糊搜索）。
 

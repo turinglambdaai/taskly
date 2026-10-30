@@ -818,15 +818,20 @@ final class AppModel {
         }
     }
 
-    func saveTask(_ task: RivetTypes.Task) {
-        guard let api else { return }
+    func saveTask(_ task: RivetTypes.Task, completion: ((Bool) -> Void)? = nil) {
+        guard let api else {
+            completion?(false)
+            return
+        }
         _Concurrency.Task {
             do {
                 _ = try await api.update_task(task: task)
                 flashStatus(i18n.t("statusTaskUpdated"))
                 reload()
+                completion?(true)
             } catch {
                 flashStatus("\(error)")
+                completion?(false)
             }
         }
     }

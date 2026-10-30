@@ -7,7 +7,8 @@ import SwiftUI
 ///   popover too, not on the row)
 /// - click selects (⌘ toggles, ⇧ extends — see AppModel.clickSelectTask)
 /// - ⓘ (or Return / double-click) expands the row in place for editing —
-///   no modal sheet; edits commit when the row collapses
+///   no modal sheet; visible Save/Cancel plus Return/Escape define the draft
+///   transaction, while click-away preserves the native collapse behavior
 /// - context menu: complete · schedule · details · custom date · move · delete
 struct TaskRowView: View {
     @Environment(AppModel.self) private var model
@@ -23,6 +24,7 @@ struct TaskRowView: View {
     @State private var expandedDueTime: String?
     @State private var showDatePopover = false
     @State private var showTimePopover = false
+    @State private var isSaving = false
     @FocusState private var titleFocused: Bool
 
     private var isExpanded: Bool { model.expandedTaskID == task.id }
@@ -283,12 +285,9 @@ struct TaskRowView: View {
         model.selectionAnchorIndex = index
     }
 
-    /// Writes buffered edits back. Collapse (click elsewhere / Esc / Return)
-    /// and disappear both route here, so edits are never lost.
-    private func commitExpansion() {
-        guard isExpanded else { return }
+    private func expandedTask() -> RivetTypes.Task {
         let trimmed = expandedText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let updated = RivetTypes.Task(
+        return RivetTypes.Task(
             id: task.id, list_id: task.list_id, list_name: task.list_name,
             text: trimmed.isEmpty ? task.text : trimmed,
             completed: task.completed,
@@ -297,23 +296,45 @@ struct TaskRowView: View {
             notes: (expandedNotes?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true)
                 ? nil : expandedNotes,
             created_at: task.created_at)
+    }
+
+    /// Writes buffered edits back for click-away compatibility. The explicit
+    /// Save path below waits for the persistence acknowledgement before it
+    /// closes, so a failure leaves the complete draft recoverable in place.
+    private func commitExpansion() {
+        guard isExpanded else { return }
+        let updated = expandedTask()
         if updated != task {
             model.saveTask(updated)
         }
     }
 
     private func collapse() {
-        commitExpansion()
-        model.expandedTaskID = nil
-        titleFocused = false
+        guard isExpanded, !isSaving else { return }
+        let updated = expandedTask()
+        guard updated != task else {
+            model.expandedTaskID = nil
+            titleFocused = false
+            return
+        }
+        isSaving = true
+        model.flashStatus(model.t("statusTaskSaving"))
+        model.saveTask(updated) { saved in
+            isSaving = false
+            if saved {
+                model.expandedTaskID = nil
+                titleFocused = false
+            }
+        }
     }
 
     private func cancelExpansion() {
         guard isExpanded else { return }
         // Clear the model flag first so onDisappear's commit guard rejects
-        // this draft. Escape is the sole cancel path; click-away/Return save.
+        // this draft. Escape and visible Cancel discard; click-away/Return save.
         model.expandedTaskID = nil
         titleFocused = false
+        model.flashStatus(model.t("statusTaskEditCancelled"))
     }
 
     private var expandedContent: some View {
@@ -354,6 +375,20 @@ struct TaskRowView: View {
                     .lineLimit(2...6)
                     .textFieldStyle(.plain)
                     .accessibilityIdentifier("inline-task-notes-\(task.id)")
+
+                HStack(spacing: 8) {
+                    Spacer()
+                    Button(model.t("dialogCancel")) {
+                        cancelExpansion()
+                    }
+                    .accessibilityIdentifier("inline-task-cancel-\(task.id)")
+                    Button(model.t("dialogSave")) {
+                        collapse()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isSaving)
+                    .accessibilityIdentifier("inline-task-save-\(task.id)")
+                }
             }
 
             Spacer(minLength: 8)

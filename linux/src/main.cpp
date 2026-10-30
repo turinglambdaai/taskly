@@ -90,6 +90,7 @@ char const* kFallbackZhKeys[] = {
     "labelNotes",             "备注:",
     "labelDate",              "日期:",
     "labelTime",              "时间:",
+    "labelAddDate",           "添加日期",
     "hintAddNotes",           "添加备注信息...",
     "taskDelete",             "删除",
     "tooltipDoubleClickEdit", "双击编辑",
@@ -103,6 +104,7 @@ char const* kFallbackZhKeys[] = {
     "contextMenuCustomDate",  "自定日期…",
     "dateTomorrow",           "明天",
     "dateYesterday",          "昨天",
+    "dateThisWeekend",        "本周末",
     "reminderTitle",          "⏰ 任务到期",
     "reminderDueAt",          "到期时间",
     "reminderStartupSummary", "{0} 个任务已过期",
@@ -115,6 +117,9 @@ char const* kFallbackZhKeys[] = {
     "statusShowAll",          "全部任务",
     "statusShowCompleted",    "已完成的任务",
     "statusTaskAdded",        "任务已添加",
+    "statusTaskUpdated",      "任务已更新",
+    "statusTaskSaving",       "正在保存任务…",
+    "statusTaskEditCancelled", "已取消修改",
     "statusTaskDeleted",      "任务已删除",
     "subtitleToday",          "{0}年{1}{2}日 {3}",
     "subtitleOpenTasks",      "{0} 个未完成",
@@ -187,6 +192,7 @@ char const* kFallbackEnKeys[] = {
     "labelNotes",             "Notes:",
     "labelDate",              "Date:",
     "labelTime",              "Time:",
+    "labelAddDate",           "Add Date",
     "hintAddNotes",           "Add notes...",
     "taskDelete",             "Delete",
     "tooltipDoubleClickEdit", "Double-click to edit",
@@ -201,6 +207,7 @@ char const* kFallbackEnKeys[] = {
     "contextMenuCustomDate",  "Custom Date…",
     "dateTomorrow",           "Tomorrow",
     "dateYesterday",          "Yesterday",
+    "dateThisWeekend",        "This Weekend",
     "reminderTitle",          "⏰ Task Due",
     "reminderDueAt",          "Due at",
     "reminderStartupSummary", "{0} task(s) overdue",
@@ -213,6 +220,9 @@ char const* kFallbackEnKeys[] = {
     "statusShowAll",          "All tasks",
     "statusShowCompleted",    "Completed tasks",
     "statusTaskAdded",        "Task added",
+    "statusTaskUpdated",      "Task updated",
+    "statusTaskSaving",       "Saving task…",
+    "statusTaskEditCancelled", "Changes discarded",
     "statusTaskDeleted",      "Task deleted",
     "subtitleToday",          "{3}, {1} {2}, {0}",
     "subtitleOpenTasks",      "{0} open",
@@ -429,6 +439,7 @@ struct AppState {
   std::vector<rivet_app::Task> tasks;
   std::vector<rivet_app::Task> search_results;
   std::string current_search;
+  std::string rendered_search_keyword;
   std::string language{"zh"};
   std::uint64_t preview_sequence{0};
 
@@ -439,6 +450,8 @@ struct AppState {
   bool suppress_selection{false};
   std::atomic<bool> reload_in_flight{false};
   std::int64_t open_editor_id{-1};
+  bool snapshot_rendered{false};
+  bool pending_task_rebuild{false};
 
   // Native reminder transport only. Eligibility, startup summarization,
   // per-database de-duplication and handoff acknowledgement live in the core.
@@ -452,10 +465,13 @@ Palette const* g_state_palette = &kLight;
 GtkWidget* make_task_row(rivet_app::Task const& task);
 void rebuild_sidebar();
 void rebuild_task_list();
+void refresh_pane_header();
 void refresh_bulk_bar();
 std::vector<std::int64_t> selected_task_ids();
 void reload_snapshot();
 void run_search(std::string const& keyword);
+bool same_visible_task_rows(std::vector<rivet_app::Task> const& left,
+                            std::vector<rivet_app::Task> const& right);
 void save_setting(char const* key, std::string const& value);
 void apply_language();
 void apply_theme(std::string const& theme);
@@ -553,6 +569,16 @@ std::string date_string(int offset_days) {
   std::snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d", local.tm_year + 1900,
                 local.tm_mon + 1, local.tm_mday);
   return buffer;
+}
+
+std::string weekend_date_string() {
+  auto const now = std::time(nullptr);
+  std::tm local{};
+  localtime_r(&now, &local);
+  auto const offset = (local.tm_wday == 0 || local.tm_wday == 6)
+                          ? 0
+                          : 6 - local.tm_wday;
+  return date_string(offset);
 }
 
 // Lexicographic YYYY-MM-DD compare, normalized to -1/0/1. Raw
@@ -942,11 +968,34 @@ void update_list_full(rivet_app::TodoList list) {
       });
 }
 
-void save_task_edits(rivet_app::Task updated) {
+void save_task_edits(
+    rivet_app::Task updated,
+    std::optional<std::int64_t> editor_id = std::nullopt) {
   if (g_state.api == nullptr) return;
+  if (editor_id.has_value()) flash_status(tr("statusTaskSaving"));
   g_state.api->update_task_async(
-      updated, [](rivet_app::Result<rivet_app::Task> result) {
-        on_result(std::move(result), [](rivet_app::Task const&) {});
+      updated, [editor_id](rivet_app::Result<rivet_app::Task> result) {
+        dispatch_ui([editor_id, result = std::move(result)]() mutable {
+          try {
+            result.get();
+            if (editor_id.has_value() &&
+                g_state.open_editor_id == *editor_id) {
+              g_state.open_editor_id = -1;
+              if (g_state.current_search.empty()) {
+                rebuild_task_list();
+              } else {
+                run_search(g_state.current_search);
+              }
+            }
+            flash_status(tr("statusTaskUpdated"));
+          } catch (std::exception const& e) {
+            // Keep an explicit-save draft open so the user can correct or
+            // retry it instead of losing the date and notes.
+            set_status_error(e.what());
+          } catch (...) {
+            set_status_error("unknown backend failure");
+          }
+        });
       });
 }
 
@@ -1044,7 +1093,12 @@ void run_search(std::string const& keyword) {
               if (g_state.current_search != keyword) return;
               std::unordered_set<std::int64_t> selected_ids;
               for (auto id : selected_task_ids()) selected_ids.insert(id);
+              bool const changed =
+                  g_state.rendered_search_keyword != keyword ||
+                  !same_visible_task_rows(g_state.search_results, results);
               g_state.search_results = results;
+              if (!changed) return;  // Preserve keyboard selection and rows.
+              g_state.rendered_search_keyword = keyword;
               gtk_list_box_remove_all(g_state.task_list);
               for (auto const& task : results) {
                 if (g_state.suppressed_delete_ids.count(task.id)) continue;
@@ -1057,6 +1111,23 @@ void run_search(std::string const& keyword) {
               refresh_bulk_bar();
             });
       });
+}
+
+// The snapshot poll and backend changed events must not invalidate task
+// widget identities when their displayed data has not changed.
+bool same_visible_task_rows(std::vector<rivet_app::Task> const& left,
+                            std::vector<rivet_app::Task> const& right) {
+  if (left.size() != right.size()) return false;
+  for (std::size_t i = 0; i < left.size(); ++i) {
+    auto const& a = left[i];
+    auto const& b = right[i];
+    if (a.id != b.id || a.list_id != b.list_id ||
+        a.text != b.text || a.completed != b.completed ||
+        a.due_date != b.due_date || a.due_time != b.due_time ||
+        a.notes != b.notes || a.list_name != b.list_name)
+      return false;
+  }
+  return true;
 }
 
 void reload_snapshot() {
@@ -1095,16 +1166,35 @@ void reload_snapshot() {
                       reload_snapshot();
                       return;
                     }
+                    // Never replace GTK rows for an unchanged snapshot:
+                    // that destroys focus, AT-SPI identities and popovers.
+                    bool const changed =
+                        !g_state.snapshot_rendered ||
+                        !same_visible_task_rows(g_state.tasks, snapshot.tasks);
+                    g_state.snapshot_rendered = true;
                     g_state.current_counts = snapshot.counts;
                     g_state.lists = snapshot.lists;
                     g_state.tasks = snapshot.tasks;
                     rebuild_sidebar();
-                    // An active search owns the task list; refreshing the
-                    // snapshot must not overwrite the results.
+                    refresh_pane_header();
                     if (!g_state.current_search.empty()) {
-                      run_search(g_state.current_search);
-                    } else {
-                      rebuild_task_list();
+                      // Search spans every list, so its results can change
+                      // even when the selected view's snapshot does not.
+                      // run_search compares results before touching GTK.
+                      if (g_state.open_editor_id < 0) {
+                        run_search(g_state.current_search);
+                      } else if (changed) {
+                        g_state.pending_task_rebuild = true;
+                      }
+                    } else if (changed) {
+                      if (g_state.open_editor_id >= 0 &&
+                          find_by_id(g_state.tasks, g_state.open_editor_id)) {
+                        // Keep a draft and date popover alive while an
+                        // unrelated external update waits to be rendered.
+                        g_state.pending_task_rebuild = true;
+                      } else {
+                        rebuild_task_list();
+                      }
                     }
                   });
       });
@@ -2023,7 +2113,41 @@ struct TaskEditor {
   GtkEntry* date{nullptr};
   GtkEntry* time{nullptr};
   std::int64_t task_id{0};
+  bool focus_date{false};
+  bool pending_focus{false};
 };
+
+void focus_task_editor(TaskEditor* editor, char const* stage) {
+  if (editor == nullptr || !editor->pending_focus ||
+      g_state.open_editor_id != editor->task_id)
+    return;
+  GtkWidget* target = GTK_WIDGET(editor->focus_date ? editor->date : editor->text);
+  bool const mapped = gtk_widget_get_mapped(target);
+  gboolean grabbed = FALSE;
+  if (mapped) {
+    // In GTK4 a GtkEntry delegates focus to its internal GtkText. The entry
+    // itself is deliberately not focusable; comparing get_focus() with the
+    // GtkEntry pointer or forcing GtkWindow focus to it is incorrect.
+    grabbed = gtk_widget_grab_focus(target);
+  }
+  GtkWidget* actual =
+      g_state.window != nullptr ? gtk_window_get_focus(g_state.window) : nullptr;
+  bool const inside_entry =
+      actual != nullptr &&
+      (actual == target || gtk_widget_is_ancestor(actual, target));
+  if (inside_entry) editor->pending_focus = false;
+  if (g_getenv("TASKLY_FOCUS_DEBUG") != nullptr) {
+    g_printerr(
+        "taskly-focus stage=%s id=%" G_GINT64_FORMAT
+        " mapped=%d entry-focusable=%d grab=%d inside-entry=%d"
+        " window-active=%d actual=%s pending=%d\n",
+        stage, static_cast<gint64>(editor->task_id), mapped,
+        gtk_widget_get_focusable(target), grabbed, inside_entry,
+        g_state.window != nullptr && gtk_window_is_active(g_state.window),
+        actual != nullptr ? G_OBJECT_TYPE_NAME(actual) : "none",
+        editor->pending_focus);
+  }
+}
 
 void commit_task_editor(TaskEditor* editor) {
   auto const* stored = find_selected_task(editor->task_id);
@@ -2042,12 +2166,77 @@ void commit_task_editor(TaskEditor* editor) {
       gtk_editable_get_text(GTK_EDITABLE(editor->time)));
   updated.due_time =
       time.empty() ? std::nullopt : std::optional<std::string>(time);
-  g_state.open_editor_id = -1;
-  save_task_edits(updated);
+  save_task_edits(updated, editor->task_id);
 }
 
 void on_editor_save_clicked(GtkButton*, gpointer user_data) {
   commit_task_editor(static_cast<TaskEditor*>(user_data));
+}
+
+void cancel_task_editor() {
+  if (g_state.open_editor_id < 0) return;
+  auto const editor_id = g_state.open_editor_id;
+  auto const* stored = find_selected_task(editor_id);
+
+  // Cancelling is a local draft operation. Keep the task row alive so GTK
+  // preserves its keyboard focus and AT-SPI identity instead of rebuilding
+  // the entire list underneath the user. Reset every field before collapsing
+  // so reopening the existing editor can never resurrect the discarded draft.
+  for (GtkWidget* child = gtk_widget_get_first_child(
+           GTK_WIDGET(g_state.task_list));
+       child != nullptr; child = gtk_widget_get_next_sibling(child)) {
+    if (!GTK_IS_LIST_BOX_ROW(child)) continue;
+    auto const row_id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
+        g_object_get_data(G_OBJECT(child), "task-id")));
+    if (row_id != editor_id) continue;
+
+    auto* editor = static_cast<TaskEditor*>(
+        g_object_get_data(G_OBJECT(child), "task-editor"));
+    auto* revealer = GTK_REVEALER(
+        g_object_get_data(G_OBJECT(child), "task-editor-revealer"));
+    if (editor != nullptr && stored != nullptr) {
+      gtk_editable_set_text(GTK_EDITABLE(editor->text), stored->text.c_str());
+      gtk_editable_set_text(GTK_EDITABLE(editor->notes),
+                            stored->notes.has_value()
+                                ? stored->notes->c_str()
+                                : "");
+      gtk_editable_set_text(GTK_EDITABLE(editor->date),
+                            stored->due_date.has_value()
+                                ? stored->due_date->c_str()
+                                : "");
+      gtk_editable_set_text(GTK_EDITABLE(editor->time),
+                            stored->due_time.has_value()
+                                ? stored->due_time->c_str()
+                                : "");
+    }
+    if (revealer != nullptr) {
+      gtk_revealer_set_reveal_child(revealer, FALSE);
+    }
+    g_state.open_editor_id = -1;
+    gtk_widget_grab_focus(child);
+    flash_status(tr("statusTaskEditCancelled"));
+    if (g_state.pending_task_rebuild) {
+      // Only external changes justify replacing the row after Cancel.
+      if (g_state.current_search.empty()) rebuild_task_list();
+      else run_search(g_state.current_search);
+      g_state.pending_task_rebuild = false;
+    }
+    return;
+  }
+
+  // The row can legitimately disappear if a concurrent snapshot moves it out
+  // of the current view. Fall back to a rebuild only in that exceptional case.
+  g_state.open_editor_id = -1;
+  if (g_state.current_search.empty()) {
+    rebuild_task_list();
+  } else {
+    run_search(g_state.current_search);
+  }
+  flash_status(tr("statusTaskEditCancelled"));
+}
+
+void on_editor_cancel_clicked(GtkButton*, gpointer) {
+  cancel_task_editor();
 }
 
 void on_editor_title_activate(GtkEntry*, gpointer user_data) {
@@ -2068,6 +2257,18 @@ void on_editor_calendar_day_selected(GtkCalendar* calendar,
   gtk_editable_set_text(GTK_EDITABLE(editor->date), iso);
   g_free(iso);
   g_date_time_unref(date);
+}
+
+void on_editor_quick_date_clicked(GtkButton* button, gpointer user_data) {
+  auto* editor = static_cast<TaskEditor*>(user_data);
+  auto const* value = static_cast<char const*>(
+      g_object_get_data(G_OBJECT(button), "taskly-date-value"));
+  if (value != nullptr) {
+    gtk_editable_set_text(GTK_EDITABLE(editor->date), value);
+  }
+  auto* popover = static_cast<GtkPopover*>(
+      g_object_get_data(G_OBJECT(button), "taskly-date-popover"));
+  if (popover != nullptr) gtk_popover_popdown(popover);
 }
 
 // Expand (or collapse) the in-place editor underneath the row. When
@@ -2120,22 +2321,40 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
 
     auto* date_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
     gtk_box_append(GTK_BOX(date_row), GTK_WIDGET(editor->date));
-    auto* calendar_button =
-        gtk_button_new_from_icon_name("x-office-calendar-symbolic");
+    auto* calendar_button = gtk_menu_button_new();
+    gtk_menu_button_set_icon_name(GTK_MENU_BUTTON(calendar_button),
+                                  "x-office-calendar-symbolic");
     gtk_widget_add_css_class(calendar_button, "flat");
+    gtk_accessible_update_property(
+        GTK_ACCESSIBLE(calendar_button), GTK_ACCESSIBLE_PROPERTY_LABEL,
+        tr("labelAddDate").c_str(), -1);
     auto* date_popover = gtk_popover_new();
+    auto* date_picker = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    auto* quick_dates = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    auto add_quick_date = [&](char const* key, std::string const& value) {
+      auto* option = gtk_button_new_with_label(tr(key).c_str());
+      g_object_set_data_full(G_OBJECT(option), "taskly-date-value",
+                             g_strdup(value.c_str()), g_free);
+      g_object_set_data(G_OBJECT(option), "taskly-date-popover", date_popover);
+      g_signal_connect(option, "clicked",
+                       G_CALLBACK(on_editor_quick_date_clicked), editor);
+      gtk_box_append(GTK_BOX(quick_dates), option);
+    };
+    add_quick_date("navToday", date_string(0));
+    add_quick_date("dateTomorrow", date_string(1));
+    add_quick_date("dateThisWeekend", weekend_date_string());
+    gtk_box_append(GTK_BOX(date_picker), quick_dates);
     auto* calendar = gtk_calendar_new();
-    gtk_popover_set_child(GTK_POPOVER(date_popover), calendar);
+    gtk_box_append(GTK_BOX(date_picker), calendar);
+    gtk_popover_set_child(GTK_POPOVER(date_popover), date_picker);
+    // GtkMenuButton owns the popover, including anchoring, accessibility
+    // and its lifecycle when a task row is eventually destroyed.
+    gtk_menu_button_set_popover(GTK_MENU_BUTTON(calendar_button), date_popover);
     g_signal_connect(calendar, "day-selected",
                      G_CALLBACK(on_editor_calendar_day_selected), editor);
     g_signal_connect_swapped(
         calendar, "day-selected",
         G_CALLBACK(+[](GtkWidget* popover) { gtk_popover_popdown(
-            GTK_POPOVER(popover)); }),
-        date_popover);
-    g_signal_connect_swapped(
-        calendar_button, "clicked",
-        G_CALLBACK(+[](GtkWidget* popover) { gtk_popover_popup(
             GTK_POPOVER(popover)); }),
         date_popover);
     gtk_box_append(GTK_BOX(date_row), calendar_button);
@@ -2145,15 +2364,25 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
                                                    GTK_WIDGET(editor->time)));
 
     auto* buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
-    auto* save = gtk_button_new_with_label(tr("dialogSave").c_str());
-    gtk_widget_add_css_class(save, "suggested-action");
-    g_signal_connect(save, "clicked", G_CALLBACK(on_editor_save_clicked),
-                     editor);
-    gtk_box_append(GTK_BOX(buttons), save);
     auto* clear = gtk_button_new_with_label(tr("dialogClear").c_str());
     g_signal_connect(clear, "clicked",
                      G_CALLBACK(on_editor_clear_due_clicked), editor);
     gtk_box_append(GTK_BOX(buttons), clear);
+    auto* cancel = gtk_button_new_with_label(tr("dialogCancel").c_str());
+    gtk_accessible_update_property(
+        GTK_ACCESSIBLE(cancel), GTK_ACCESSIBLE_PROPERTY_LABEL,
+        tr("dialogCancel").c_str(), -1);
+    g_signal_connect(cancel, "clicked", G_CALLBACK(on_editor_cancel_clicked),
+                     editor);
+    gtk_box_append(GTK_BOX(buttons), cancel);
+    auto* save = gtk_button_new_with_label(tr("dialogSave").c_str());
+    gtk_widget_add_css_class(save, "suggested-action");
+    gtk_accessible_update_property(
+        GTK_ACCESSIBLE(save), GTK_ACCESSIBLE_PROPERTY_LABEL,
+        tr("dialogSave").c_str(), -1);
+    g_signal_connect(save, "clicked", G_CALLBACK(on_editor_save_clicked),
+                     editor);
+    gtk_box_append(GTK_BOX(buttons), save);
     gtk_box_append(GTK_BOX(grid), buttons);
 
     revealer = GTK_REVEALER(gtk_revealer_new());
@@ -2163,6 +2392,30 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
                              delete static_cast<TaskEditor*>(data);
                            });
     g_object_set_data(G_OBJECT(row), "task-editor-revealer", revealer);
+    // The editor may be inserted before its row is mapped. The native map
+    // signal, rather than an external accessibility focus injection, settles
+    // its first keyboard target once it is actually displayable.
+    auto focus_when_mapped = +[](GtkWidget* widget, gpointer data) {
+      auto* current = static_cast<TaskEditor*>(data);
+      GtkWidget* target =
+          GTK_WIDGET(current->focus_date ? current->date : current->text);
+      if (widget == target) focus_task_editor(current, "map");
+    };
+    g_signal_connect(editor->text, "map",
+                     G_CALLBACK(focus_when_mapped), editor);
+    g_signal_connect(editor->date, "map",
+                     G_CALLBACK(focus_when_mapped), editor);
+    // GtkRevealer does not expose its child as a keyboard focus target
+    // until the opening transition finishes. Retry native focus then,
+    // rather than requiring an accessibility driver to inject focus.
+    g_signal_connect(
+        revealer, "notify::child-revealed",
+        G_CALLBACK(+[](GtkRevealer* source, GParamSpec*, gpointer data) {
+          auto* current = static_cast<TaskEditor*>(data);
+          if (gtk_revealer_get_child_revealed(source))
+            focus_task_editor(current, "revealed");
+        }),
+        editor);
 
     // Move the row content into a vertical box with the editor underneath.
     auto* current = gtk_list_box_row_get_child(row);
@@ -2173,14 +2426,17 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
     g_object_unref(current);
     gtk_box_append(GTK_BOX(stack), GTK_WIDGET(revealer));
   }
-  gtk_revealer_set_reveal_child(revealer, expand);
+  // Set the focus intent before revealing: a newly inserted row can map
+  // synchronously as part of this change, before this function returns.
   g_state.open_editor_id = expand ? id : -1;
-  if (expand) {
-    auto* editor = static_cast<TaskEditor*>(
-        g_object_get_data(G_OBJECT(row), "task-editor"));
-    gtk_widget_grab_focus(
-        GTK_WIDGET(focus_date ? editor->date : editor->text));
+  auto* editor = static_cast<TaskEditor*>(
+      g_object_get_data(G_OBJECT(row), "task-editor"));
+  if (expand && editor != nullptr) {
+    editor->focus_date = focus_date;
+    editor->pending_focus = true;
   }
+  gtk_revealer_set_reveal_child(revealer, expand);
+  if (expand && editor != nullptr) focus_task_editor(editor, "expand");
 }
 
 void toggle_task_editor(GtkListBoxRow* row, std::int64_t id, bool focus_date) {
@@ -2230,21 +2486,7 @@ void open_task_editor(std::int64_t id, bool focus_date) {
 }
 
 void collapse_open_editor() {
-  if (g_state.open_editor_id < 0) return;
-  for (GtkWidget* child = gtk_widget_get_first_child(GTK_WIDGET(
-           g_state.task_list));
-       child != nullptr;
-       child = gtk_widget_get_next_sibling(child)) {
-    if (!GTK_IS_LIST_BOX_ROW(child)) continue;
-    auto const row_id = static_cast<std::int64_t>(GPOINTER_TO_SIZE(
-        g_object_get_data(G_OBJECT(child), "task-id")));
-    if (row_id == g_state.open_editor_id) {
-      set_task_editor_expanded(GTK_LIST_BOX_ROW(child), row_id, false,
-                               false, nullptr);
-      return;
-    }
-  }
-  g_state.open_editor_id = -1;
+  cancel_task_editor();
 }
 
 void show_task_menu(GtkWidget* row, gdouble x, gdouble y, bool user_list) {
@@ -2636,6 +2878,7 @@ void refresh_pane_header() {
 }
 
 void rebuild_task_list() {
+  g_state.pending_task_rebuild = false;
   refresh_pane_header();
 
   // Carry an open in-place editor across the rebuild: snapshot its
@@ -3348,6 +3591,7 @@ void on_search_changed(GtkSearchEntry* entry, gpointer) {
   if (keyword.empty()) {
     g_state.current_search.clear();
     g_state.search_results.clear();
+    g_state.rendered_search_keyword.clear();
     rebuild_task_list();
     return;
   }
@@ -4144,6 +4388,10 @@ void on_activate(GtkApplication* app, gpointer) {
 
   // Esc ladder: editor → search → nothing.
   auto* window_keys = gtk_event_controller_key_new();
+  // GtkText may consume Escape during its own bubble handling. An open
+  // editor's cancel operation must win before the child processes the key;
+  // non-Escape keys still propagate to the focused native control.
+  gtk_event_controller_set_propagation_phase(window_keys, GTK_PHASE_CAPTURE);
   g_signal_connect(window_keys, "key-pressed",
                    G_CALLBACK(on_window_key_pressed), nullptr);
   gtk_widget_add_controller(GTK_WIDGET(window), window_keys);

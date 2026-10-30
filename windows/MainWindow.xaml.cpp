@@ -178,6 +178,55 @@ std::wstring date_string(int offset_days) {
   return buffer;
 }
 
+std::optional<winrt::Windows::Foundation::DateTime> date_time_from_iso(
+    std::wstring const& value) {
+  int year = 0;
+  int month = 0;
+  int day = 0;
+  if (swscanf_s(value.c_str(), L"%d-%d-%d", &year, &month, &day) != 3 ||
+      year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 ||
+      day > 31) {
+    return std::nullopt;
+  }
+  try {
+    winrt::Windows::Globalization::Calendar calendar;
+    calendar.ChangeCalendarSystem(L"GregorianCalendar");
+    // Normalize the current calendar before moving across shorter months.
+    calendar.Day(1);
+    calendar.Month(1);
+    calendar.Year(year);
+    calendar.Month(month);
+    calendar.Day(day);
+    calendar.Hour(12);
+    calendar.Minute(0);
+    calendar.Second(0);
+    calendar.Nanosecond(0);
+    return calendar.GetDateTime();
+  } catch (...) {
+    return std::nullopt;
+  }
+}
+
+std::wstring iso_from_date_time(
+    winrt::Windows::Foundation::DateTime const& value) {
+  winrt::Windows::Globalization::Calendar calendar;
+  calendar.ChangeCalendarSystem(L"GregorianCalendar");
+  calendar.SetDateTime(value);
+  wchar_t buffer[11]{};
+  swprintf_s(buffer, L"%04d-%02d-%02d", calendar.Year(), calendar.Month(),
+             calendar.Day());
+  return buffer;
+}
+
+int days_until_weekend() {
+  SYSTEMTIME local{};
+  ::GetLocalTime(&local);
+  // Saturday and Sunday both mean the current weekend; weekdays lead to
+  // the coming Saturday, matching the product contract.
+  if (local.wDayOfWeek == 0 || local.wDayOfWeek == 6) return 0;
+  return 6 - static_cast<int>(local.wDayOfWeek);
+}
+
 // Lexicographic YYYY-MM-DD compare; malformed dates sort after any date.
 // Quick-add stores "yyyy-MM-dd HH:mm:ss" — only the day part compares.
 int date_compare(std::string const& due, std::wstring const& today) {
@@ -1442,25 +1491,77 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task,
         L"inline-task-date-menu-" + std::to_wstring(task.id));
     winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
         date_menu_button, t("labelAddDate"));
-    auto date_menu = mxc::MenuFlyout{};
-    auto add_date_option = [&](std::wstring const& label,
-                               std::wstring value) {
-      auto option = mxc::MenuFlyoutItem{};
-      option.Text(winrt::hstring(label));
-      option.Click([weak = get_weak(), value = std::move(value)](
+    auto date_flyout = mxc::Flyout{};
+    auto date_panel = mxc::StackPanel{};
+    date_panel.Spacing(8);
+    date_panel.Padding(mx::ThicknessHelper::FromLengths(10, 10, 10, 10));
+
+    auto quick_dates = mxc::StackPanel{};
+    quick_dates.Orientation(mxc::Orientation::Horizontal);
+    quick_dates.Spacing(6);
+    auto add_quick_date = [&](char const* key, std::wstring value,
+                              wchar_t const* automation_suffix) {
+      auto option = mxc::Button{};
+      option.Content(winrt::box_value(t(key)));
+      option.Padding(mx::ThicknessHelper::FromLengths(9, 3, 9, 3));
+      winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+          option, L"inline-task-date-" + std::wstring(automation_suffix) +
+                      L"-" + std::to_wstring(task.id));
+      option.Click([weak = get_weak(), value = std::move(value), date_flyout](
                        auto const&, auto const&) {
         if (auto window = weak.get()) {
           window->inline_date_box_.Text(value);
-          if (value.empty()) window->inline_time_box_.Text(L"");
+          date_flyout.Hide();
         }
       });
-      date_menu.Items().Append(option);
+      quick_dates.Children().Append(option);
     };
-    add_date_option(t("navToday"), date_string(0));
-    add_date_option(t("dateTomorrow"), date_string(1));
-    date_menu.Items().Append(mxc::MenuFlyoutSeparator{});
-    add_date_option(t("dialogClear"), L"");
-    date_menu_button.Flyout(date_menu);
+    add_quick_date("navToday", date_string(0), L"today");
+    add_quick_date("dateTomorrow", date_string(1), L"tomorrow");
+    add_quick_date("dateThisWeekend", date_string(days_until_weekend()),
+                   L"weekend");
+    date_panel.Children().Append(quick_dates);
+
+    auto calendar = mxc::CalendarView{};
+    calendar.SelectionMode(mxc::CalendarViewSelectionMode::Single);
+    calendar.IsTodayHighlighted(true);
+    calendar.MinDate(*date_time_from_iso(L"1900-01-01"));
+    calendar.MaxDate(*date_time_from_iso(L"2100-12-31"));
+    if (draft.due_date.has_value()) {
+      if (auto selected = date_time_from_iso(wide(*draft.due_date))) {
+        calendar.SelectedDates().Append(*selected);
+      }
+    }
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+        calendar, L"inline-task-calendar-" + std::to_wstring(task.id));
+    calendar.SelectedDatesChanged(
+        [weak = get_weak(), date_flyout](
+            auto const& sender,
+            mxc::CalendarViewSelectedDatesChangedEventArgs const& args) {
+          if (args.AddedDates().Size() == 0) return;
+          if (auto window = weak.get()) {
+            window->inline_date_box_.Text(
+                iso_from_date_time(args.AddedDates().GetAt(0)));
+            date_flyout.Hide();
+          }
+        });
+    date_panel.Children().Append(calendar);
+
+    auto clear_date = mxc::Button{};
+    clear_date.Content(winrt::box_value(t("dialogClear")));
+    clear_date.HorizontalAlignment(mx::HorizontalAlignment::Right);
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+        clear_date, L"inline-task-date-clear-" + std::to_wstring(task.id));
+    clear_date.Click([weak = get_weak(), date_flyout](auto const&, auto const&) {
+      if (auto window = weak.get()) {
+        window->inline_date_box_.Text(L"");
+        window->inline_time_box_.Text(L"");
+        date_flyout.Hide();
+      }
+    });
+    date_panel.Children().Append(clear_date);
+    date_flyout.Content(date_panel);
+    date_menu_button.Flyout(date_flyout);
     mxc::Grid::SetColumn(date_menu_button, 0);
     schedule.Children().Append(date_menu_button);
 
@@ -1553,6 +1654,33 @@ mxc::Grid MainWindow::MakeTaskRow(rivet_app::Task const& task,
     schedule.Children().Append(inline_list_button_);
 
     editor.Children().Append(schedule);
+
+    // Keep Return/Escape and click-away, while making the primary commit and
+    // cancel actions visible after a user changes the date.
+    auto actions = mxc::StackPanel{};
+    actions.Orientation(mxc::Orientation::Horizontal);
+    actions.Spacing(8);
+    actions.HorizontalAlignment(mx::HorizontalAlignment::Right);
+    actions.Margin(mx::ThicknessHelper::FromLengths(0, 6, 0, 0));
+
+    auto cancel_edit = mxc::Button{};
+    cancel_edit.Content(winrt::box_value(t("dialogCancel")));
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+        cancel_edit, L"inline-task-cancel-" + std::to_wstring(task.id));
+    cancel_edit.Click([weak = get_weak()](auto const&, auto const&) {
+      if (auto window = weak.get()) window->CancelInlineTaskEditor();
+    });
+    actions.Children().Append(cancel_edit);
+
+    auto save_edit = mxc::Button{};
+    save_edit.Content(winrt::box_value(t("dialogSave")));
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+        save_edit, L"inline-task-save-" + std::to_wstring(task.id));
+    save_edit.Click([weak = get_weak()](auto const&, auto const&) {
+      if (auto window = weak.get()) window->CommitInlineTaskEditor();
+    });
+    actions.Children().Append(save_edit);
+    editor.Children().Append(actions);
     row.Children().Append(editor);
   }
 
@@ -1693,7 +1821,12 @@ void MainWindow::CommitInlineTaskEditor() {
   ResetInlineTaskEditor();
   RenderTasks();
   RenderSearchResults();
-  if (changed) UpdateTaskAsync(std::move(updated));
+  if (changed) {
+    SetStatus(t("statusTaskSaving"));
+    // Retain the whole draft until the backend acknowledges persistence.
+    // A failed save reopens the editor instead of discarding user input.
+    UpdateTaskAsync(updated, updated);
+  }
 }
 
 void MainWindow::CancelInlineTaskEditor() {
@@ -1701,6 +1834,7 @@ void MainWindow::CancelInlineTaskEditor() {
   ResetInlineTaskEditor();
   RenderTasks();
   RenderSearchResults();
+  SetStatus(t("statusTaskEditCancelled"));
 }
 
 winrt::hstring MainWindow::DueLabel(std::string const& due_date) const {
@@ -2274,7 +2408,9 @@ winrt::fire_and_forget MainWindow::SetTaskDueAsync(std::int64_t id,
   }
 }
 
-winrt::fire_and_forget MainWindow::UpdateTaskAsync(rivet_app::Task task) {
+winrt::fire_and_forget MainWindow::UpdateTaskAsync(
+    rivet_app::Task task,
+    std::optional<rivet_app::Task> restore_on_failure) {
   if (backend_ == nullptr || !backend_->running()) co_return;
   auto const dispatcher = DispatcherQueue();
   auto const weak = get_weak();
@@ -2283,16 +2419,37 @@ winrt::fire_and_forget MainWindow::UpdateTaskAsync(rivet_app::Task task) {
     rivet_app::API api(*backend);
     (void)api.update_task_async(
         std::move(task),
-        [dispatcher, weak](rivet_app::Result<rivet_app::Task> result) {
+        [dispatcher, weak,
+         restore_on_failure = std::move(restore_on_failure)](
+            rivet_app::Result<rivet_app::Task> result) {
           try {
             result.get();
             dispatcher.TryEnqueue([weak] {
-              if (auto window = weak.get()) window->RefreshSearchIfActive();
+              if (auto window = weak.get()) {
+                window->SetStatus(t("statusTaskUpdated"));
+                window->RefreshSearchIfActive();
+              }
             });
           } catch (std::exception const& e) {
             auto message = std::string(e.what());
-            dispatcher.TryEnqueue([weak, message = std::move(message)] {
-              if (auto window = weak.get()) window->SetError(message);
+            dispatcher.TryEnqueue([weak, message = std::move(message),
+                                   restore_on_failure]() mutable {
+              if (auto window = weak.get()) {
+                if (restore_on_failure.has_value() &&
+                    !window->inline_task_id_.has_value()) {
+                  window->inline_task_id_ = restore_on_failure->id;
+                  window->inline_task_draft_ = *restore_on_failure;
+                  window->inline_task_in_search_ =
+                      !window->current_search_.empty();
+                  window->RenderTasks();
+                  window->RenderSearchResults();
+                  if (window->inline_title_box_) {
+                    window->inline_title_box_.Focus(
+                        mx::FocusState::Programmatic);
+                  }
+                }
+                window->SetError(message);
+              }
             });
           }
         });

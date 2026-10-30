@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import subprocess
 import time
 from pathlib import Path
 
@@ -168,6 +169,50 @@ def select_single_named_child(root, expected):
     return None
 
 
+def find_frame(application):
+    if application is None:
+        return None
+    return next(
+        (node for node in children(application) if role(node) == "frame"),
+        None,
+    )
+
+
+def select_and_press_unedited_named_row_button(root, expected):
+    """Select a direct task-list child and invoke its sole row action atomically.
+
+    Looking for any descendant list item is ambiguous in GTK's AT-SPI tree:
+    an outer list item can expose the text of nested task rows. Resolve the
+    direct child through its selection container instead, then keep selection
+    and action invocation in one traversal so no proxy survives a GTK update.
+    """
+    for container in walk(root):
+        try:
+            selection = container.querySelection()
+        except Exception:
+            continue
+        indexes = matching_child_indexes(container, expected)
+        if len(indexes) != 1:
+            continue
+        try:
+            selection.clearSelection()
+            if not selection.selectChild(indexes[0]):
+                continue
+            row = container.getChildAtIndex(indexes[0])
+            buttons = [
+                node
+                for node in walk(row)
+                if role(node) in ("push button", "button")
+            ]
+            if len(buttons) != 1:
+                continue
+            actions = buttons[0].queryAction()
+            return actions.nActions >= 1 and actions.doAction(0)
+        except Exception:
+            continue
+    return None
+
+
 def select_named_children(root, expected_names):
     """Select the direct rows that contain every expected task title."""
     for container in walk(root):
@@ -202,6 +247,42 @@ def snapshot(node, depth=0):
     return result
 
 
+def find_live_window():
+    # GTK reparents the selected row when it creates an inline editor. A
+    # cached frame proxy can remain queryable while its focus state is stale.
+    return find_frame(find_application())
+
+
+def send_keyboard_key(key):
+    """Send a genuine XTest key event to the active X11 window.
+
+    The acceptance harness explicitly runs GTK on Xvfb + Openbox. The
+    AT-SPI Registry KEY_SYM synthesizer can accept a request without sending
+    a native key to GTK; XTest makes keyboard input observable and verifiable.
+    Focus remains owned by GTK: no accessibility grabFocus injection.
+    """
+    subprocess.run(
+        ["xdotool", "key", "--clearmodifiers", key],
+        check=True,
+        timeout=5,
+    )
+
+
+def has_focus(node):
+    # GTK4 GtkEntry delegates keyboard input to its internal GtkText.
+    # Require the native focused state on the editor or one of its own
+    # descendants, never on an unrelated widget in the same window.
+    if node is None:
+        return False
+    for child in walk(node):
+        try:
+            if child.getState().contains(pyatspi.STATE_FOCUSED):
+                return True
+        except Exception:
+            continue
+    return False
+
+
 def press(node):
     actions = node.queryAction()
     if actions.nActions < 1 or not actions.doAction(0):
@@ -215,7 +296,7 @@ def main():
     args.output.mkdir(parents=True, exist_ok=True)
 
     application = wait_for("Taskly application", find_application)
-    window = wait_for("Taskly frame", lambda: next((n for n in walk(application) if role(n) == "frame"), None))
+    window = wait_for("Taskly frame", lambda: find_frame(application))
     # GTK/AT-SPI role names vary between distro accessibility stacks
     # (commonly "text" or "entry"). The editable-text interface is the
     # stable behavioral contract we actually need.
@@ -297,12 +378,88 @@ def main():
         "keyboard-opened task editor",
         lambda: find_editable_value(window, "64-bit task A"),
     )
+    wait_for(
+        "visible task editor Save action",
+        lambda: find_named(window, "Save", "push button"),
+    )
+    wait_for(
+        "visible task editor Cancel action",
+        lambda: find_named(window, "Cancel", "push button"),
+    )
+    wait_for(
+        "accessible task editor calendar action",
+        lambda: find_named(window, "Add Date", "push button"),
+    )
+    # The native GtkRevealer must give its mapped editor keyboard focus.
+    # A programmatic AT-SPI focus injection would mask a real user regression.
+    try:
+        wait_for(
+            "task editor keyboard focus",
+            lambda: has_focus(find_editable_value(find_live_window(), "64-bit task A")),
+            timeout=10.0,
+        )
+    except AssertionError:
+        live = find_live_window()
+        focused = [
+            {"name": name(node), "role": role(node), "text": text(node)[:80]}
+            for node in walk(live)
+            if has_focus(node)
+        ]
+        raise AssertionError(f"task editor has no accessible native focus; focused={focused}")
+    application = wait_for("live Taskly application", find_application)
+    window = wait_for("live Taskly frame", lambda: find_frame(application))
+    editor = wait_for(
+        "live keyboard-opened editor",
+        lambda: find_editable_value(window, "64-bit task A"),
+    )
     editor.queryEditableText().setTextContents("Cancelled inline draft")
-    pyatspi.Registry.generateKeyboardEvent(9, None, pyatspi.KEY_PRESSRELEASE)  # Escape
+    # The packaged keyboard journey runs on the seat-backed X11 acceptance host.
+    send_keyboard_key("Escape")
+    wait_for(
+        "visible Escape cancellation feedback",
+        lambda: contains_text(window, "Changes discarded"),
+    )
     wait_for(
         "Escape cancelled the focused task draft",
         lambda: find_editable_value(window, "Cancelled inline draft") is None
         and contains_text(window, "64-bit task A"),
+    )
+
+    # Creating the first inline editor reparents the row content. GTK's
+    # AT-SPI cache can keep the original frame proxy alive even after the
+    # editor is collapsed, so every descendant discovered through it may be
+    # stale. Re-enter through the desktop registry before the next journey.
+    application = wait_for(
+        "Taskly application after editor layout change", find_application
+    )
+    window = wait_for(
+        "Taskly frame after editor layout change",
+        lambda: find_frame(application),
+    )
+
+    (args.output / "task-editor-after-escape.json").write_text(
+        json.dumps(snapshot(window), ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    wait_for(
+        "second task Details action",
+        lambda: select_and_press_unedited_named_row_button(
+            window, "64-bit task B"
+        ),
+    )
+    editor = wait_for(
+        "second task editor opened for explicit Save",
+        lambda: find_editable_value(window, "64-bit task B"),
+    )
+    editor.queryEditableText().setTextContents("Saved inline draft")
+    save = wait_for(
+        "visible task editor Save action after reopen",
+        lambda: find_named(window, "Save", "push button"),
+    )
+    press(save)
+    wait_for(
+        "visible Save persisted the task draft",
+        lambda: find_editable_value(window, "Saved inline draft") is None
+        and contains_text(window, "Saved inline draft"),
     )
 
     entry.queryEditableText().setTextContents("Acceptance task")
@@ -325,6 +482,8 @@ def main():
                     "press:undo",
                     "press:selected-row-details",
                     "key:escape-cancel-draft",
+                    "press:second-row-details",
+                    "press:visible-save",
                     "set:quick-add",
                     "press:quick-add-submit",
                 ],
@@ -335,7 +494,8 @@ def main():
                     "batch scheduling clears hidden due times for both tasks",
                     "six-second staged deletion hides both tasks without deleting them",
                     "undo restores the original task IDs and metadata",
-                    "accessible details action focuses the task editor and Escape cancels its draft",
+                    "task editor exposes accessible calendar, Save and Cancel actions; Escape cancels its draft",
+                    "visible Save persists the complete task draft and closes only after acknowledgement",
                     "RPC-created task appeared after the quick-add field cleared",
                     "quick-add preserved the selected 64-bit list ownership",
                 ],

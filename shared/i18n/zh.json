@@ -62,6 +62,8 @@
   "statusShowCompleted": "已完成的任务",
   "statusUpdateTaskState": "更新任务状态",
   "statusTaskUpdated": "任务已更新",
+  "statusTaskSaving": "正在保存任务…",
+  "statusTaskEditCancelled": "已取消修改",
   "statusTaskAdded": "任务已添加",
   "statusTaskMoved": "任务已移动到 {0}",
   "statusTaskDeleted": "任务已删除",
