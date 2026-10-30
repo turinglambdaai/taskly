@@ -14,10 +14,14 @@ Desktop previews for macOS, Windows and Linux. Select the OS and CPU shown on th
 
 Use [official Releases](https://github.com/turlamai/taskly/releases), select an explicitly listed OS/architecture asset, read its release notes and check supplied checksums. An absent asset/platform is not a delivery promise. Preview builds may lack publisher signing or notarization; do not disable system-wide security protections to install them.
 
+- Windows: use the x64 MSI for Start-menu and Apps & Features integration, or the ZIP for a portable copy. Current preview MSI files are not Authenticode-signed, so publisher trust and SmartScreen reputation are not production-ready.
+- macOS: open the DMG and drag Taskly to Applications. Current previews are ad-hoc signed rather than Developer ID signed/notarized; a Gatekeeper rejection is not a prompt to disable Gatekeeper.
+- Linux: use deb on Debian/Ubuntu, rpm on Fedora-compatible systems, or AppImage for a portable launch. The packages install a desktop entry and icon; use the same package manager for upgrades and removal.
+
 ## Your first successful session
 
-1. Create a list and add one non-sensitive task. Check the parsed date before saving.
-2. Complete the task, reopen the application and confirm the saved state.
+1. The default list is ready on first launch. Add one non-sensitive task in the field above the empty-state hint; no setup wizard or list creation is required.
+2. Open the task, choose a date, then use the visible Save action. Quit and reopen Taskly and confirm the task and date persisted.
 3. For reminders, allow OS notifications and test one while the app is running. Do not assume delivery while it is closed or the computer sleeps.
 
 ## Data, backup and recovery
@@ -41,6 +45,8 @@ Reminders are evaluated consistently by the shared core on all three desktop hos
 Back up data and read the destination release notes first. An in-app update check does not necessarily install an update for your channel; follow the manual for portable, installer and source paths. Never bypass a failed signature check or replace the program with an untrusted artifact. On failure, preserve data and the error, then recover with a trusted release. Removing the program does not necessarily erase its separate data directory; verify your backup before deleting personal data.
 
 DMG, MSI, deb/rpm and portable archives replace application files, not `~/.taskly/`. If an update fails, quit all Taskly processes and reinstall the previous trusted build using the same installation shape; portable users can return to the previous program directory. The exact per-shape rollback table is in the update contract below.
+
+Remove the Windows MSI from Apps & Features, delete the macOS application from Applications, or remove the Linux package with the package manager that installed it. AppImage and ZIP copies are removed by deleting their application file/folder. These operations intentionally preserve `~/.taskly/`; deleting personal data is a separate, explicit action after backup.
 
 ## Get help
 

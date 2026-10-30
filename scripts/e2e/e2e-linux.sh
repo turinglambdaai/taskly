@@ -3,9 +3,17 @@ set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/../.." && pwd)"
 output="$repo/.rivet/acceptance/linux"
-executable="$(find "$repo/dist" -path '*/taskly-linux-*/RivetHost' -type f -print -quit)"
+install_record="$output/installed-app.json"
+if [[ -f "$install_record" ]]; then
+  executable=/opt/taskly/RivetHost
+  installed_package=taskly
+else
+  executable="$(find "$repo/dist" -path '*/taskly-linux-*/RivetHost' -type f -print -quit)"
+  installed_package=""
+fi
 home="$output/home-$$"
-mkdir -p "$output" "$home/.taskly"
+first_home="$output/first-run-home-$$"
+mkdir -p "$output" "$home/.taskly" "$first_home/.taskly"
 [[ -n "$executable" && -x "$executable" ]]
 
 epoch="$(date +%s)"
@@ -16,6 +24,7 @@ close-to-tray = 0
 last-selected-list-id = 0
 last-update-check = $epoch
 EOF
+cp "$home/.taskly/config.ini" "$first_home/.taskly/config.ini"
 
 # Seed IDs beyond the 32-bit boundary so the GTK acceptance flow exercises
 # the exact row-data conversions used by list selection and batch actions.
@@ -112,6 +121,19 @@ cleanup() {
   [[ -n "$openbox_pid" ]] && kill -TERM "$openbox_pid" 2>/dev/null || true
   kill -TERM "$display_pid" 2>/dev/null || true
   wait "$app_pid" "$atspi_pid" "$wayland_app_pid" "$wayland_pid" "$openbox_pid" "$display_pid" 2>/dev/null || true
+  if [[ -n "$installed_package" ]]; then
+    data_preserved=false
+    [[ -f "$home/.taskly/tasks.db" && -f "$first_home/.taskly/tasks.db" ]] && data_preserved=true
+    sudo dpkg -r "$installed_package" >"$output/deb-uninstall.log" 2>&1 || status=1
+    binary_removed=false
+    desktop_removed=false
+    [[ ! -e /opt/taskly/RivetHost ]] && binary_removed=true
+    [[ ! -e /usr/share/applications/taskly.desktop ]] && desktop_removed=true
+    printf '{"installer":"deb","binaryRemoved":%s,"desktopEntryRemoved":%s,"dataPreserved":%s}\n' \
+      "$binary_removed" "$desktop_removed" "$data_preserved" >"$output/install-lifecycle.json"
+    if [[ "$binary_removed" != true || "$desktop_removed" != true ]]; then status=1; fi
+    if [[ "$status" -eq 0 && "$data_preserved" != true ]]; then status=1; fi
+  fi
   exit "$status"
 }
 trap cleanup EXIT
@@ -176,6 +198,36 @@ export AT_SPI_BUS_ADDRESS="$(gdbus call --session --dest org.a11y.Bus \
   --object-path /org/a11y/bus --method org.a11y.Bus.GetAddress |
   sed -E "s/^\('([^']+)',\)$/\1/")"
 
+export HOME="$first_home"
+"$executable" >"$output/first-run-application.log" 2>&1 &
+app_pid=$!
+/usr/bin/python3 "$repo/scripts/e2e/linux-atspi.py" --output "$output" --mode first-run
+stop_bounded "$app_pid"
+wait "$app_pid" 2>/dev/null || true
+app_pid=""
+
+"$executable" >"$output/first-run-restart.log" 2>&1 &
+app_pid=$!
+/usr/bin/python3 "$repo/scripts/e2e/linux-atspi.py" --output "$output" --mode verify-first-run
+stop_bounded "$app_pid"
+wait "$app_pid" 2>/dev/null || true
+app_pid=""
+
+/usr/bin/python3 - "$first_home/.taskly/tasks.db" <<'PY'
+import datetime
+import sqlite3
+import sys
+
+database = sqlite3.connect(sys.argv[1])
+expected = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
+row = database.execute(
+    "SELECT due_date FROM tasks WHERE text = 'First-run persistence task'"
+).fetchone()
+assert row == (expected,), row
+database.close()
+PY
+
+export HOME="$home"
 "$executable" >"$output/application.log" 2>&1 &
 app_pid=$!
 /usr/bin/python3 "$repo/scripts/e2e/linux-atspi.py" --output "$output"
@@ -211,6 +263,8 @@ assert created == (4294967301, 0), created
 database.close()
 PY
 
-trap - EXIT
 kill -TERM "$atspi_pid" "$openbox_pid" "$display_pid" 2>/dev/null || true
 wait "$atspi_pid" "$openbox_pid" "$display_pid" 2>/dev/null || true
+atspi_pid=""
+openbox_pid=""
+display_pid=""

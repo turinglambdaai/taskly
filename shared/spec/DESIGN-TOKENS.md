@@ -1,8 +1,10 @@
 # Taskly Design Tokens (Contract)
 
-> macOS Reminders neutral palette: white content ground, light-gray sidebar,
-> system-blue accent. Quiet, content-first, generous whitespace. Every
-> platform implements these as named constants; smart-tile colors are
+> Taskly's visual language is warm, quiet and content-first: a terracotta
+> action accent, warm neutral surfaces and generous whitespace. Platform-native
+> typography and controls stay intact; Things, TickTick and Reminders are
+> interaction references rather than pixel templates. Every platform
+> implements these values as named constants; smart-tile colors remain
 > theme-independent.
 
 ## Semantic colors (theme-independent)
@@ -16,21 +18,23 @@
 | `tile/completed` | `#8E8E93` | Completed tile |
 | `flag` (reserved) | `#FF9500` | Flagged (unused) |
 | `danger` | `#FF3B30` | Destructive buttons |
+| `accent/action` | `#C94F30` | Primary actions and focus, light mode |
+| `accent/action-dark` | `#E8704F` | Primary actions and focus, dark mode |
 
 ## Light theme
 
 | Token | Hex |
 |---|---|
 | `background` | `#FFFFFF` |
-| `sidebar` | `#F2F2F2` |
+| `sidebar` | `#F3F2F1` |
 | `surface` | `#FFFFFF` |
-| `divider` | `#E3E3E8` |
+| `divider` | `#E1DFDD` |
 | `text/primary` | `#1D1D1F` |
-| `text/secondary` | `#8E8E93` |
-| `text/tertiary` | `#B0B0B5` |
+| `text/secondary` | `#5F5D5B` |
+| `text/tertiary` | `#767370` |
 | `selection` | `#14000000` (black @ 8%) |
 | `hover` | `#0D000000` (black @ 5%) |
-| `input-border` | `#C7C7CC` |
+| `input-border` | `#8A8785` |
 | `badge/background` | `#E9E9EE` |
 | `badge/text` | `#58585D` |
 
@@ -39,15 +43,15 @@
 | Token | Hex |
 |---|---|
 | `background` | `#1E1E1E` |
-| `sidebar` | `#2A2A2C` (one step lighter than content) |
+| `sidebar` | `#272424` (one step lighter than content) |
 | `surface` | `#323234` |
-| `divider` | `#3F3F44` |
+| `divider` | `#3B3939` |
 | `text/primary` | `#F5F5F7` |
-| `text/secondary` | `#98989E` |
-| `text/tertiary` | `#6B6B72` |
+| `text/secondary` | `#B2AEAC` |
+| `text/tertiary` | `#A8A5A3` |
 | `selection` | `#1FFFFFFF` (white @ 12%) |
 | `hover` | `#12FFFFFF` (white @ 7%) |
-| `input-border` | `#4A4A50` |
+| `input-border` | `#777371` |
 | `badge/background` | `#3F3F44` |
 | `badge/text` | `#E9E9EE` |
 
@@ -108,7 +112,7 @@ the shared Enter-save, Escape-cancel and click-away-save behavior.
 ## App icon
 
 White rounded square (macOS-squircle radius ≈ 22.5%) with a quiet checklist
-mark: one system-blue rounded bar over two neutral (`#CECED3`) bars, staggered
+mark: one terracotta rounded bar over two neutral (`#CECED3`) bars, staggered
 widths. Monochrome, no gradients — must read on light and dark docks alike.
 
 ## Windows MSI installer artwork

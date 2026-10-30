@@ -52,19 +52,26 @@
              (command . ("pwsh" "-NoProfile" "-File"
                          "scripts/e2e/e2e-windows.ps1"))
              (timeout-seconds . 600)
-             (evidence . (".rivet/acceptance/windows/interaction-trace.json")))
+             (evidence . (".rivet/acceptance/windows/interaction-trace.json"
+                          ".rivet/acceptance/windows/persistence-restart.json"
+                          ".rivet/acceptance/windows/install-lifecycle.json")))
      #hasheq((id . macos-native-ui)
              (kind . native-ui)
              (platforms . (macos))
              (command . ("bash" "scripts/e2e/e2e-macos.sh"))
              (timeout-seconds . 600)
-             (evidence . (".rivet/acceptance/macos/interaction-trace.json")))
+             (evidence . (".rivet/acceptance/macos/interaction-trace.json"
+                          ".rivet/acceptance/macos/persistence-restart.json"
+                          ".rivet/acceptance/macos/install-lifecycle.json")))
      #hasheq((id . linux-native-ui)
              (kind . native-ui)
              (platforms . (linux))
              (command . ("bash" "scripts/e2e/e2e-linux.sh"))
              (timeout-seconds . 600)
-             (evidence . (".rivet/acceptance/linux/interaction-trace.json")))
+             (evidence . (".rivet/acceptance/linux/interaction-trace.json"
+                          ".rivet/acceptance/linux/first-run-trace.json"
+                          ".rivet/acceptance/linux/persistence-restart.json"
+                          ".rivet/acceptance/linux/install-lifecycle.json")))
      #hasheq((id . release-update)
              (kind . release)
              (platforms . (windows macos linux))

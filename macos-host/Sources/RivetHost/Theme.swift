@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Design tokens (shared/spec/DESIGN-TOKENS.md). macOS Reminders neutral palette.
+/// Taskly design tokens (shared/spec/DESIGN-TOKENS.md).
 enum Palette {
     // Semantic (theme-independent)
     static let today = Color(hex: 0x007AFF)
@@ -12,34 +12,34 @@ enum Palette {
     static let flagged = Color(hex: 0xFF9500)
     static let danger = Color(hex: 0xFF3B30)
 
-    static let accentLight = today
-    static let accentDark = todayDark
+    static let accentLight = Color(hex: 0xC94F30)
+    static let accentDark = Color(hex: 0xE8704F)
 
     // Light theme
     static let lightBackground = Color(hex: 0xFFFFFF)
-    static let lightSidebar = Color(hex: 0xF2F2F2)
+    static let lightSidebar = Color(hex: 0xF3F2F1)
     static let lightSurface = Color(hex: 0xFFFFFF)
-    static let lightDivider = Color(hex: 0xE3E3E8)
+    static let lightDivider = Color(hex: 0xE1DFDD)
     static let lightOnSurface = Color(hex: 0x1D1D1F)
-    static let lightSecondaryText = Color(hex: 0x8E8E93)
-    static let lightTertiaryText = Color(hex: 0xB0B0B5)
+    static let lightSecondaryText = Color(hex: 0x5F5D5B)
+    static let lightTertiaryText = Color(hex: 0x767370)
     static let lightSelection = Color(hex: 0x000000, alpha: 0x14 / 255.0)
     static let lightHover = Color(hex: 0x000000, alpha: 0x0D / 255.0)
-    static let lightInputBorder = Color(hex: 0xC7C7CC)
+    static let lightInputBorder = Color(hex: 0x8A8785)
     static let lightBadgeBackground = Color(hex: 0xE9E9EE)
     static let lightBadgeText = Color(hex: 0x58585D)
 
     // Dark theme (layered grays)
     static let darkBackground = Color(hex: 0x1E1E1E)
-    static let darkSidebar = Color(hex: 0x2A2A2C)
+    static let darkSidebar = Color(hex: 0x272424)
     static let darkSurface = Color(hex: 0x323234)
-    static let darkDivider = Color(hex: 0x3F3F44)
+    static let darkDivider = Color(hex: 0x3B3939)
     static let darkOnSurface = Color(hex: 0xF5F5F7)
-    static let darkSecondaryText = Color(hex: 0x98989E)
-    static let darkTertiaryText = Color(hex: 0x6B6B72)
+    static let darkSecondaryText = Color(hex: 0xB2AEAC)
+    static let darkTertiaryText = Color(hex: 0xA8A5A3)
     static let darkSelection = Color(hex: 0xFFFFFF, alpha: 0x1F / 255.0)
     static let darkHover = Color(hex: 0xFFFFFF, alpha: 0x12 / 255.0)
-    static let darkInputBorder = Color(hex: 0x4A4A50)
+    static let darkInputBorder = Color(hex: 0x777371)
     static let darkBadgeBackground = Color(hex: 0x3F3F44)
     static let darkBadgeText = Color(hex: 0xE9E9EE)
 

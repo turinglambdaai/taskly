@@ -28,10 +28,18 @@ for workflow in "${WORKFLOWS[@]}"; do
   [[ "$pin" == "$RIVET_PIN" ]] ||     fail "RIVET_PIN drift: ${workflow#"$ROOT/"} has $pin, expected $RIVET_PIN"
 done
 
+# Migration must not hide dependency refs from the checker: reject old remote
+# names and verify that the current namespace is explicitly represented.
+if grep -qE 'turinglambdaai/(rivet|keel)' "${WORKFLOWS[@]}"; then
+  fail "legacy GitHub namespace in workflow dependency references"
+fi
+grep -qE 'turlamai/rivet/\.github/actions/setup-embed-racket@' "${WORKFLOWS[@]}" ||
+  fail "missing pinned setup-embed-racket action"
+
 while IFS= read -r action_pin; do
   [[ "$action_pin" == "$RIVET_PIN" ]] ||     fail "setup-embed-racket ref $action_pin does not match RIVET_PIN $RIVET_PIN"
 done < <(
-  grep -h -oE 'turinglambdaai/rivet/\.github/actions/setup-embed-racket@[0-9a-f]{40}'     "${WORKFLOWS[@]}" |
+  grep -h -oE 'turlamai/rivet/\.github/actions/setup-embed-racket@[0-9a-f]{40}'     "${WORKFLOWS[@]}" |
     sed -E 's/.*@//'
 )
 
@@ -41,7 +49,7 @@ KEEL_PIN="$(env_pin "$ROOT/.github/workflows/acceptance.yml" KEEL_PIN)"
 while IFS= read -r keel_pin; do
   [[ "$keel_pin" == "$KEEL_PIN" ]] ||     fail "Keel pin drift: found $keel_pin, expected $KEEL_PIN"
 done < <(
-  grep -h -oE 'turinglambdaai/keel\.git#[0-9a-f]{40}' "${WORKFLOWS[@]}" |
+  grep -h -oE 'turlamai/keel\.git#[0-9a-f]{40}' "${WORKFLOWS[@]}" |
     sed -E 's/.*#//'
 )
 

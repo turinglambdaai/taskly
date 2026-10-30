@@ -346,7 +346,7 @@ std::string format_positional(std::string const& pattern,
 }
 
 // ---------------------------------------------------------------------------
-// Theme palettes — DESIGN-TOKENS (Apple system palette, light + dark).
+// Theme palettes — shared Taskly tokens, platform-native GTK controls.
 // ---------------------------------------------------------------------------
 
 struct Palette {
@@ -369,17 +369,17 @@ struct Palette {
 // Values mirror macos-host Theme.swift exactly (incl. alpha-based
 // selection/hover fills).
 constexpr Palette kLight{
-    "#FFFFFF", "#F2F2F2", "#007AFF", "#8E8E93", "#B0B0B5",
-    "#E3E3E8", "#C7C7CC", "#FFFFFF", "rgba(0,0,0,0.05)",
+    "#FFFFFF", "#F3F2F1", "#C94F30", "#5F5D5B", "#767370",
+    "#E1DFDD", "#8A8785", "#FFFFFF", "rgba(0,0,0,0.05)",
     "rgba(0,0,0,0.08)", "#FF3B30", "#FF3B30",
-    "#1D1D1F", "rgba(0,122,255,0.10)",
+    "#1D1D1F", "rgba(201,79,48,0.10)",
 };
 
 constexpr Palette kDark{
-    "#1E1E1E", "#2A2A2C", "#0A84FF", "#98989E", "#6B6B72",
-    "#3F3F44", "#4A4A50", "#323234", "rgba(255,255,255,0.07)",
+    "#1E1E1E", "#272424", "#E8704F", "#B2AEAC", "#A8A5A3",
+    "#3B3939", "#777371", "#323234", "rgba(255,255,255,0.07)",
     "rgba(255,255,255,0.12)", "#FF3B30", "#FF3B30",
-    "#F5F5F7", "rgba(10,132,255,0.18)",
+    "#F5F5F7", "rgba(232,112,79,0.18)",
 };
 
 Palette const& system_palette();
@@ -2347,8 +2347,10 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
     auto* calendar = gtk_calendar_new();
     gtk_box_append(GTK_BOX(date_picker), calendar);
     gtk_popover_set_child(GTK_POPOVER(date_popover), date_picker);
-    // GtkMenuButton owns the popover, including anchoring, accessibility
-    // and its lifecycle when a task row is eventually destroyed.
+    // Let GTK own the anchor and popover lifecycle. A hand-parented popover on
+    // a plain GtkButton is destroyed incorrectly when the async task snapshot
+    // rebuilds its row, making the quick dates disappear from both the visual
+    // and AT-SPI trees before a user can choose one.
     gtk_menu_button_set_popover(GTK_MENU_BUTTON(calendar_button), date_popover);
     g_signal_connect(calendar, "day-selected",
                      G_CALLBACK(on_editor_calendar_day_selected), editor);
@@ -2946,7 +2948,7 @@ void rebuild_task_list() {
     gtk_label_set_text(
         g_state.empty_text,
         g_state.api == nullptr ? tr("taskListEmptyHint").c_str()
-                               : tr("taskListEmpty").c_str());
+                               : tr("taskListEmptyFirstRun").c_str());
     gtk_entry_set_placeholder_text(
         g_state.quick_add,
         (g_state.api == nullptr ? tr("taskListInputHintNoDb")

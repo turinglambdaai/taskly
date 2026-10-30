@@ -319,6 +319,8 @@ constexpr I18nEntry kI18nFallback[] = {
     {"showCompletedToggle", "显示已完成", "Show Completed"},
     {"subtitleCompleted", "{0} 个已完成", "{0} completed"},
     {"taskListEmpty", "暂无任务", "No tasks"},
+    {"taskListEmptyFirstRun", "在上方添加第一项任务，例如“明天评审计划”",
+     "Add your first task above — try “Plan tomorrow”"},
     {"sidebarHide", "隐藏侧边栏", "Hide Sidebar"},
     {"sidebarShow", "显示侧边栏", "Show Sidebar"},
     {"dateTomorrow", "明天", "Tomorrow"},
@@ -622,14 +624,34 @@ std::string MainWindow::ViewStringFor(ViewKind kind) {
 MainWindow::MainWindow() {
   InitializeComponent();
   Title(L"Taskly");
-  // PRODUCT-SPEC §2: default 1024×768 logical, scaled by the monitor DPI.
+  // PRODUCT-SPEC §2: prefer 1024×768 logical, but keep the whole window
+  // inside the current monitor's work area. A literal 1024×768 resize on a
+  // 1024×768 desktop extends below the taskbar and Windows may also place the
+  // right edge off-screen. That makes header actions inaccessible on a valid,
+  // supported display before the user can resize the window.
   auto const window_native = try_as<::IWindowNative>();
   HWND hwnd = nullptr;
   winrt::check_hresult(window_native->get_WindowHandle(&hwnd));
   auto const dpi = ::GetDpiForWindow(hwnd);
-  AppWindow().Resize(
-      {1024 * static_cast<std::int32_t>(dpi) / 96,
-       768 * static_cast<std::int32_t>(dpi) / 96});
+  auto const preferred_width =
+      1024 * static_cast<std::int32_t>(dpi) / 96;
+  auto const preferred_height =
+      768 * static_cast<std::int32_t>(dpi) / 96;
+  MONITORINFO monitor_info{sizeof(MONITORINFO)};
+  auto const monitor = ::MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+  if (monitor != nullptr && ::GetMonitorInfoW(monitor, &monitor_info)) {
+    auto const work_width = static_cast<std::int32_t>(
+        monitor_info.rcWork.right - monitor_info.rcWork.left);
+    auto const work_height = static_cast<std::int32_t>(
+        monitor_info.rcWork.bottom - monitor_info.rcWork.top);
+    auto const width = (std::min)(preferred_width, work_width);
+    auto const height = (std::min)(preferred_height, work_height);
+    auto const x = monitor_info.rcWork.left + (work_width - width) / 2;
+    auto const y = monitor_info.rcWork.top + (work_height - height) / 2;
+    AppWindow().MoveAndResize({x, y, width, height});
+  } else {
+    AppWindow().Resize({preferred_width, preferred_height});
+  }
   // PRODUCT-SPEC §2: minimum 760×520 logical.
   auto const presenter =
       AppWindow().Presenter().as<winrt::Microsoft::UI::Windowing::OverlappedPresenter>();
@@ -1186,7 +1208,7 @@ void MainWindow::RenderTasks() {
                                 : mx::Visibility::Collapsed);
   if (empty) {
     EmptyStateIcon().Text(L"\u2713");
-    EmptyStateText().Text(t("taskListEmpty"));
+    EmptyStateText().Text(t("taskListEmptyFirstRun"));
   }
   RefreshBulkActionBar();
 }

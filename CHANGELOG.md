@@ -13,6 +13,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Tomorrow and This Weekend above the platform calendar, and saving reports
   progress before confirmed persistence. Explicit save failures keep the full
   draft available for correction instead of silently closing it.
+- Packaged acceptance now prepares and launches the installed MSI, copied DMG
+  application or deb payload, verifies native registration/desktop integration,
+  and proves uninstall removes application files while preserving synthetic
+  user data. Package creation alone no longer counts as installation evidence.
+- Linux task editing now uses GTK4's native menu-button ownership for the date
+  popover, keeping Today/Tomorrow/This Weekend visible and accessible across
+  asynchronous row refreshes instead of leaving the calendar action dead.
+- A zero-configuration first launch now points directly at quick add with a
+  harmless example instead of a dead-end “No tasks” message.
+- Windows, macOS and Linux share Taskly's own warm terracotta action accent and
+  higher-contrast neutral text tokens. CI checks both token parity and WCAG
+  text/control contrast floors so future Rivet applications can reuse the
+  contract without inheriting three visually different palettes.
+- Windows now clamps and centers the preferred 1024×768 window inside the
+  current monitor work area, so taskbar space, small displays and DPI scaling
+  cannot hide header actions off-screen. Packaged UI acceptance enforces the
+  full-window visibility contract.
+- CI retries checksum- or timeout-interrupted Racket package installation with
+  a small, bounded backoff. Linux packaged acceptance reserves enough time for
+  one catalog timeout and retry instead of reporting an infrastructure stall
+  as a Taskly interaction failure. Workflows install the declared `db-lib` and
+  `crypto-lib` runtime packages directly instead of pulling documentation-heavy
+  `db` and `crypto` meta-packages.
+- Rivet is pinned to `82e4b75b738269b90ef490ebc6c11d30731b8d86`, the exact
+  upstream PR #361 revision that also makes branded DMG detach resilient to
+  Finder's `resource busy` / already-unmounted race. Taskly's matrix verifies
+  this candidate directly; production signing and notarization remain separate
+  release gates.
 
 ## [0.2.6] - 2026-10-26
 

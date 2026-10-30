@@ -70,6 +70,7 @@
   "taskListInputHint": "+ Add Task",
   "taskListInputHintNoDb": "Please create or open database first",
   "taskListEmpty": "No tasks",
+  "taskListEmptyFirstRun": "Add your first task above — try “Plan tomorrow”",
   "taskListEmptyHint": "Click \"File\" menu to create or open database",
   "taskCreateListFirst": "Please create a task list first",
   "showCompletedToggle": "Show Completed",

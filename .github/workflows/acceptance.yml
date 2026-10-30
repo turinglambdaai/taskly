@@ -3,8 +3,9 @@ name: Product Acceptance
 on:
   push:
     branches: [main]
+  # Validate stacked PRs against their real base as well as PRs into main.
+  # Do not let a non-main PR silently bypass the same required suites.
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -15,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RIVET_PIN: 9d766b4acab672844093204cb4845ef4ef933d2c
+  RIVET_PIN: 82e4b75b738269b90ef490ebc6c11d30731b8d86
   KEEL_PIN: 76a5b9fdd01bde284d310ff5c05ec73972f64201
 
 jobs:
@@ -34,6 +35,7 @@ jobs:
       - name: Install pinned dependencies
         shell: pwsh
         run: |
+          dotnet tool install --global wix --version 5.0.2
           raco pkg install --auto --no-docs "https://github.com/turlamai/keel.git#$env:KEEL_PIN"
           raco pkg install --auto --no-docs "https://github.com/turlamai/rivet.git#$env:RIVET_PIN"
       - name: Verify Windows installer artwork
@@ -75,8 +77,8 @@ jobs:
           version: '9.3'
       - name: Install pinned dependencies
         run: |
-          raco pkg install --auto --no-docs "https://github.com/turlamai/keel.git#${KEEL_PIN}"
-          raco pkg install --auto --no-docs "https://github.com/turlamai/rivet.git#${RIVET_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turlamai/keel.git#${KEEL_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turlamai/rivet.git#${RIVET_PIN}"
       - name: Render DMG artwork from SVG
         run: |
           brew install librsvg
@@ -98,21 +100,24 @@ jobs:
   linux:
     name: Linux packaged GTK4 acceptance
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # A single Racket catalog request can consume its built-in 30-minute
+    # timeout. Leave room for one bounded retry plus the actual product run.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - name: Set up embeddable Racket CS
-        uses: turlamai/rivet/.github/actions/setup-embed-racket@9d766b4acab672844093204cb4845ef4ef933d2c
+        uses: turlamai/rivet/.github/actions/setup-embed-racket@82e4b75b738269b90ef490ebc6c11d30731b8d86
       - name: Install native and pinned Racket dependencies
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install --yes at-spi2-core dbus-x11 libgtk-4-dev \
-            libadwaita-1-dev libjson-glib-dev libsecret-1-dev python3-pyatspi weston xvfb openbox x11-utils xdotool
-          raco pkg install --auto --no-docs "https://github.com/turlamai/keel.git#${KEEL_PIN}"
-          raco pkg install --auto --no-docs "https://github.com/turlamai/rivet.git#${RIVET_PIN}"
-          raco pkg install --auto --no-docs --skip-installed db crypto
+            desktop-file-utils file libadwaita-1-dev libjson-glib-dev \
+            libsecret-1-dev python3-pyatspi rpm weston xvfb openbox x11-utils xdotool
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turlamai/keel.git#${KEEL_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh "https://github.com/turlamai/rivet.git#${RIVET_PIN}"
+          bash scripts/install-racket-packages-with-retry.sh db-lib crypto-lib
       - name: Run executable acceptance contract
         shell: bash
         run: |
