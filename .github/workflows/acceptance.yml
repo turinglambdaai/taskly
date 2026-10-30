@@ -116,7 +116,7 @@ jobs:
             libsecret-1-dev python3-pyatspi rpm weston
           bash scripts/install-racket-packages-with-retry.sh "https://github.com/turinglambdaai/keel.git#${KEEL_PIN}"
           bash scripts/install-racket-packages-with-retry.sh "https://github.com/turinglambdaai/rivet.git#${RIVET_PIN}"
-          bash scripts/install-racket-packages-with-retry.sh db crypto
+          bash scripts/install-racket-packages-with-retry.sh db-lib crypto-lib
       - name: Run executable acceptance contract
         shell: bash
         run: |

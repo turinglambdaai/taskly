@@ -102,8 +102,8 @@ jobs:
       - name: Install WiX (v5; rivet's MSI toolchain)
         run: dotnet tool install --global wix --version 5.0.2
         shell: bash
-      - name: Install crypto (updater dependency)
-        run: bash scripts/install-racket-packages-with-retry.sh crypto
+      - name: Install crypto-lib (updater dependency)
+        run: bash scripts/install-racket-packages-with-retry.sh crypto-lib
         shell: bash
       - name: Version preflight (VERSION == rivet.rktd == updater == tag)
         shell: bash
@@ -154,15 +154,16 @@ jobs:
         uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@82e4b75b738269b90ef490ebc6c11d30731b8d86
       # Installed after the embeddable runtime so the catalog dependency
       # closure (cext-lib, crypto-lib, keel) resolves against the minimal
-      # build — it ships no packages of its own. db backs taskly's storage;
-      # crypto backs the updater's signing.
+      # build — it ships no packages of its own. db-lib backs taskly's storage;
+      # crypto-lib backs the updater's signing without pulling documentation
+      # from the broader meta-packages.
       - name: Install Rivet (catalog) and backend packages
         run: |
           # keel pinned below the tests/documentation collision commit
           # (upstream issue filed); drop once keel renames the module.
           bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
           bash scripts/install-racket-packages-with-retry.sh 'https://github.com/turinglambdaai/rivet.git#${{ env.RIVET_PIN }}'
-          bash scripts/install-racket-packages-with-retry.sh db crypto
+          bash scripts/install-racket-packages-with-retry.sh db-lib crypto-lib
       - name: Install GTK4, rpm and packaging tooling
         run: |
           sudo apt-get update
