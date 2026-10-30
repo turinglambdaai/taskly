@@ -2067,6 +2067,7 @@ struct TaskEditor {
   GtkEntry* time{nullptr};
   std::int64_t task_id{0};
   bool focus_date{false};
+  bool pending_focus{false};
 };
 
 void commit_task_editor(TaskEditor* editor) {
@@ -2308,6 +2309,23 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
                              delete static_cast<TaskEditor*>(data);
                            });
     g_object_set_data(G_OBJECT(row), "task-editor-revealer", revealer);
+    // The editor may be inserted before its row is mapped. The native map
+    // signal, rather than an external accessibility focus injection, settles
+    // its first keyboard target once it is actually displayable.
+    auto focus_when_mapped = +[](GtkWidget* widget, gpointer data) {
+      auto* current = static_cast<TaskEditor*>(data);
+      GtkWidget* target =
+          GTK_WIDGET(current->focus_date ? current->date : current->text);
+      if (!current->pending_focus || widget != target ||
+          g_state.open_editor_id != current->task_id)
+        return;
+      gtk_widget_grab_focus(widget);
+      if (gtk_widget_has_focus(widget)) current->pending_focus = false;
+    };
+    g_signal_connect(editor->text, "map",
+                     G_CALLBACK(focus_when_mapped), editor);
+    g_signal_connect(editor->date, "map",
+                     G_CALLBACK(focus_when_mapped), editor);
     // GtkRevealer does not expose its child as a keyboard focus target
     // until the opening transition finishes. Retry native focus then,
     // rather than requiring an accessibility driver to inject focus.
@@ -2316,11 +2334,15 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
         G_CALLBACK(+[](GtkRevealer* source, GParamSpec*, gpointer data) {
           auto* current = static_cast<TaskEditor*>(data);
           if (!gtk_revealer_get_child_revealed(source) ||
-              g_state.open_editor_id != current->task_id)
+              g_state.open_editor_id != current->task_id ||
+              !current->pending_focus)
             return;
           GtkWidget* target =
               GTK_WIDGET(current->focus_date ? current->date : current->text);
-          if (gtk_widget_get_mapped(target)) gtk_widget_grab_focus(target);
+          if (gtk_widget_get_mapped(target)) {
+            gtk_widget_grab_focus(target);
+            if (gtk_widget_has_focus(target)) current->pending_focus = false;
+          }
         }),
         editor);
 
@@ -2333,16 +2355,22 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
     g_object_unref(current);
     gtk_box_append(GTK_BOX(stack), GTK_WIDGET(revealer));
   }
-  gtk_revealer_set_reveal_child(revealer, expand);
+  // Set the focus intent before revealing: a newly inserted row can map
+  // synchronously as part of this change, before this function returns.
   g_state.open_editor_id = expand ? id : -1;
-  if (expand) {
-    auto* editor = static_cast<TaskEditor*>(
-        g_object_get_data(G_OBJECT(row), "task-editor"));
+  auto* editor = static_cast<TaskEditor*>(
+      g_object_get_data(G_OBJECT(row), "task-editor"));
+  if (expand && editor != nullptr) {
     editor->focus_date = focus_date;
+    editor->pending_focus = true;
+  }
+  gtk_revealer_set_reveal_child(revealer, expand);
+  if (expand && editor != nullptr) {
     GtkWidget* target = GTK_WIDGET(focus_date ? editor->date : editor->text);
-    // This succeeds for already-revealed rows; the child-revealed handler
-    // covers the first expansion without moving focus to an unmapped entry.
-    if (gtk_widget_get_mapped(target)) gtk_widget_grab_focus(target);
+    if (gtk_widget_get_mapped(target)) {
+      gtk_widget_grab_focus(target);
+      if (gtk_widget_has_focus(target)) editor->pending_focus = false;
+    }
   }
 }
 
