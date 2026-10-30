@@ -109,7 +109,7 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install --yes at-spi2-core dbus-x11 libgtk-4-dev \
-            libadwaita-1-dev libjson-glib-dev libsecret-1-dev python3-pyatspi weston xvfb openbox x11-utils
+            libadwaita-1-dev libjson-glib-dev libsecret-1-dev python3-pyatspi weston xvfb openbox x11-utils xdotool
           raco pkg install --auto --no-docs "https://github.com/turlamai/keel.git#${KEEL_PIN}"
           raco pkg install --auto --no-docs "https://github.com/turlamai/rivet.git#${RIVET_PIN}"
           raco pkg install --auto --no-docs --skip-installed db crypto
