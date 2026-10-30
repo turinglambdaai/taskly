@@ -114,7 +114,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes at-spi2-core dbus-x11 libgtk-4-dev \
             desktop-file-utils file libadwaita-1-dev libjson-glib-dev \
-            libsecret-1-dev python3-pyatspi rpm weston xvfb openbox x11-utils
+            libsecret-1-dev python3-pyatspi rpm weston xvfb openbox x11-utils xdotool
           bash scripts/install-racket-packages-with-retry.sh "https://github.com/turlamai/keel.git#${KEEL_PIN}"
           bash scripts/install-racket-packages-with-retry.sh "https://github.com/turlamai/rivet.git#${RIVET_PIN}"
           bash scripts/install-racket-packages-with-retry.sh db-lib crypto-lib
