@@ -188,15 +188,41 @@ jobs:
           distribution: full
           variant: CS
           version: '9.3'
-      - name: Install Rivet (catalog)
-        shell: bash
-        # keel pinned just below the commit that added
-        # tests/documentation — it collides with rivet v0.11.0's own
-        # tests/documentation module and fails every install (upstream
-        # issue filed against keel). Drop this pin once the rename lands.
+      # Racket 9.3 occasionally crashes on a malformed GitHub-hosted
+      # Windows root-store entry (X509*->C #f). Re-export valid trust anchors
+      # from THIS machine as PEM. TLS/hostname verification stays enabled.
+      - name: Export trusted Windows root certificates for Racket TLS
+        shell: pwsh
         run: |
-          raco pkg install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
-          raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
+          $ErrorActionPreference = 'Stop'
+          $path = Join-Path $env:RUNNER_TEMP 'taskly-trusted-roots.pem'
+          $certs = @()
+          foreach ($store in @('Cert:\\LocalMachine\\Root', 'Cert:\\CurrentUser\\Root')) {
+            foreach ($cert in Get-ChildItem $store) {
+              try {
+                $raw = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert)
+                if ($raw.Length -gt 0) {
+                  $base64 = [Convert]::ToBase64String(
+                    $raw, [Base64FormattingOptions]::InsertLineBreaks)
+                  $certs += "-----BEGIN CERTIFICATE-----`n$base64`n-----END CERTIFICATE-----"
+                }
+              } catch {
+                Write-Warning "Skipped an unreadable root certificate entry"
+              }
+            }
+          }
+          if ($certs.Count -lt 10) {
+            throw 'Windows root CA export returned too few anchors; refusing to bypass TLS'
+          }
+          [IO.File]::WriteAllText($path, ($certs -join "`n"), [Text.Encoding]::ASCII)
+          "TASKLY_WINDOWS_TRUSTED_ROOTS=$path" |
+            Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Install Rivet (verified Windows trust roots)
+        shell: bash
+        # Keep pinned keel below its known tests/documentation collision.
+        run: |
+          racket scripts/ci/windows-raco-pkg.rkt install --auto --no-docs 'https://github.com/turlamai/keel.git#76a5b9fdd01bde284d310ff5c05ec73972f64201'
+          racket scripts/ci/windows-raco-pkg.rkt install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Build host
         shell: pwsh
         run: raco rivet build
