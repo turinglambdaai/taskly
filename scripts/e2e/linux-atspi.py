@@ -268,11 +268,11 @@ def press_after_tabs(start, tab_count):
 
     for _ in range(tab_count):
         pyatspi.Registry.generateKeyboardEvent(
-            23, None, pyatspi.KEY_PRESSRELEASE
-        )  # Tab
+            0xFF09, None, pyatspi.KEY_SYM
+        )  # Tab keysym, not a compositor-specific hardware keycode
         time.sleep(0.05)
     pyatspi.Registry.generateKeyboardEvent(
-        36, None, pyatspi.KEY_PRESSRELEASE
+        0xFF0D, None, pyatspi.KEY_SYM
     )  # Return
 
 
@@ -296,8 +296,8 @@ def press(node):
         component = node.queryComponent()
         if component.grabFocus():
             pyatspi.Registry.generateKeyboardEvent(
-                36, None, pyatspi.KEY_PRESSRELEASE
-            )  # Return
+                0xFF0D, None, pyatspi.KEY_SYM
+            )  # Return keysym
             return
     except Exception:
         # Some GTK/AT-SPI combinations expose GtkMenuButton as focusable but
