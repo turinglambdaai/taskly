@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import subprocess
 import time
 from pathlib import Path
 
@@ -252,6 +253,19 @@ def find_live_window():
     return find_frame(find_application())
 
 
+def send_keyboard_key(key):
+    """Deliver an XTest keystroke to the active X11 window, not AT-SPI focus.
+
+    GTK runs under Xvfb + Openbox in this test, with a real keyboard seat.
+    AT-SPI is still used to assert actual native focus and editor results.
+    """
+    subprocess.run(
+        ["xdotool", "key", "--clearmodifiers", key],
+        check=True,
+        timeout=5,
+    )
+
+
 def has_focus(node):
     # GTK4 GtkEntry delegates keyboard input to its internal GtkText.
     # Require the native focused state on the editor or one of its own
@@ -281,14 +295,10 @@ def keyboard_activate_named_button(start, expected_name, max_tabs=12):
         live = find_live_window()
         target = find_named(live, expected_name)
         if target is not None and has_focus(target):
-            pyatspi.Registry.generateKeyboardEvent(
-                0xFF0D, None, pyatspi.KEY_SYM
-            )
+            send_keyboard_key("Return")
             return
         if step < max_tabs:
-            pyatspi.Registry.generateKeyboardEvent(
-                0xFF09, None, pyatspi.KEY_SYM
-            )
+            send_keyboard_key("Tab")
             time.sleep(0.08)
 
     live = find_live_window()
@@ -321,14 +331,12 @@ def press(node):
     try:
         component = node.queryComponent()
         if component.grabFocus():
-            pyatspi.Registry.generateKeyboardEvent(
-                0xFF0D, None, pyatspi.KEY_SYM
-            )  # Return keysym
+            send_keyboard_key("Return")  # Return keysym
             return
     except Exception:
         # Some GTK/AT-SPI combinations expose GtkMenuButton as focusable but
         # reject Component.grabFocus with a transient atspi_error. Callers that
-        # exercise that menu use press_after_tabs from a verified native focus
+        # exercise that menu using a verified native keyboard focus origin
         # origin instead of replacing the keyboard journey with a click.
         pass
 
@@ -566,8 +574,8 @@ def main():
         lambda: find_editable_value(window, "64-bit task A"),
     )
     editor.queryEditableText().setTextContents("Cancelled inline draft")
-    # A symbolic Escape key survives different Wayland/X11 hardware layouts.
-    pyatspi.Registry.generateKeyboardEvent(0xFF1B, None, pyatspi.KEY_SYM)
+    # Send a native Escape key to the focused GTK text widget.
+    send_keyboard_key("Escape")
     wait_for(
         "visible Escape cancellation feedback",
         lambda: contains_text(window, "Changes discarded"),
