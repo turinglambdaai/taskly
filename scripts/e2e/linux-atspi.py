@@ -168,6 +168,15 @@ def select_single_named_child(root, expected):
     return None
 
 
+def find_frame(application):
+    if application is None:
+        return None
+    return next(
+        (node for node in children(application) if role(node) == "frame"),
+        None,
+    )
+
+
 def select_and_press_unedited_named_row_button(root, expected):
     """Select a direct task-list child and invoke its sole row action atomically.
 
@@ -250,7 +259,7 @@ def main():
     args.output.mkdir(parents=True, exist_ok=True)
 
     application = wait_for("Taskly application", find_application)
-    window = wait_for("Taskly frame", lambda: next((n for n in walk(application) if role(n) == "frame"), None))
+    window = wait_for("Taskly frame", lambda: find_frame(application))
     # GTK/AT-SPI role names vary between distro accessibility stacks
     # (commonly "text" or "entry"). The editable-text interface is the
     # stable behavioral contract we actually need.
@@ -350,6 +359,18 @@ def main():
         "Escape cancelled the focused task draft",
         lambda: find_editable_value(window, "Cancelled inline draft") is None
         and contains_text(window, "64-bit task A"),
+    )
+
+    # Creating the first inline editor reparents the row content. GTK's
+    # AT-SPI cache can keep the original frame proxy alive even after the
+    # editor is collapsed, so every descendant discovered through it may be
+    # stale. Re-enter through the desktop registry before the next journey.
+    application = wait_for(
+        "Taskly application after editor layout change", find_application
+    )
+    window = wait_for(
+        "Taskly frame after editor layout change",
+        lambda: find_frame(application),
     )
 
     (args.output / "task-editor-after-escape.json").write_text(
