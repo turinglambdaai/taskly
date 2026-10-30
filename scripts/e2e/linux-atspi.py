@@ -246,6 +246,13 @@ def snapshot(node, depth=0):
     return result
 
 
+def has_focus(node):
+    try:
+        return node is not None and node.getState().contains(pyatspi.STATE_FOCUSED)
+    except Exception:
+        return False
+
+
 def press(node):
     actions = node.queryAction()
     if actions.nActions < 1 or not actions.doAction(0):
@@ -353,11 +360,17 @@ def main():
         "accessible task editor calendar action",
         lambda: find_named(window, "Add Date", "push button"),
     )
+    # The native GtkRevealer must give its mapped editor keyboard focus.
+    # A programmatic AT-SPI focus injection would mask a real user regression.
+    wait_for(
+        "task editor keyboard focus",
+        lambda: has_focus(find_editable_value(window, "64-bit task A")),
+        timeout=10.0,
+    )
     editor.queryEditableText().setTextContents("Cancelled inline draft")
-    # Use the Escape keysym rather than the X11 physical keycode 9. The
-    # packaged journey runs on headless Wayland, where physical keycodes are
-    # compositor-specific but the semantic keysym is stable.
-    pyatspi.Registry.generateKeyboardEvent(0xFF1B, None, pyatspi.KEY_SYM)
+    # Send a real key press/release to the focused native editor. A keysym
+    # notification alone is not the keyboard event consumed by GTK.
+    pyatspi.Registry.generateKeyboardEvent(9, None, pyatspi.KEY_PRESSRELEASE)
     wait_for(
         "visible Escape cancellation feedback",
         lambda: contains_text(window, "Changes discarded"),
