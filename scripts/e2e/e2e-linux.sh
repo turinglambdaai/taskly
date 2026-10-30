@@ -152,7 +152,7 @@ rows = database.execute(
 ).fetchall()
 assert rows == [
     (4294967302, 4294967301, '64-bit task A', tomorrow, None, 0, 'metadata A'),
-    (4294967303, 4294967301, '64-bit task B', tomorrow, None, 0, 'metadata B'),
+    (4294967303, 4294967301, 'Saved inline draft', tomorrow, None, 0, 'metadata B'),
 ], rows
 created = database.execute(
     "SELECT list_id, completed FROM tasks WHERE text = 'Acceptance task'"

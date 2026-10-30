@@ -354,7 +354,14 @@ def main():
         lambda: find_named(window, "Add Date", "push button"),
     )
     editor.queryEditableText().setTextContents("Cancelled inline draft")
-    pyatspi.Registry.generateKeyboardEvent(9, None, pyatspi.KEY_PRESSRELEASE)  # Escape
+    # Use the Escape keysym rather than the X11 physical keycode 9. The
+    # packaged journey runs on headless Wayland, where physical keycodes are
+    # compositor-specific but the semantic keysym is stable.
+    pyatspi.Registry.generateKeyboardEvent(0xFF1B, None, pyatspi.KEY_SYM)
+    wait_for(
+        "visible Escape cancellation feedback",
+        lambda: contains_text(window, "Changes discarded"),
+    )
     wait_for(
         "Escape cancelled the focused task draft",
         lambda: find_editable_value(window, "Cancelled inline draft") is None
