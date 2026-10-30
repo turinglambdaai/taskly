@@ -2070,6 +2070,37 @@ struct TaskEditor {
   bool pending_focus{false};
 };
 
+void focus_task_editor(TaskEditor* editor, char const* stage) {
+  if (editor == nullptr || !editor->pending_focus ||
+      g_state.open_editor_id != editor->task_id)
+    return;
+  GtkWidget* target = GTK_WIDGET(editor->focus_date ? editor->date : editor->text);
+  bool const mapped = gtk_widget_get_mapped(target);
+  if (mapped) {
+    gtk_widget_grab_focus(target);
+    // On some Wayland compositors the row's reparenting finishes before the
+    // toplevel's focus chain is updated. Keep the GtkWindow's focus target
+    // consistent with the native editable widget.
+    if (g_state.window != nullptr &&
+        gtk_window_get_focus(g_state.window) != target) {
+      gtk_window_set_focus(g_state.window, target);
+    }
+    if (g_state.window != nullptr &&
+        gtk_window_get_focus(g_state.window) == target)
+      editor->pending_focus = false;
+  }
+  if (g_getenv("TASKLY_FOCUS_DEBUG") != nullptr) {
+    g_printerr(
+        "taskly-focus stage=%s id=%" G_GINT64_FORMAT
+        " mapped=%d focusable=%d native-focus=%d active=%d window-target=%d pending=%d\n",
+        stage, static_cast<gint64>(editor->task_id), mapped,
+        gtk_widget_get_focusable(target), gtk_widget_has_focus(target),
+        g_state.window != nullptr && gtk_window_is_active(g_state.window),
+        g_state.window != nullptr && gtk_window_get_focus(g_state.window) == target,
+        editor->pending_focus);
+  }
+}
+
 void commit_task_editor(TaskEditor* editor) {
   auto const* stored = find_selected_task(editor->task_id);
   if (stored == nullptr) return;
@@ -2316,11 +2347,7 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
       auto* current = static_cast<TaskEditor*>(data);
       GtkWidget* target =
           GTK_WIDGET(current->focus_date ? current->date : current->text);
-      if (!current->pending_focus || widget != target ||
-          g_state.open_editor_id != current->task_id)
-        return;
-      gtk_widget_grab_focus(widget);
-      if (gtk_widget_has_focus(widget)) current->pending_focus = false;
+      if (widget == target) focus_task_editor(current, "map");
     };
     g_signal_connect(editor->text, "map",
                      G_CALLBACK(focus_when_mapped), editor);
@@ -2333,16 +2360,8 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
         revealer, "notify::child-revealed",
         G_CALLBACK(+[](GtkRevealer* source, GParamSpec*, gpointer data) {
           auto* current = static_cast<TaskEditor*>(data);
-          if (!gtk_revealer_get_child_revealed(source) ||
-              g_state.open_editor_id != current->task_id ||
-              !current->pending_focus)
-            return;
-          GtkWidget* target =
-              GTK_WIDGET(current->focus_date ? current->date : current->text);
-          if (gtk_widget_get_mapped(target)) {
-            gtk_widget_grab_focus(target);
-            if (gtk_widget_has_focus(target)) current->pending_focus = false;
-          }
+          if (gtk_revealer_get_child_revealed(source))
+            focus_task_editor(current, "revealed");
         }),
         editor);
 
@@ -2365,13 +2384,7 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
     editor->pending_focus = true;
   }
   gtk_revealer_set_reveal_child(revealer, expand);
-  if (expand && editor != nullptr) {
-    GtkWidget* target = GTK_WIDGET(focus_date ? editor->date : editor->text);
-    if (gtk_widget_get_mapped(target)) {
-      gtk_widget_grab_focus(target);
-      if (gtk_widget_has_focus(target)) editor->pending_focus = false;
-    }
-  }
+  if (expand && editor != nullptr) focus_task_editor(editor, "expand");
 }
 
 void toggle_task_editor(GtkListBoxRow* row, std::int64_t id, bool focus_date) {
