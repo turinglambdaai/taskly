@@ -2335,6 +2335,10 @@ void set_task_editor_expanded(GtkListBoxRow* row, std::int64_t id,
     auto* calendar = gtk_calendar_new();
     gtk_box_append(GTK_BOX(date_picker), calendar);
     gtk_popover_set_child(GTK_POPOVER(date_popover), date_picker);
+    // GTK4 popovers must belong to the widget tree to receive layout,
+    // keyboard focus and AT-SPI children. Match the working bulk-date
+    // popover below; merely calling popup() on an unparented widget fails.
+    gtk_widget_set_parent(GTK_WIDGET(date_popover), calendar_button);
     g_signal_connect(calendar, "day-selected",
                      G_CALLBACK(on_editor_calendar_day_selected), editor);
     g_signal_connect_swapped(
