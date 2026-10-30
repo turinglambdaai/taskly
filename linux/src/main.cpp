@@ -439,6 +439,7 @@ struct AppState {
   std::vector<rivet_app::Task> tasks;
   std::vector<rivet_app::Task> search_results;
   std::string current_search;
+  std::string rendered_search_keyword;
   std::string language{"zh"};
   std::uint64_t preview_sequence{0};
 
@@ -469,6 +470,8 @@ void refresh_bulk_bar();
 std::vector<std::int64_t> selected_task_ids();
 void reload_snapshot();
 void run_search(std::string const& keyword);
+bool same_visible_task_rows(std::vector<rivet_app::Task> const& left,
+                            std::vector<rivet_app::Task> const& right);
 void save_setting(char const* key, std::string const& value);
 void apply_language();
 void apply_theme(std::string const& theme);
@@ -1090,7 +1093,12 @@ void run_search(std::string const& keyword) {
               if (g_state.current_search != keyword) return;
               std::unordered_set<std::int64_t> selected_ids;
               for (auto id : selected_task_ids()) selected_ids.insert(id);
+              bool const changed =
+                  g_state.rendered_search_keyword != keyword ||
+                  !same_visible_task_rows(g_state.search_results, results);
               g_state.search_results = results;
+              if (!changed) return;  // Preserve keyboard selection and rows.
+              g_state.rendered_search_keyword = keyword;
               gtk_list_box_remove_all(g_state.task_list);
               for (auto const& task : results) {
                 if (g_state.suppressed_delete_ids.count(task.id)) continue;
@@ -1170,7 +1178,10 @@ void reload_snapshot() {
                     rebuild_sidebar();
                     refresh_pane_header();
                     if (!g_state.current_search.empty()) {
-                      if (changed && g_state.open_editor_id < 0) {
+                      // Search spans every list, so its results can change
+                      // even when the selected view's snapshot does not.
+                      // run_search compares results before touching GTK.
+                      if (g_state.open_editor_id < 0) {
                         run_search(g_state.current_search);
                       } else if (changed) {
                         g_state.pending_task_rebuild = true;
@@ -3582,6 +3593,7 @@ void on_search_changed(GtkSearchEntry* entry, gpointer) {
   if (keyword.empty()) {
     g_state.current_search.clear();
     g_state.search_results.clear();
+    g_state.rendered_search_keyword.clear();
     rebuild_task_list();
     return;
   }
