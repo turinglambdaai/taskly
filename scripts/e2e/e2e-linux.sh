@@ -73,7 +73,7 @@ export XDG_RUNTIME_DIR="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/taskly-acceptance-runtim
 # wl_seat. Without a real keyboard seat it cannot verify focus or key input.
 # Use a native X11 display and a real window manager for keyboard AT-SPI,
 # then separately boot-check the packaged binary under headless Wayland.
-export DISPLAY=":$((110 + ($ % 400)))"
+export DISPLAY=":$((110 + BASHPID % 400))"
 export GDK_BACKEND=x11
 unset WAYLAND_DISPLAY
 export GTK_A11Y=atspi
