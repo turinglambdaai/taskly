@@ -253,10 +253,18 @@ def find_live_window():
 
 
 def has_focus(node):
-    try:
-        return node.getState().contains(pyatspi.STATE_FOCUSED)
-    except Exception:
+    # GTK4 GtkEntry delegates keyboard input to its internal GtkText.
+    # Require the native focused state on the editor or one of its own
+    # descendants, never on an unrelated control in the same window.
+    if node is None:
         return False
+    for child in walk(node):
+        try:
+            if child.getState().contains(pyatspi.STATE_FOCUSED):
+                return True
+        except Exception:
+            continue
+    return False
 
 
 def press_after_tabs(start, tab_count):
