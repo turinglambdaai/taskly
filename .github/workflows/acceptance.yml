@@ -3,8 +3,9 @@ name: Product Acceptance
 on:
   push:
     branches: [main]
+  # Validate stacked PRs against their real base as well as PRs into main.
+  # Do not let a non-main PR silently bypass the same required suites.
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
