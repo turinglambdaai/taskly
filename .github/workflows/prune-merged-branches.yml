@@ -43,7 +43,16 @@ jobs:
               }
               const refs = pulls.filter(pr =>
                 pr.head.repo?.full_name === fullName && pr.head.ref === branch.name);
-              if (refs.some(pr => pr.state === "open")) { retained++; continue; }
+              // A merged branch can still be the *base* of a stacked open PR.
+              // Removing it would invalidate downstream review and potentially
+              // cause GitHub to close or retarget the dependent PR.
+              const isOpenPrBase = pr => pr.state === "open" &&
+                pr.base.repo?.full_name === fullName && pr.base.ref === branch.name;
+              if (refs.some(pr => pr.state === "open") || pulls.some(isOpenPrBase)) {
+                retained++;
+                core.info(`Keep branch used by an open PR: ${branch.name}`);
+                continue;
+              }
               // Squash merges need exact merged-PR head evidence. A separate
               // safe case is an old topic whose entire history is already an
               // ancestor of main (zero commits ahead). This can be true even
@@ -71,8 +80,13 @@ jobs:
                 // Re-read immediately before deletion: a moved head, newly
                 // protected branch or newly opened PR invalidates the snapshot.
                 const fresh = (await github.rest.repos.getBranch({owner, repo, branch: branch.name})).data;
+                // Recheck both PR directions at the deletion boundary:
+                // a dependent PR may have been opened since the initial scan.
                 const active = await github.paginate(github.rest.pulls.list,
-                  {owner, repo, state: "open", head: `${owner}:${branch.name}`, per_page: 100});
+                  {owner, repo, state: "open", per_page: 100});
+                const activelyUsed = active.some(pr =>
+                  (pr.head.repo?.full_name === fullName && pr.head.ref === branch.name) ||
+                  (pr.base.repo?.full_name === fullName && pr.base.ref === branch.name));
                 let ancestorStillProven = true;
                 if (ancestorOnly) {
                   const cmp = (await github.rest.repos.compareCommits({
@@ -82,7 +96,7 @@ jobs:
                     (cmp.status === "behind" || cmp.status === "identical");
                 }
                 if (fresh.protected || fresh.commit.sha !== branch.commit.sha ||
-                    active.length || !ancestorStillProven) {
+                    activelyUsed || !ancestorStillProven) {
                   retained++;
                   core.info(`Keep changed/protected/open-PR/divergent branch: ${branch.name}`);
                   continue;
