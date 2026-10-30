@@ -73,6 +73,15 @@ def find_application():
     return None
 
 
+def find_frame(application):
+    if application is None:
+        return None
+    return next(
+        (node for node in children(application) if role(node) == "frame"),
+        None,
+    )
+
+
 def find_named(root, expected_name, expected_role=None):
     for node in walk(root):
         if name(node) == expected_name and (expected_role is None or role(node) == expected_role):
@@ -307,7 +316,7 @@ def main():
     args.output.mkdir(parents=True, exist_ok=True)
 
     application = wait_for("Taskly application", find_application)
-    window = wait_for("Taskly frame", lambda: next((n for n in walk(application) if role(n) == "frame"), None))
+    window = wait_for("Taskly frame", lambda: find_frame(application))
     # GTK/AT-SPI role names vary between distro accessibility stacks
     # (commonly "text" or "entry"). The editable-text interface is the
     # stable behavioral contract we actually need.
@@ -515,6 +524,16 @@ def main():
         and contains_text(window, "64-bit task A"),
     )
 
+    # Re-enter through the desktop registry after the editor collapses.
+    # GTK can reparent its task row and invalidate descendants of the old
+    # frame proxy; the following Save path must use live accessibility nodes.
+    application = wait_for(
+        "Taskly application after editor layout change", find_application
+    )
+    window = wait_for(
+        "Taskly frame after editor layout change",
+        lambda: find_frame(application),
+    )
     (args.output / "task-editor-after-escape.json").write_text(
         json.dumps(snapshot(window), ensure_ascii=False, indent=2), encoding="utf-8"
     )
