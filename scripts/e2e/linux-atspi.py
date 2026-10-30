@@ -238,6 +238,10 @@ def snapshot(node, depth=0):
 
 
 def press(node, focus_root=None):
+    # Capture identity before querying adapters. GTK may invalidate the
+    # original proxy when a failing AT-SPI call also refreshes its cache.
+    expected_name = name(node)
+    expected_role = role(node)
     try:
         actions = node.queryAction()
         if actions.nActions >= 1 and actions.doAction(0):
@@ -265,10 +269,13 @@ def press(node, focus_root=None):
         pass
 
     if focus_root is not None:
-        expected_name = name(node)
-        expected_role = role(node)
-        for _ in range(16):
-            current = find_named(focus_root, expected_name, expected_role)
+        if not expected_name:
+            raise AssertionError("AT-SPI target lost its accessible name")
+        for attempt in range(17):
+            # The accessible name is the cross-stack contract. Some adapters
+            # alternate between "button" and "push button" after a cache
+            # refresh, so do not pin the reacquired proxy to the stale role.
+            current = find_named(focus_root, expected_name)
             if current is not None:
                 try:
                     if current.getState().contains(pyatspi.STATE_FOCUSED):
@@ -278,11 +285,16 @@ def press(node, focus_root=None):
                         return
                 except Exception:
                     pass
+            if attempt == 16:
+                break
             pyatspi.Registry.generateKeyboardEvent(
                 23, None, pyatspi.KEY_PRESSRELEASE
             )  # Tab
             time.sleep(0.05)
-    raise AssertionError(f"AT-SPI action and keyboard focus failed for {node.name!r}")
+    raise AssertionError(
+        "AT-SPI action and keyboard focus failed for "
+        f"{expected_name!r} ({expected_role})"
+    )
 
 
 def main():
