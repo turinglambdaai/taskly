@@ -48,12 +48,12 @@ jobs:
             libsecret-1-dev libglib2.0-dev
 
       - name: Set up embeddable Racket CS
-        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@9d766b4acab672844093204cb4845ef4ef933d2c
+        uses: turlamai/rivet/.github/actions/setup-embed-racket@9d766b4acab672844093204cb4845ef4ef933d2c
 
       - name: Install pinned Racket dependencies
         run: |
-          raco pkg install --auto --no-docs "https://github.com/turinglambdaai/keel.git#${KEEL_PIN}"
-          raco pkg install --auto --no-docs "https://github.com/turinglambdaai/rivet.git#${RIVET_PIN}"
+          raco pkg install --auto --no-docs "https://github.com/turlamai/keel.git#${KEEL_PIN}"
+          raco pkg install --auto --no-docs "https://github.com/turlamai/rivet.git#${RIVET_PIN}"
           raco pkg install --auto --no-docs db crypto
 
       - name: Regenerate clients from the canonical RPC contract
