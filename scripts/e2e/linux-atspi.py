@@ -246,6 +246,12 @@ def snapshot(node, depth=0):
     return result
 
 
+def find_live_window():
+    # GTK reparents the selected row when it creates an inline editor. A
+    # cached frame proxy can remain queryable while its focus state is stale.
+    return find_frame(find_application())
+
+
 def has_focus(node):
     try:
         return node is not None and node.getState().contains(pyatspi.STATE_FOCUSED)
@@ -362,10 +368,25 @@ def main():
     )
     # The native GtkRevealer must give its mapped editor keyboard focus.
     # A programmatic AT-SPI focus injection would mask a real user regression.
-    wait_for(
-        "task editor keyboard focus",
-        lambda: has_focus(find_editable_value(window, "64-bit task A")),
-        timeout=10.0,
+    try:
+        wait_for(
+            "task editor keyboard focus",
+            lambda: has_focus(find_editable_value(find_live_window(), "64-bit task A")),
+            timeout=10.0,
+        )
+    except AssertionError:
+        live = find_live_window()
+        focused = [
+            {"name": name(node), "role": role(node), "text": text(node)[:80]}
+            for node in walk(live)
+            if has_focus(node)
+        ]
+        raise AssertionError(f"task editor has no accessible native focus; focused={focused}")
+    application = wait_for("live Taskly application", find_application)
+    window = wait_for("live Taskly frame", lambda: find_frame(application))
+    editor = wait_for(
+        "live keyboard-opened editor",
+        lambda: find_editable_value(window, "64-bit task A"),
     )
     editor.queryEditableText().setTextContents("Cancelled inline draft")
     # Send a real key press/release to the focused native editor. A keysym
