@@ -4388,6 +4388,10 @@ void on_activate(GtkApplication* app, gpointer) {
 
   // Esc ladder: editor → search → nothing.
   auto* window_keys = gtk_event_controller_key_new();
+  // GtkText may consume Escape during its own bubble handling. An open
+  // editor's cancel operation must win before the child processes the key;
+  // non-Escape keys still propagate to the focused native control.
+  gtk_event_controller_set_propagation_phase(window_keys, GTK_PHASE_CAPTURE);
   g_signal_connect(window_keys, "key-pressed",
                    G_CALLBACK(on_window_key_pressed), nullptr);
   gtk_widget_add_controller(GTK_WIDGET(window), window_keys);
