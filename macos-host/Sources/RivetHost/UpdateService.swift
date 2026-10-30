@@ -23,8 +23,8 @@ public final class UpdateService {
     nonisolated public static let expectedKeyID = "taskly-2026-10"
 
     public static let manifestURL = URL(string:
-        "https://github.com/turinglambdaai/taskly/releases/latest/download/update-manifest.json")!
-    public static let releasesPage = "https://github.com/turinglambdaai/taskly/releases/latest"
+        "https://github.com/turlamai/taskly/releases/latest/download/update-manifest.json")!
+    public static let releasesPage = "https://github.com/turlamai/taskly/releases/latest"
 
     public enum UpdateError: LocalizedError {
         case notInstalled

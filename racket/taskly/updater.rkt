@@ -94,7 +94,7 @@
 ;; fetched from the moving "latest" location. Tests parameterize this at
 ;; an unreachable local URL instead of touching the network.
 (define default-update-base-url
-  "https://github.com/turinglambdaai/taskly/releases/latest/download")
+  "https://github.com/turlamai/taskly/releases/latest/download")
 
 (define current-update-base-url (make-parameter #f))
 
