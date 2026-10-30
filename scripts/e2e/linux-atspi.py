@@ -267,21 +267,39 @@ def has_focus(node):
     return False
 
 
-def press_after_tabs(start, tab_count):
-    """Activate the control tab_count positions after a focused start node."""
-    # The app must provide keyboard focus on opening its editor. Forcing
-    # focus from AT-SPI here would conceal broken behavior in the product.
+def keyboard_activate_named_button(start, expected_name, max_tabs=12):
+    """Reach a real native action by Tab, then activate it with Return.
+
+    We never force accessibility focus or guess the number of Tab stops.
+    GTK may add/remove focusable controls in a native host release; the
+    contract is that keyboard-only users can reach and activate Add Date.
+    """
     if not has_focus(start):
         raise AssertionError("task editor did not receive native keyboard focus")
 
-    for _ in range(tab_count):
-        pyatspi.Registry.generateKeyboardEvent(
-            0xFF09, None, pyatspi.KEY_SYM
-        )  # Tab keysym, not a compositor-specific hardware keycode
-        time.sleep(0.05)
-    pyatspi.Registry.generateKeyboardEvent(
-        0xFF0D, None, pyatspi.KEY_SYM
-    )  # Return
+    for step in range(max_tabs + 1):
+        live = find_live_window()
+        target = find_named(live, expected_name)
+        if target is not None and has_focus(target):
+            pyatspi.Registry.generateKeyboardEvent(
+                0xFF0D, None, pyatspi.KEY_SYM
+            )
+            return
+        if step < max_tabs:
+            pyatspi.Registry.generateKeyboardEvent(
+                0xFF09, None, pyatspi.KEY_SYM
+            )
+            time.sleep(0.08)
+
+    live = find_live_window()
+    focused = [
+        {"name": name(node), "role": role(node)}
+        for node in walk(live)
+        if has_focus(node)
+    ]
+    raise AssertionError(
+        f"keyboard Tab could not focus {expected_name!r}; focused={focused}"
+    )
 
 
 def press(node):
@@ -382,16 +400,15 @@ def main():
             "live first task editor",
             lambda: find_editable_value(window, "First-run persistence task"),
         )
-        # GTK focuses the title when the editor expands. Date is the third
-        # native Tab stop after title: notes, date entry, calendar button.
-        # Return must open the menu; the Tomorrow assertion below proves it.
-        press_after_tabs(editor, 3)
+        # Use actual GTK keyboard focus rather than assuming a fixed number
+        # of intermediate Tab stops. Enter must open the native date popover.
+        keyboard_activate_named_button(editor, "Add Date")
         tomorrow = wait_for(
             "first task Tomorrow choice",
             # Popover buttons are exposed as either "button" or
             # "push button" across AT-SPI stacks; the accessible name is
             # the stable product contract.
-            lambda: find_named(application, "Tomorrow"),
+            lambda: find_named(find_application(), "Tomorrow"),
         )
         press(tomorrow)
         save = wait_for(
