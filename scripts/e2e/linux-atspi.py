@@ -237,7 +237,36 @@ def snapshot(node, depth=0):
     return result
 
 
-def press(node, focus_root=None):
+def has_focus(node):
+    try:
+        return node.getState().contains(pyatspi.STATE_FOCUSED)
+    except Exception:
+        return False
+
+
+def press_after_tabs(start, tab_count):
+    """Activate the control tab_count positions after a focused start node."""
+    if not has_focus(start):
+        try:
+            if not start.queryComponent().grabFocus():
+                raise AssertionError("AT-SPI rejected the keyboard starting focus")
+        except Exception as error:
+            raise AssertionError(
+                "could not establish the keyboard starting focus"
+            ) from error
+        wait_for("keyboard starting focus", lambda: has_focus(start), timeout=5.0)
+
+    for _ in range(tab_count):
+        pyatspi.Registry.generateKeyboardEvent(
+            23, None, pyatspi.KEY_PRESSRELEASE
+        )  # Tab
+        time.sleep(0.05)
+    pyatspi.Registry.generateKeyboardEvent(
+        36, None, pyatspi.KEY_PRESSRELEASE
+    )  # Return
+
+
+def press(node):
     # Capture identity before querying adapters. GTK may invalidate the
     # original proxy when a failing AT-SPI call also refreshes its cache.
     expected_name = name(node)
@@ -262,35 +291,11 @@ def press(node, focus_root=None):
             return
     except Exception:
         # Some GTK/AT-SPI combinations expose GtkMenuButton as focusable but
-        # reject Component.grabFocus with a transient atspi_error. Preserve a
-        # real keyboard journey instead of replacing activation with a click:
-        # start from GTK's focused editor field and Tab until the named control
-        # itself reports focus, then send Return.
+        # reject Component.grabFocus with a transient atspi_error. Callers that
+        # exercise that menu use press_after_tabs from a verified native focus
+        # origin instead of replacing the keyboard journey with a click.
         pass
 
-    if focus_root is not None:
-        if not expected_name:
-            raise AssertionError("AT-SPI target lost its accessible name")
-        for attempt in range(17):
-            # The accessible name is the cross-stack contract. Some adapters
-            # alternate between "button" and "push button" after a cache
-            # refresh, so do not pin the reacquired proxy to the stale role.
-            current = find_named(focus_root, expected_name)
-            if current is not None:
-                try:
-                    if current.getState().contains(pyatspi.STATE_FOCUSED):
-                        pyatspi.Registry.generateKeyboardEvent(
-                            36, None, pyatspi.KEY_PRESSRELEASE
-                        )  # Return
-                        return
-                except Exception:
-                    pass
-            if attempt == 16:
-                break
-            pyatspi.Registry.generateKeyboardEvent(
-                23, None, pyatspi.KEY_PRESSRELEASE
-            )  # Tab
-            time.sleep(0.05)
     raise AssertionError(
         "AT-SPI action and keyboard focus failed for "
         f"{expected_name!r} ({expected_role})"
@@ -338,11 +343,18 @@ def main():
             ),
         )
         press(details)
+        editor = wait_for(
+            "focused first task editor",
+            lambda: find_editable_value(window, "First-run persistence task"),
+        )
         add_date = wait_for(
             "first task Add Date action",
             lambda: find_named(window, "Add Date", "push button"),
         )
-        press(add_date, focus_root=window)
+        # GTK focuses the title when the editor expands. Date is the third
+        # native Tab stop after title: notes, date entry, calendar button.
+        # Return must open the menu; the Tomorrow assertion below proves it.
+        press_after_tabs(editor, 3)
         tomorrow = wait_for(
             "first task Tomorrow choice",
             # Popover buttons are exposed as either "button" or
