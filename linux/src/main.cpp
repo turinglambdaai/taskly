@@ -449,6 +449,8 @@ struct AppState {
   bool suppress_selection{false};
   std::atomic<bool> reload_in_flight{false};
   std::int64_t open_editor_id{-1};
+  bool snapshot_rendered{false};
+  bool pending_task_rebuild{false};
 
   // Native reminder transport only. Eligibility, startup summarization,
   // per-database de-duplication and handoff acknowledgement live in the core.
@@ -462,6 +464,7 @@ Palette const* g_state_palette = &kLight;
 GtkWidget* make_task_row(rivet_app::Task const& task);
 void rebuild_sidebar();
 void rebuild_task_list();
+void refresh_pane_header();
 void refresh_bulk_bar();
 std::vector<std::int64_t> selected_task_ids();
 void reload_snapshot();
@@ -1102,6 +1105,23 @@ void run_search(std::string const& keyword) {
       });
 }
 
+// The snapshot poll and backend changed events must not invalidate task
+// widget identities when their displayed data has not changed.
+bool same_visible_task_rows(std::vector<rivet_app::Task> const& left,
+                            std::vector<rivet_app::Task> const& right) {
+  if (left.size() != right.size()) return false;
+  for (std::size_t i = 0; i < left.size(); ++i) {
+    auto const& a = left[i];
+    auto const& b = right[i];
+    if (a.id != b.id || a.list_id != b.list_id ||
+        a.text != b.text || a.completed != b.completed ||
+        a.due_date != b.due_date || a.due_time != b.due_time ||
+        a.notes != b.notes || a.list_name != b.list_name)
+      return false;
+  }
+  return true;
+}
+
 void reload_snapshot() {
   if (g_state.api == nullptr) return;
   auto expected = false;
@@ -1138,16 +1158,32 @@ void reload_snapshot() {
                       reload_snapshot();
                       return;
                     }
+                    // Never replace GTK rows for an unchanged snapshot:
+                    // that destroys focus, AT-SPI identities and popovers.
+                    bool const changed =
+                        !g_state.snapshot_rendered ||
+                        !same_visible_task_rows(g_state.tasks, snapshot.tasks);
+                    g_state.snapshot_rendered = true;
                     g_state.current_counts = snapshot.counts;
                     g_state.lists = snapshot.lists;
                     g_state.tasks = snapshot.tasks;
                     rebuild_sidebar();
-                    // An active search owns the task list; refreshing the
-                    // snapshot must not overwrite the results.
+                    refresh_pane_header();
                     if (!g_state.current_search.empty()) {
-                      run_search(g_state.current_search);
-                    } else {
-                      rebuild_task_list();
+                      if (changed && g_state.open_editor_id < 0) {
+                        run_search(g_state.current_search);
+                      } else if (changed) {
+                        g_state.pending_task_rebuild = true;
+                      }
+                    } else if (changed) {
+                      if (g_state.open_editor_id >= 0 &&
+                          find_by_id(g_state.tasks, g_state.open_editor_id)) {
+                        // Keep a draft and date popover alive while an
+                        // unrelated external update waits to be rendered.
+                        g_state.pending_task_rebuild = true;
+                      } else {
+                        rebuild_task_list();
+                      }
                     }
                   });
       });
@@ -2168,6 +2204,12 @@ void cancel_task_editor() {
     g_state.open_editor_id = -1;
     gtk_widget_grab_focus(child);
     flash_status(tr("statusTaskEditCancelled"));
+    if (g_state.pending_task_rebuild) {
+      // Only external changes justify replacing the row after Cancel.
+      if (g_state.current_search.empty()) rebuild_task_list();
+      else run_search(g_state.current_search);
+      g_state.pending_task_rebuild = false;
+    }
     return;
   }
 
@@ -2827,6 +2869,7 @@ void refresh_pane_header() {
 }
 
 void rebuild_task_list() {
+  g_state.pending_task_rebuild = false;
   refresh_pane_header();
 
   // Carry an open in-place editor across the rebuild: snapshot its
