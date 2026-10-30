@@ -2076,27 +2076,28 @@ void focus_task_editor(TaskEditor* editor, char const* stage) {
     return;
   GtkWidget* target = GTK_WIDGET(editor->focus_date ? editor->date : editor->text);
   bool const mapped = gtk_widget_get_mapped(target);
+  gboolean grabbed = FALSE;
   if (mapped) {
-    gtk_widget_grab_focus(target);
-    // On some Wayland compositors the row's reparenting finishes before the
-    // toplevel's focus chain is updated. Keep the GtkWindow's focus target
-    // consistent with the native editable widget.
-    if (g_state.window != nullptr &&
-        gtk_window_get_focus(g_state.window) != target) {
-      gtk_window_set_focus(g_state.window, target);
-    }
-    if (g_state.window != nullptr &&
-        gtk_window_get_focus(g_state.window) == target)
-      editor->pending_focus = false;
+    // In GTK4 a GtkEntry delegates focus to its internal GtkText. The entry
+    // itself is deliberately not focusable; comparing get_focus() with the
+    // GtkEntry pointer or forcing GtkWindow focus to it is incorrect.
+    grabbed = gtk_widget_grab_focus(target);
   }
+  GtkWidget* actual =
+      g_state.window != nullptr ? gtk_window_get_focus(g_state.window) : nullptr;
+  bool const inside_entry =
+      actual != nullptr &&
+      (actual == target || gtk_widget_is_ancestor(actual, target));
+  if (inside_entry) editor->pending_focus = false;
   if (g_getenv("TASKLY_FOCUS_DEBUG") != nullptr) {
     g_printerr(
         "taskly-focus stage=%s id=%" G_GINT64_FORMAT
-        " mapped=%d focusable=%d native-focus=%d active=%d window-target=%d pending=%d\n",
+        " mapped=%d entry-focusable=%d grab=%d inside-entry=%d"
+        " window-active=%d actual=%s pending=%d\n",
         stage, static_cast<gint64>(editor->task_id), mapped,
-        gtk_widget_get_focusable(target), gtk_widget_has_focus(target),
+        gtk_widget_get_focusable(target), grabbed, inside_entry,
         g_state.window != nullptr && gtk_window_is_active(g_state.window),
-        g_state.window != nullptr && gtk_window_get_focus(g_state.window) == target,
+        actual != nullptr ? G_OBJECT_TYPE_NAME(actual) : "none",
         editor->pending_focus);
   }
 }
